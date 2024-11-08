@@ -8,7 +8,7 @@
 
 ---
 
-2：根域名解析到你的服务器，将`k8sgcr`，`ghcr`，`gcr`，`dockerhub`，`registryk8s`这个几个配置解析为你的二级域名。
+1：根域名解析到你的服务器，将`k8sgcr`，`ghcr`，`gcr`，`dockerhub`，`registryk8s`这个几个配置解析为你的二级域名。
 
 > 直接泛解析更方便
 
