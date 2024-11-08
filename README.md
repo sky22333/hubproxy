@@ -1,6 +1,6 @@
 ### Docker-proxy
 
-- 一键部署多种仓库的`docker`加速源
+- 使用`docker`一键部署多种仓库的docker加速
 - 优化繁琐的搭建部署
 - 部署超级简单
 - 自动配置HTTPS
