@@ -6,6 +6,8 @@
 
 
 
-1：请先将`k8sgcr`，`ghcr`，`gcr`，`dockerhub`，`registryk8s`这个几个配置为你的二级域名。
+1：根域名解析到你的服务器，将`k8sgcr`，`ghcr`，`gcr`，`dockerhub`，`registryk8s`这个几个配置解析为你的二级域名。
+
+> 如果图简单可以直接泛解析
 
 2：然后修改`docker-compose.yml`配置里的环境变量，修改为你的主域名，然后`docker compose up -d`启动即可。
