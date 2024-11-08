@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docker Hub 域名展示</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0/dist/themes/light.css" />
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0/dist/shoelace.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    .domain-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .domain-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      padding: 1rem 2rem;
+      margin-bottom: 1rem;
+      width: 300px;
+    }
+
+    .domain-text {
+      flex-grow: 1;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .copy-button {
+      margin-left: 1rem;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .footer a {
+      color: #333;
+      text-decoration: none;
+      margin-left: 0.5rem;
+    }
+
+    .footer a:hover {
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="domain-container">
+    <div class="domain-item">
+      <div class="domain-text">dockerhub.example.com</div>
+      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('dockerhub.example.com')">复制</sl-button>
+    </div>
+    <div class="domain-item">
+      <div class="domain-text">ghcr.example.com</div>
+      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('ghcr.example.com')">复制</sl-button>
+    </div>
+    <div class="domain-item">
+      <div class="domain-text">gcr.example.com</div>
+      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('gcr.example.com')">复制</sl-button>
+    </div>
+    <div class="domain-item">
+      <div class="domain-text">k8sgcr.example.com</div>
+      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('k8sgcr.example.com')">复制</sl-button>
+    </div>
+    <div class="domain-item">
+      <div class="domain-text">registryk8s.example.com</div>
+      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('registryk8s.example.com')">复制</sl-button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>注意: 所有域名使用 "example.com" 顶级域名。</span>
+    <a href="https://github.com/sky22333/Docker-Hub" target="_blank">
+      <sl-icon name="github" size="24"></sl-icon>
+    </a>
+  </div>
+
+  <script>
+    const domainText = document.querySelectorAll('.domain-text');
+    const copyButtons = document.querySelectorAll('.copy-button');
+    const domainBase = 'example.com';
+
+    domainText.forEach((text, index) => {
+      text.textContent = text.textContent.replace('example.com', domainBase);
+    });
+
+    copyButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        copyToClipboard(domainText[index].textContent);
+      });
+    });
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text);
+      const toast = Object.assign(document.createElement('sl-toast'), {
+        duration: 2000,
+        label: '已复制到剪贴板',
+      });
+      document.body.appendChild(toast);
+      toast.show();
+    }
+  </script>
+</body>
+</html>

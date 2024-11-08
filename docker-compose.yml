@@ -1,0 +1,48 @@
+services:
+  k8sgcr:
+    image: "registry:2.8.3"
+    container_name: "k8sgcr"
+    restart: "always"
+    volumes:
+      - "./k8sgcr/config.yml:/etc/docker/registry/config.yml"
+
+  ghcr:
+    image: "registry:2.8.3"
+    container_name: "ghcr"
+    restart: "always"
+    volumes:
+      - "./ghcr/config.yml:/etc/docker/registry/config.yml"
+
+  gcr:
+    image: "registry:2.8.3"
+    container_name: "gcr"
+    restart: "always"
+    volumes:
+      - "./gcr/config.yml:/etc/docker/registry/config.yml"
+
+  dockerhub:
+    image: "registry:2.8.3"
+    container_name: "dockerhub"
+    restart: "always"
+    volumes:
+      - "./dockerhub/config.yml:/etc/docker/registry/config.yml"
+
+  registryk8s:
+    image: "registry:2.8.3"
+    container_name: "registryk8s"
+    restart: "always"
+    volumes:
+      - "./registryk8s/config.yml:/etc/docker/registry/config.yml"
+
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./index.html:/srv/index.html
+    environment:
+      - DOMAIN=example.com                  # 修改为你的域名
+    restart: always

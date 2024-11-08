@@ -1,0 +1,24 @@
+{$DOMAIN} {
+    root * /srv
+    file_server
+}
+
+dockerhub.{$DOMAIN} {
+    reverse_proxy * dockerhub:5000
+}
+
+ghcr.{$DOMAIN} {
+    reverse_proxy * ghcr:5000
+}
+
+gcr.{$DOMAIN} {
+    reverse_proxy * gcr:5000
+}
+
+k8sgcr.{$DOMAIN} {
+    reverse_proxy * k8sgcr:5000
+}
+
+registryk8s.{$DOMAIN} {
+    reverse_proxy * registryk8s:5000
+}
