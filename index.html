@@ -50,9 +50,17 @@
     }
 
     .copy-button {
-      font-size: 0.75rem;
+      font-size: 1rem;
       padding: 0.2rem 0.5rem;
       margin-left: 0.5rem;
+      color: #393e42;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .copy-button:focus {
+      outline: none;
     }
 
     .footer {
@@ -84,26 +92,26 @@
   <div class="domain-container">
     <div class="domain-item">
       <div class="domain-text">dockerhub.<span id="domain-base"></span></div>
-      <sl-button class="copy-button" variant="primary">复制</sl-button>
+      <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
       <div class="domain-text">ghcr.<span id="domain-base"></span></div>
-      <sl-button class="copy-button" variant="primary">复制</sl-button>
+      <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
       <div class="domain-text">gcr.<span id="domain-base"></span></div>
-      <sl-button class="copy-button" variant="primary">复制</sl-button>
+      <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
       <div class="domain-text">k8sgcr.<span id="domain-base"></span></div>
-      <sl-button class="copy-button" variant="primary">复制</sl-button>
+      <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
       <div class="domain-text">registryk8s.<span id="domain-base"></span></div>
-      <sl-button class="copy-button" variant="primary">复制</sl-button>
+      <button class="copy-button">复制</button>
     </div>
   </div>
-
+  
   <div class="footer">
     🔔个人使用，请勿分享！
   </div>
