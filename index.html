@@ -18,6 +18,12 @@
       background-color: #f4f4f4;
     }
 
+    h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+
     .domain-container {
       display: flex;
       flex-direction: column;
@@ -44,82 +50,98 @@
     }
 
     .copy-button {
-      margin-left: 1rem;
-    }
-
-    .footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 2rem;
-    }
-
-    .footer a {
-      color: #333;
-      text-decoration: none;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
       margin-left: 0.5rem;
     }
 
-    .footer a:hover {
+    .footer {
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .github-icon {
+      position: fixed;
+      bottom: 15px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .github-icon a {
+      color: #333;
+      text-decoration: none;
+    }
+
+    .github-icon a:hover {
       color: #555;
     }
   </style>
 </head>
 <body>
+  <!-- 添加标题 -->
+  <h2>Docker 镜像加速（多种仓库）</h2>
+
   <div class="domain-container">
     <div class="domain-item">
-      <div class="domain-text">dockerhub.example.com</div>
-      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('dockerhub.example.com')">复制</sl-button>
+      <div class="domain-text">dockerhub.<span id="domain-base"></span></div>
+      <sl-button class="copy-button" variant="primary">复制</sl-button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">ghcr.example.com</div>
-      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('ghcr.example.com')">复制</sl-button>
+      <div class="domain-text">ghcr.<span id="domain-base"></span></div>
+      <sl-button class="copy-button" variant="primary">复制</sl-button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">gcr.example.com</div>
-      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('gcr.example.com')">复制</sl-button>
+      <div class="domain-text">gcr.<span id="domain-base"></span></div>
+      <sl-button class="copy-button" variant="primary">复制</sl-button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">k8sgcr.example.com</div>
-      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('k8sgcr.example.com')">复制</sl-button>
+      <div class="domain-text">k8sgcr.<span id="domain-base"></span></div>
+      <sl-button class="copy-button" variant="primary">复制</sl-button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">registryk8s.example.com</div>
-      <sl-button class="copy-button" variant="primary" @click="copyToClipboard('registryk8s.example.com')">复制</sl-button>
+      <div class="domain-text">registryk8s.<span id="domain-base"></span></div>
+      <sl-button class="copy-button" variant="primary">复制</sl-button>
     </div>
   </div>
 
   <div class="footer">
-    <span>Docker镜像加速: 支持多种仓库。</span>
+    提示：请根据对应的仓库使用对应的域名。
+  </div>
+
+  <div class="github-icon">
     <a href="https://github.com/sky22333/Docker-Hub" target="_blank">
       <sl-icon name="github" size="24"></sl-icon>
     </a>
   </div>
 
   <script>
-    const domainText = document.querySelectorAll('.domain-text');
-    const copyButtons = document.querySelectorAll('.copy-button');
-    const domainBase = 'example.com';
-
-    domainText.forEach((text, index) => {
-      text.textContent = text.textContent.replace('example.com', domainBase);
+    const domainBase = new URL(window.location.href).hostname.replace(/^www\./, '');
+    document.querySelectorAll('#domain-base').forEach(el => {
+      el.textContent = domainBase;
     });
 
-    copyButtons.forEach((button, index) => {
-      button.addEventListener('click', () => {
-        copyToClipboard(domainText[index].textContent);
+    document.querySelectorAll('.copy-button').forEach(button => {
+      button.addEventListener('click', async () => {
+        const domainText = button.previousElementSibling.textContent;
+        
+        try {
+          await navigator.clipboard.writeText(domainText);
+
+          if (button.dataset.copied) return;
+          button.dataset.copied = true;
+          
+          const originalText = button.textContent;
+          button.textContent = '已复制';
+          
+          setTimeout(() => {
+            button.textContent = originalText;
+            delete button.dataset.copied;
+          }, 1000);
+        } catch (err) {
+          console.error('复制失败', err);
+        }
       });
     });
-
-    function copyToClipboard(text) {
-      navigator.clipboard.writeText(text);
-      const toast = Object.assign(document.createElement('sl-toast'), {
-        duration: 2000,
-        label: '已复制到剪贴板',
-      });
-      document.body.appendChild(toast);
-      toast.show();
-    }
   </script>
 </body>
 </html>
