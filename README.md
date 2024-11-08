@@ -6,6 +6,8 @@
 - 自动配置HTTPS
 - 拉取的镜像在服务器缓存3天后自动清理（可自行修改）
 
+---
+
 1：拉取本项目
 ```
 git clone https://github.com/sky22333/docker-proxy.git
