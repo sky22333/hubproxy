@@ -4,7 +4,10 @@
 - 优化繁琐的搭建部署
 - 部署超级简单
 
-1：`git clone https://github.com/sky22333/docker-proxy.git`
+1：拉取本项目
+```
+git clone https://github.com/sky22333/docker-proxy.git
+```
 
 2：根域名解析到你的服务器，将`k8sgcr`，`ghcr`，`gcr`，`dockerhub`，`registryk8s`这个几个配置解析为你的二级域名。
 
