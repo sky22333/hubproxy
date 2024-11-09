@@ -1,4 +1,17 @@
 services:
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./index.html:/srv/index.html
+    environment:
+      - DOMAIN=example.com                  # 修改为你的域名
+    restart: always
+
   k8sgcr:
     image: "registry:2.8.3"
     container_name: "k8sgcr"
@@ -33,16 +46,3 @@ services:
     restart: "always"
     volumes:
       - "./registryk8s/config.yml:/etc/docker/registry/config.yml"
-
-  caddy:
-    image: caddy:alpine
-    container_name: caddy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./index.html:/srv/index.html
-    environment:
-      - DOMAIN=example.com                  # 修改为你的域名
-    restart: always
