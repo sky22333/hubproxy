@@ -33,12 +33,12 @@ services:
     volumes:
       - "./gcr/config.yml:/etc/docker/registry/config.yml"
 
-  dockerhub:
+  docker:
     image: "registry:2.8.3"
-    container_name: "dockerhub"
+    container_name: "docker"
     restart: "always"
     volumes:
-      - "./dockerhub/config.yml:/etc/docker/registry/config.yml"
+      - "./docker/config.yml:/etc/docker/registry/config.yml"
 
   registryk8s:
     image: "registry:2.8.3"

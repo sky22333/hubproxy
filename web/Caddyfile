@@ -3,8 +3,8 @@
     file_server
 }
 
-dockerhub.{$DOMAIN} {
-    reverse_proxy * dockerhub:5000
+docker.{$DOMAIN} {
+    reverse_proxy * docker:5000
 }
 
 ghcr.{$DOMAIN} {
