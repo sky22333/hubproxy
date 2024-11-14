@@ -9,7 +9,7 @@ services:
       - ./web/Caddyfile:/etc/caddy/Caddyfile
       - ./web/index.html:/srv/index.html
     environment:
-      - DOMAIN=example.com                  # 修改为你的域名
+      - DOMAIN=example.com                  # 修改为你的根域名
     restart: always
 
   quay:
