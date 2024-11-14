@@ -12,12 +12,12 @@ services:
       - DOMAIN=example.com                  # 修改为你的域名
     restart: always
 
-  k8sgcr:
+  quay:
     image: "registry:2.8.3"
-    container_name: "k8sgcr"
+    container_name: "quay"
     restart: "always"
     volumes:
-      - "./k8sgcr/config.yml:/etc/docker/registry/config.yml"
+      - "./quay/config.yml:/etc/docker/registry/config.yml"
 
   ghcr:
     image: "registry:2.8.3"

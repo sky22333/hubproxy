@@ -8,7 +8,7 @@
 
 ---
 
-1：根域名解析到你的服务器，将`k8sgcr`，`ghcr`，`gcr`，`docker`，`registryk8s`这个几个配置解析为你的二级域名。
+1：域名解析：将`hub`，`quay`，`ghcr`，`gcr`，`docker`，`registryk8s`这个几个解析为你的二级域名。
 
 > 直接泛解析更方便
 
@@ -19,10 +19,10 @@ git clone https://github.com/sky22333/docker-proxy.git
 ```
 
 
-3：其他无需修改，只需修改`docker-compose.yml`配置里的域名环境变量，修改为你的主域名
+3：其他无需修改，只需修改`docker-compose.yml`配置里的域名环境变量，修改为你的根域名
 然后启动即可。
 ```
 docker compose up -d
 ```
 
-4：部署完成后访问域名查看
+4：部署完成后访问`hub.example.com`查看前端

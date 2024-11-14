@@ -13,4 +13,4 @@ storage:
 http:
   addr: 0.0.0.0:5000
 proxy:
-  remoteurl: https://k8s.gcr.io
+  remoteurl: https://quay.io
