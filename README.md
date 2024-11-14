@@ -8,7 +8,7 @@
 
 ---
 
-### 部署教程
+### 使用Docker部署
 
 1：域名解析：将`hub`，`quay`，`ghcr`，`gcr`，`docker`，`registryk8s`这个几个解析为你的二级域名。
 
