@@ -19,7 +19,7 @@ git clone https://github.com/sky22333/docker-proxy.git
 ```
 
 
-3：其他无需修改，只需修改`docker-compose.yml`配置里的域名环境变量，修改为你的根域名
+3：其他无需修改，只需修改`docker-compose.yml`配置里的域名环境变量，修改为你的`根域名`
 然后启动即可。
 ```
 docker compose up -d
