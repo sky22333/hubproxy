@@ -1,4 +1,4 @@
-{$DOMAIN} {
+hub.{$DOMAIN} {
     root * /srv
     file_server
 }
@@ -15,8 +15,8 @@ gcr.{$DOMAIN} {
     reverse_proxy * gcr:5000
 }
 
-k8sgcr.{$DOMAIN} {
-    reverse_proxy * k8sgcr:5000
+quay.{$DOMAIN} {
+    reverse_proxy * quay:5000
 }
 
 registryk8s.{$DOMAIN} {
