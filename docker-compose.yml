@@ -7,7 +7,7 @@ services:
       - "443:443"
     volumes:
       - ./web/Caddyfile:/etc/caddy/Caddyfile
-      - ./web/index.html:/srv/index.html
+      - ./web/index:/srv
     environment:
       - DOMAIN=example.com                  # 修改为你的根域名
     restart: always
