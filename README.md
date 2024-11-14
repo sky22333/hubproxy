@@ -1,4 +1,4 @@
-### Docker-proxy介绍
+### Docker-proxy
 
 - 使用`docker`一键部署多种仓库的docker加速
 - 优化繁琐的搭建部署
