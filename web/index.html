@@ -91,23 +91,23 @@
 
   <div class="domain-container">
     <div class="domain-item">
-      <div class="domain-text">docker.<span id="domain-docker"></span></div>
+      <div class="domain-text">docker.<span id="domain-base"></span></div>
       <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">ghcr.<span id="domain-ghcr"></span></div>
+      <div class="domain-text">ghcr.<span id="domain-base"></span></div>
       <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">gcr.<span id="domain-gcr"></span></div>
+      <div class="domain-text">gcr.<span id="domain-base"></span></div>
       <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">quay.<span id="domain-quay"></span></div>
+      <div class="domain-text">k8sgcr.<span id="domain-base"></span></div>
       <button class="copy-button">复制</button>
     </div>
     <div class="domain-item">
-      <div class="domain-text">registryk8s.<span id="domain-registryk8s"></span></div>
+      <div class="domain-text">registryk8s.<span id="domain-base"></span></div>
       <button class="copy-button">复制</button>
     </div>
   </div>
@@ -127,17 +127,11 @@
   </div>
 
   <script>
-    // 从 Docker 环境变量获取根域名
-    const rootDomain = process.env.DOMAIN || 'example.com';
+    const domainBase = new URL(window.location.href).hostname.replace(/^(www\.|hub\.)/i, '');
+    document.querySelectorAll('#domain-base').forEach(el => {
+      el.textContent = domainBase;
+    });
 
-    // 动态设置每个仓库的根域名部分
-    document.getElementById('domain-docker').textContent = rootDomain;
-    document.getElementById('domain-ghcr').textContent = rootDomain;
-    document.getElementById('domain-gcr').textContent = rootDomain;
-    document.getElementById('domain-quay').textContent = rootDomain;
-    document.getElementById('domain-registryk8s').textContent = rootDomain;
-
-    // 复制按钮功能
     document.querySelectorAll('.copy-button').forEach(button => {
       button.addEventListener('click', async () => {
         const domainText = button.previousElementSibling.textContent;
