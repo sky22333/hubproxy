@@ -29,4 +29,4 @@ git clone https://github.com/sky22333/docker-proxy.git
 docker compose up -d
 ```
 
-4：部署完成后访问`hub.example.com`查看前端
+4：部署完成后稍等几分钟，等待`caddy`帮你把这些域名的HTTPS配置完成后，即可访问`hub.example.com`查看前端
