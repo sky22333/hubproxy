@@ -40,9 +40,9 @@ services:
     volumes:
       - "./docker/config.yml:/etc/docker/registry/config.yml"
 
-  registryk8s:
+  k8s:
     image: "registry:2.8.3"
-    container_name: "registryk8s"
+    container_name: "k8s"
     restart: "always"
     volumes:
-      - "./registryk8s/config.yml:/etc/docker/registry/config.yml"
+      - "./k8s/config.yml:/etc/docker/registry/config.yml"
