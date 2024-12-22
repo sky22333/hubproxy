@@ -38,16 +38,18 @@ jobs:
       - name: Set version from input
         run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
-      - name: Navigate to ghproxy directory
-        run: cd ghproxy
-
       - name: Build and push Docker image
         run: |
+          # 进入 ghproxy 目录，确保 Docker 构建基于该目录
+          cd ghproxy
+
+          # 使用 ghproxy 目录作为构建上下文，并明确指定 Dockerfile
           docker buildx build --push \
             --platform linux/amd64,linux/arm64 \
             --tag ghcr.io/${{ github.repository }}:${{ env.VERSION }} \
             --tag ghcr.io/${{ github.repository }}:latest \
-            --build-arg VERSION=${{ env.VERSION }} .
+            --build-arg VERSION=${{ env.VERSION }} \
+            -f Dockerfile .  # 指定 Dockerfile 文件并将上下文设置为当前目录
         env:
           GHCR_PUBLIC: true  # 将镜像设置为公开
 
