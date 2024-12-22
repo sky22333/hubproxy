@@ -59,7 +59,7 @@ docker run -d \
 
 
 ---
-前端基于[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)修改，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go/blob/main/main.go)修改，并且增加支持`api.github.com`
+前端基于[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)修改，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go)修改，并且增加支持`api.github.com`
 
 
 
