@@ -1,6 +1,7 @@
-### Docker-proxy
+### hub-proxy
 
 - 使用`docker`一键部署多种仓库的镜像加速
+- 支持github文件加速
 - 简化搭建步骤
 - 部署超级简单
 - 自动配置HTTPS

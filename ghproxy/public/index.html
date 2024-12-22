@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Github文件加速,docker镜像加速">
+    <meta name="keywords" content="Github,文件加速,ghproxy,docker镜像加速">
+    <meta name="color-scheme" content="dark light">
+    <title>Github文件加速</title>
+    <link rel="icon" href="./favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
+    <style>
+        :root {
+            --color: #ffffff;
+            --fontcolor: #333;
+            --inputcolor: #f5f5f5;
+            --inputcolor-font: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color: #53535338;
+                --fontcolor: #b8b8b8;
+                --inputcolor: #012333;
+                --inputcolor-font: #969696d8;
+            }
+        }
+
+        body {
+            background-color: var(--color);
+            color: var(--fontcolor);
+            font-family: 'Misans', Arial, sans-serif;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            min-height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+
+        *::-webkit-scrollbar {
+            height: 10px;
+            margin-top: 0px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background-color: black;
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: #39c5bb;
+            border-radius: 10px;
+        }
+
+        .container {
+            max-width: 80%;
+            text-align: center;
+            min-height: 65%;
+            line-height: 1.25;
+        }
+
+        h1 {
+            color: var(--fontcolor);
+            font-weight: bold;
+            margin-bottom: 20%;
+        }
+
+        .rounded-button {
+            border-radius: 6px;
+            transition: background-color 0.3s, transform 0.2s;
+            padding: 10px 30px;
+            background-color: #555c5c;
+            color: rgb(255, 255, 255);
+            border: none;
+            margin-bottom: 3%;
+        }
+
+        .rounded-button:hover {
+            background-color: #39c5bcda;
+            transform: scale(1.05);
+        }
+
+        .tips>p:first-child::before {
+            position: sticky;
+            color: #7b7b7b;
+            margin-bottom: 1%;
+            font-size: 60%;
+        }
+
+        footer {
+            line-height: 1.25;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        pre {
+            background: #012333;
+            color: #39c5bc;
+            padding: 15px 20px 15px 20px;
+            margin: 0px 0;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        pre::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 10px;
+            height: 10px;
+            background: #bd3c35;
+            border-radius: 50%;
+            box-shadow: 20px 0 0 #d69f27, 40px 0 0 #39c5bb;
+        }
+
+        code {
+            font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.9em;
+            margin-bottom: 0px;
+        }
+
+        @media (max-width: 768px) {
+            footer {
+                font-size: 0.85rem;
+            }
+
+            .container {
+                max-width: 100%;
+                font-size: 0.8rem;
+            }
+
+            .tips {
+                font-size: 0.8rem;
+            }
+
+            .tips-content {
+                font-size: 0.8rem;
+            }
+
+            .status-container {
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            footer {
+                font-size: 1rem;
+            }
+
+            .container {
+                max-width: 65%;
+                font-size: 1rem;
+            }
+
+            .tips {
+                font-size: 1.1rem;
+            }
+
+            .tips-content {
+                font-size: 1.1rem;
+            }
+
+            .status-container {
+                font-size: 1.05rem;
+            }
+
+            h1 {
+                margin-bottom: 10%;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 3%;
+        }
+
+        .form-control {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+        }
+
+        .form-control:focus {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+        }
+
+        .tips-content {
+            margin-bottom: 0px;
+            margin-top: 20px; /* 将提示文本往下移动两行左右 */
+        }
+
+        .status-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1px;
+            margin-top: -2%;
+        }
+
+        .code {
+            position: relative;
+            padding-right: 0px;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 217, 224, 0.822);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            z-index: 1;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .redir-button {
+            position: absolute;
+            top: 10px;
+            right: 65px;
+            background: rgba(0, 217, 224, 0.822);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            z-index: 1;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        pre:hover .copy-button {
+            opacity: 1;
+        }
+
+        #visitor-info {
+            margin-top: 10px;
+            text-align: center;
+            line-height: 0;
+        }
+
+        #toast {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #39c5bcde;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 90%;
+            z-index: 1000;
+        }
+
+        .docker-button {
+            width: 200px;
+            height: 50px;
+            border-radius: 10px;
+            background-color: #f6f6f6;
+            border: 2px solid #ececec;
+            color: #333;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .docker-button:hover {
+            background-color: #39c5bc;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 30px;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .close-button {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .domain-container {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .domain-item {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .domain-item:hover {
+            background-color: #e9e9e9;
+        }
+
+        .domain-text {
+            font-family: 'Consolas', monospace;
+            color: #333;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .domain-item .copy-button {
+            background-color: #39c5bc;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .domain-item .copy-button:hover {
+            background-color: #2ea89f;
+            transform: scale(1.05);
+        }
+
+        .modal h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .hosts-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 4px 6px;
+            background-color: #f5f5f5;
+            border: 2px solid #eeeeee;
+            color: #333;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .hosts-button:hover {
+            background-color: #39c5bc;
+            color: white;
+            transform: scale(1.05);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="hosts-button">hosts</a>
+    <div class="container">
+        <h1>Github文件加速</h1>
+        <div class="form-group">
+            <input type="text" class="form-control" id="githubLinkInput" placeholder="键入需要加速Github链接">
+        </div>
+        <button class="btn rounded-button" id="formatButton">获取加速链接</button>
+
+        <div class="code" id="outputBlock">
+            <button class="copy-button" id="copyButton">复制</button>
+            <button class="redir-button" id="redirButton">打开</button>
+            <pre id="formattedLinkOutput"></pre>
+        </div>
+        <div class="tips">
+            <div class="tips-content">
+                <p>支持release、archive文件，支持git clone、wget、curl等等操作，转换后的链接可直接使用</p><br>
+            </div>
+        </div>
+
+        <button class="docker-button" id="dockerButton">Docker镜像加速</button>
+    </div>
+
+    <div id="dockerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeModal">&times;</span>
+            <h1>Docker 镜像加速</h1>
+            <h5>请根据对应的仓库使用对应的加速域名</h5>
+            <div class="domain-container">
+                <div class="domain-item">
+                    <div class="domain-text">docker.<span class="domain-base"></span></div>
+                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
+                </div>
+                <div class="domain-item">
+                    <div class="domain-text">ghcr.<span class="domain-base"></span></div>
+                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
+                </div>
+                <div class="domain-item">
+                    <div class="domain-text">gcr.<span class="domain-base"></span></div>
+                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
+                </div>
+                <div class="domain-item">
+                    <div class="domain-text">quay.<span class="domain-base"></span></div>
+                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
+                </div>
+                <div class="domain-item">
+                    <div class="domain-text">k8s.<span class="domain-base"></span></div>
+                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
+                </div>
+            </div>
+            <div id="modal-toast" style="display:none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #39c5bcde; color: white; padding: 15px 20px; border-radius: 10px; font-size: 90%; z-index: 1001;">
+                域名已复制到剪贴板
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" style="display:none;">
+        链接已复制到剪贴板
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function getRootDomain() {
+                let hostname = window.location.hostname;
+                let parts = hostname.split('.');
+                if(parts.length > 2) {
+                    return parts.slice(-2).join('.');
+                }
+                return hostname;
+            }
+
+            let rootDomain = getRootDomain();
+            document.querySelectorAll('.domain-base').forEach(span => {
+                span.textContent = rootDomain;
+            });
+
+            const modal = document.getElementById('dockerModal');
+            const dockerButton = document.getElementById('dockerButton');
+            const closeButton = document.getElementById('closeModal');
+
+            dockerButton.onclick = function() {
+                modal.style.display = "block";
+            }
+
+            closeButton.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+        });
+
+        function formatGithubLink() {
+            var githubLinkInput = document.getElementById('githubLinkInput');
+            var currentHost = window.location.host;
+            var formattedLink = "";
+            var link = githubLinkInput.value.trim();
+
+            if (link.startsWith("https://") || link.startsWith("http://")) {
+                formattedLink = "https://" + currentHost + "/" + link;
+            } else if (link.startsWith("github.com/") || link.startsWith("raw.githubusercontent.com/") || link.startsWith("gist.githubusercontent.com/")) {
+                formattedLink = "https://" + currentHost + "/https://" + link;
+            } else {
+                showToast('请输入有效的GitHub链接');
+                return;
+            }
+        
+            var formattedLinkOutput = document.getElementById('formattedLinkOutput');
+            formattedLinkOutput.textContent = formattedLink;
+            displayButton();
+        }
+
+        function displayButton() {
+            var copyButton = document.getElementById('copyButton');
+            var redirButton = document.getElementById('redirButton');
+            copyButton.style.display = 'block';
+            redirButton.style.display = 'block';
+        }
+
+        function redirToFormattedLink() {
+            var formattedLinkOutput = document.getElementById('formattedLinkOutput');
+            console.log(formattedLinkOutput.textContent);
+            window.open(formattedLinkOutput.textContent);
+        }
+
+        document.getElementById('formatButton').addEventListener('click', formatGithubLink);
+        document.getElementById('copyButton').addEventListener('click', function () {
+            const output = document.getElementById('formattedLinkOutput');
+            const range = document.createRange();
+            range.selectNode(output);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            showToast('链接已复制到剪贴板');
+        });
+        document.getElementById('redirButton').addEventListener('click', redirToFormattedLink);
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        function copyDomain(button) {
+            const domainText = button.parentElement.querySelector('.domain-text').textContent;
+            navigator.clipboard.writeText(domainText).then(() => {
+                const modalToast = document.getElementById('modal-toast');
+                modalToast.style.display = 'block';
+                setTimeout(() => {
+                    modalToast.style.display = 'none';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+
+</html>
