@@ -60,3 +60,10 @@ docker run -d \
 
 ---
 前端基于[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)修改，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go/blob/main/main.go)修改，并且增加支持`api.github.com`
+
+
+
+### 免责声明
+
+* 本程序完全开源并且仅供学习了解，请勿下载非法文件，使用本项目即默认接受此条款。
+* 使用本程序必循遵守部署免责声明。使用本程序必循遵守部署服务器所在地、所在国家和用户所在国家的法律法规, 程序作者不对使用者任何不当行为负责。
