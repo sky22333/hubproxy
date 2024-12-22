@@ -1,0 +1,63 @@
+name: ghcr镜像构建
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number'
+        required: true
+        default: 'latest'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许推送和修改仓库文件
+      packages: write  # 允许推送到 GHCR
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+            
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set version from input
+        run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+
+      - name: Build and push Docker image
+        run: |
+          docker buildx build --push \
+            --platform linux/amd64,linux/arm64 \
+            --tag ghcr.io/${{ github.repository }}:${{ env.VERSION }} \
+            --tag ghcr.io/${{ github.repository }}:latest \
+            --build-arg VERSION=${{ env.VERSION }} \
+            -f ghproxy/Dockerfile .  # 指定 Dockerfile 的路径
+        env:
+          GHCR_PUBLIC: true  # 将镜像设置为公开
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.VERSION }}
+          release_name: ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Changes
+            - See the [commit history](https://github.com/${{ github.repository }}/commits/${{ env.VERSION }}) for more details.
