@@ -1,7 +1,7 @@
 ### hub-proxy
 
 - 使用`docker`一键部署多种仓库的镜像加速
-- 支持github文件加速
+- 支持`github`文件加速
 - 简化搭建步骤
 - 部署超级简单
 - 自动配置HTTPS
@@ -18,7 +18,7 @@
 
 2：拉取本项目
 ```
-git clone https://github.com/sky22333/docker-proxy.git
+git clone https://github.com/sky22333/hub-proxy.git
 ```
 
 
