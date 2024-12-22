@@ -65,7 +65,7 @@ func main() {
 			loadConfig()
 		}
 	}()
-
+        // 前端访问路径，默认根路径
 	router.Static("/", "./public")
 	router.NoRoute(handler)
 
