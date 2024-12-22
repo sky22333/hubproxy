@@ -33,3 +33,17 @@ docker compose up -d
 4：部署完成后稍等几分钟，等待`caddy`帮你把这些域名的HTTPS配置完成后，即可访问`hub.example.com`查看前端
 
 > 可以使用`docker logs -f caddy`命令查看日志获取进度
+
+
+
+---
+---
+
+### 单独部署Github文件加速
+```
+docker run -d \
+  --name ghproxy \
+  -p 5000:5000 \
+  --restart always \
+  ghcr.io/sky22333/hub-proxy
+```
