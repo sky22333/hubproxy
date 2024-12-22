@@ -66,8 +66,7 @@ func main() {
 		}
 	}()
 
-	router.StaticFile("/", "./public/index.html")
-	router.StaticFile("/favicon.ico", "./public/favicon.ico")
+	router.Static("/", "./public")
 	router.NoRoute(handler)
 
 	err := router.Run(fmt.Sprintf("%s:%d", host, port))
