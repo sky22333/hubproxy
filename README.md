@@ -1,4 +1,4 @@
-### hub-proxy
+### Docker和Github加速二合一
 
 - 使用`docker`一键部署多种仓库的镜像加速
 - 支持`github`文件加速
