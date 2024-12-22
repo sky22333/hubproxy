@@ -6,8 +6,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./web/Caddyfile:/etc/caddy/Caddyfile
-      - ./web/index:/srv
+      - ./Caddyfile:/etc/caddy/Caddyfile
     environment:
       - DOMAIN=example.com                  # 修改为你的根域名
     restart: always
@@ -46,3 +45,11 @@ services:
     restart: "always"
     volumes:
       - "./k8s/config.yml:/etc/docker/registry/config.yml"
+
+  ghproxy:
+    build:
+      context: ./ghproxy
+    container_name: "ghproxy"
+    volumes:
+      - ./ghproxy/public:/root/public   # 前端页面
+    restart: "always"
