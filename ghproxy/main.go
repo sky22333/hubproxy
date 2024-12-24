@@ -205,27 +205,16 @@ func checkURL(u string) []string {
 	return nil
 }
 
-// 匹配用户名、仓库名，或者用户名/仓库名
+// 匹配关键字
 func checkList(matches, list []string) bool {
     if len(matches) == 0 {
         return false
     }
-    
+
     for _, item := range list {
-        // 检查第一个匹配
-        if strings.HasPrefix(matches[0], item) {
-            return true
-        }
-        // 只有当存在第二个匹配时才检查
-        if len(matches) > 1 {
-            if strings.HasPrefix(matches[1], item) {
+        for i := 1; i < len(matches); i++ {
+            if strings.HasPrefix(matches[i], item) {
                 return true
-            }
-            // 只有当存在两个捕获组时才检查组合
-            if len(matches) > 2 {
-                if strings.HasPrefix(matches[0]+"/"+matches[1], item) {
-                    return true
-                }
             }
         }
     }
