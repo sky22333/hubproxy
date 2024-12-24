@@ -31,9 +31,9 @@ git clone https://github.com/sky22333/hub-proxy.git
 docker compose up -d
 ```
 
-4：部署完成后稍等几分钟，等待`caddy`帮你把这些域名的HTTPS配置完成后，即可访问`hub.example.com`查看前端
+4：部署完成后稍等一分钟，等待`caddy`自动配置域名证书后，即可访问`hub.example.com`查看前端
 
-> 可以使用`docker logs -f caddy`命令查看日志获取进度
+> 可以使用命令`docker logs -f caddy`查看日志获取进度
 
 
 
