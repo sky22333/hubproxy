@@ -2,7 +2,7 @@
   "whiteList": [
   ],
   "blackList": [
-    "user1",
-    "user2"
+    "example1",
+    "example2"
   ]
 }
