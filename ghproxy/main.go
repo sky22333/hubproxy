@@ -29,6 +29,9 @@ var (
 		regexp.MustCompile(`^(?:https?://)?raw\.github(?:usercontent|)\.com/([^/]+)/([^/]+)/.+?/.+$`),
 		regexp.MustCompile(`^(?:https?://)?gist\.github(?:usercontent|)\.com/([^/]+)/.+?/.+`),
 		regexp.MustCompile(`^(?:https?://)?api\.github\.com/repos/([^/]+)/([^/]+)/.*`),
+		regexp.MustCompile(`^(?:https?://)?huggingface\.co/spaces/([^/]+)/([^/]+).*`),
+		regexp.MustCompile(`^(?:https?://)?cdn-lfs\.hf\.co/repos/.+`),
+		regexp.MustCompile(`^(?:https?://)?download\.docker\.com/.+\.(tgz|zip)$`),
 	}
 	httpClient *http.Client
 	config     *Config
@@ -66,7 +69,7 @@ func main() {
 			loadConfig()
 		}
 	}()
-        // 前端访问路径，默认根路径
+	// 前端访问路径，默认根路径
 	router.Static("/", "./public")
 	router.NoRoute(handler)
 
@@ -84,22 +87,22 @@ func handler(c *gin.Context) {
 	}
 
 	if !strings.HasPrefix(rawPath, "http") {
-		c.String(http.StatusForbidden, "Invalid input.")
+		c.String(http.StatusForbidden, "无效输入")
 		return
 	}
 
 	matches := checkURL(rawPath)
 	if matches != nil {
 		if len(config.WhiteList) > 0 && !checkList(matches, config.WhiteList) {
-			c.String(http.StatusForbidden, "Forbidden by white list.")
+			c.String(http.StatusForbidden, "不在白名单内，限制访问。")
 			return
 		}
 		if len(config.BlackList) > 0 && checkList(matches, config.BlackList) {
-			c.String(http.StatusForbidden, "Forbidden by black list.")
+			c.String(http.StatusForbidden, "黑名单限制访问")
 			return
 		}
 	} else {
-		c.String(http.StatusForbidden, "Invalid input.")
+		c.String(http.StatusForbidden, "无效输入")
 		return
 	}
 
@@ -202,9 +205,10 @@ func checkURL(u string) []string {
 	return nil
 }
 
+// 匹配用户名、仓库名，或者用户名/仓库名
 func checkList(matches, list []string) bool {
 	for _, item := range list {
-		if strings.HasPrefix(matches[0], item) {
+		if strings.HasPrefix(matches[0], item) || strings.HasPrefix(matches[1], item) || strings.HasPrefix(matches[0]+"/"+matches[1], item) {
 			return true
 		}
 	}

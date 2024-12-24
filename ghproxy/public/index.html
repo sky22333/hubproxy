@@ -386,7 +386,7 @@
         </div>
         <div class="tips">
             <div class="tips-content">
-                <p>支持release、archive文件，支持git clone、wget、curl等等操作，转换后的链接可直接使用</p><br>
+                <p>支持release、archive文件，支持git clone、wget、curl等等操作<br>支持Al模型库Hugging Face，支持docker-ce官方压缩包下载</p><br>
             </div>
         </div>
 
@@ -468,13 +468,20 @@
             var currentHost = window.location.host;
             var formattedLink = "";
             var link = githubLinkInput.value.trim();
-
+        
             if (link.startsWith("https://") || link.startsWith("http://")) {
                 formattedLink = "https://" + currentHost + "/" + link;
-            } else if (link.startsWith("github.com/") || link.startsWith("raw.githubusercontent.com/") || link.startsWith("gist.githubusercontent.com/")) {
+            } else if (
+                link.startsWith("github.com/") || 
+                link.startsWith("raw.githubusercontent.com/") || 
+                link.startsWith("gist.githubusercontent.com/") ||
+                link.startsWith("huggingface.co/") ||
+                link.startsWith("cdn-lfs.hf.co/") ||
+                link.startsWith("download.docker.com/")
+            ) {
                 formattedLink = "https://" + currentHost + "/https://" + link;
             } else {
-                showToast('请输入有效的GitHub链接');
+                showToast('请输入有效的链接');
                 return;
             }
         
@@ -482,6 +489,7 @@
             formattedLinkOutput.textContent = formattedLink;
             displayButton();
         }
+
 
         function displayButton() {
             var copyButton = document.getElementById('copyButton');
