@@ -3,8 +3,6 @@
   ],
   "blackList": [
     "user1",
-    "user2",
-    "repository1",
-    "repository2"
+    "user2"
   ]
 }
