@@ -6,6 +6,8 @@
 - 超级轻量级
 - 简单方便
 - 自动配置HTTPS
+- 支持Al模型库Hugging Face
+- 支持docker-ce官方压缩包下载
 
 ---
 

@@ -2,7 +2,9 @@
   "whiteList": [
   ],
   "blackList": [
-    "example3",
-    "example4"
+    "user1",
+    "user2",
+    "repository1",
+    "repository2"
   ]
 }
