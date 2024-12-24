@@ -97,13 +97,14 @@
         }
 
         footer {
-            line-height: 1.25;
-            position: absolute;
-            bottom: 0;
+            position: fixed;
+            bottom: 20px;
             left: 0;
             right: 0;
             text-align: center;
-            font-size: 1.2rem;
+            padding: 10px;
+            line-height: 1.25;
+            margin-top: 20px;
         }
 
         pre {
@@ -136,48 +137,16 @@
         }
 
         @media (max-width: 768px) {
-            footer {
-                font-size: 0.85rem;
-            }
-
             .container {
                 max-width: 100%;
-                font-size: 0.8rem;
-            }
-
-            .tips {
-                font-size: 0.8rem;
-            }
-
-            .tips-content {
-                font-size: 0.8rem;
-            }
-
-            .status-container {
                 font-size: 0.8rem;
             }
         }
 
         @media (min-width: 768px) {
-            footer {
-                font-size: 1rem;
-            }
-
             .container {
                 max-width: 65%;
                 font-size: 1rem;
-            }
-
-            .tips {
-                font-size: 1.1rem;
-            }
-
-            .tips-content {
-                font-size: 1.1rem;
-            }
-
-            .status-container {
-                font-size: 1.05rem;
             }
 
             h1 {
@@ -202,6 +171,7 @@
         .tips-content {
             margin-bottom: 0px;
             margin-top: 20px;
+            font-size: clamp(0.8rem, 2vw, 1.1rem);
         }
 
         .status-container {
@@ -210,6 +180,7 @@
             align-items: center;
             margin-bottom: 1px;
             margin-top: -2%;
+            font-size: clamp(0.8rem, 2vw, 1.05rem);
         }
 
         .code {
@@ -351,21 +322,6 @@
             text-align: center;
         }
 
-        .domain-item .copy-button {
-            background-color: #39c5bc;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .domain-item .copy-button:hover {
-            background-color: #2ea89f;
-            transform: scale(1.05);
-        }
-
         .modal h1 {
             color: #333;
             font-size: 24px;
@@ -393,6 +349,23 @@
             color: white;
             transform: scale(1.05);
             text-decoration: none;
+        }
+
+        .github-link {
+            display: inline-block;
+            position: static;
+            color: var(--fontcolor);
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .github-link:hover {
+            opacity: 1;
+        }
+
+        .github-link svg {
+            width: 20px;
+            height: 20px;
         }
     </style>
 </head>
@@ -423,32 +396,24 @@
     <div id="dockerModal" class="modal">
         <div class="modal-content">
             <span class="close-button" id="closeModal">&times;</span>
-            <h1>Docker 镜像加速</h1>
+            <h1>Docker镜像加速</h1>
             <h5>请根据对应的仓库使用对应的加速域名</h5>
             <div class="domain-container">
                 <div class="domain-item">
                     <div class="domain-text">docker.<span class="domain-base"></span></div>
-                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
                 </div>
                 <div class="domain-item">
                     <div class="domain-text">ghcr.<span class="domain-base"></span></div>
-                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
                 </div>
                 <div class="domain-item">
                     <div class="domain-text">gcr.<span class="domain-base"></span></div>
-                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
                 </div>
                 <div class="domain-item">
                     <div class="domain-text">quay.<span class="domain-base"></span></div>
-                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
                 </div>
                 <div class="domain-item">
                     <div class="domain-text">k8s.<span class="domain-base"></span></div>
-                    <button class="copy-button" onclick="copyDomain(this)">复制</button>
                 </div>
-            </div>
-            <div id="modal-toast" style="display:none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #39c5bcde; color: white; padding: 15px 20px; border-radius: 10px; font-size: 90%; z-index: 1001;">
-                域名已复制到剪贴板
             </div>
         </div>
     </div>
@@ -456,6 +421,14 @@
     <div id="toast" style="display:none;">
         链接已复制到剪贴板
     </div>
+
+    <footer>
+        <a href="https://github.com/sky22333/hub-proxy" target="_blank" class="github-link">
+            <svg height="32" viewBox="0 0 16 16" width="32">
+                <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+        </a>
+    </footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -545,18 +518,7 @@
 
             setTimeout(() => {
                 toast.style.display = 'none';
-            }, 3000);
-        }
-
-        function copyDomain(button) {
-            const domainText = button.parentElement.querySelector('.domain-text').textContent;
-            navigator.clipboard.writeText(domainText).then(() => {
-                const modalToast = document.getElementById('modal-toast');
-                modalToast.style.display = 'block';
-                setTimeout(() => {
-                    modalToast.style.display = 'none';
-                }, 2000);
-            });
+            }, 2000);
         }
     </script>
 </body>
