@@ -47,9 +47,6 @@ services:
       - "./k8s/config.yml:/etc/docker/registry/config.yml"
 
   ghproxy:
-    build:
-      context: ./ghproxy
+    image: "ghcr.io/sky22333/hub-proxy"
     container_name: "ghproxy"
-    volumes:
-      - ./ghproxy/public:/root/public   # 前端页面
     restart: "always"
