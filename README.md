@@ -46,7 +46,6 @@ docker run -d \
   --name ghproxy \
   -p 5000:5000 \
   --restart always \
-  -v $(pwd)/ghproxy:/root/public \
   ghcr.io/sky22333/hub-proxy
 ```
 
