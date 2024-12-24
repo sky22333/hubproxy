@@ -31,7 +31,7 @@ var (
 		regexp.MustCompile(`^(?:https?://)?api\.github\.com/repos/([^/]+)/([^/]+)/.*`),
 		regexp.MustCompile(`^(?:https?://)?huggingface\.co/spaces/([^/]+)/([^/]+).*`),
 		regexp.MustCompile(`^(?:https?://)?cdn-lfs\.hf\.co/repos/.+`),
-		regexp.MustCompile(`^(?:https?://)?download\.docker\.com/.+\.(tgz|zip)$`),
+		regexp.MustCompile(`^(?:https?://)?download\.docker\.com/([^/]+)/.*\.(tgz|zip)$`)
 	}
 	httpClient *http.Client
 	config     *Config
