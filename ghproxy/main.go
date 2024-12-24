@@ -207,10 +207,27 @@ func checkURL(u string) []string {
 
 // 匹配用户名、仓库名，或者用户名/仓库名
 func checkList(matches, list []string) bool {
-	for _, item := range list {
-		if strings.HasPrefix(matches[0], item) || strings.HasPrefix(matches[1], item) || strings.HasPrefix(matches[0]+"/"+matches[1], item) {
-			return true
-		}
-	}
-	return false
+    if len(matches) == 0 {
+        return false
+    }
+    
+    for _, item := range list {
+        // 检查第一个匹配
+        if strings.HasPrefix(matches[0], item) {
+            return true
+        }
+        // 只有当存在第二个匹配时才检查
+        if len(matches) > 1 {
+            if strings.HasPrefix(matches[1], item) {
+                return true
+            }
+            // 只有当存在两个捕获组时才检查组合
+            if len(matches) > 2 {
+                if strings.HasPrefix(matches[0]+"/"+matches[1], item) {
+                    return true
+                }
+            }
+        }
+    }
+    return false
 }
