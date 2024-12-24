@@ -205,12 +205,11 @@ func checkURL(u string) []string {
 	return nil
 }
 
-// 匹配用户名或者仓库名
 func checkList(matches, list []string) bool {
-    for _, item := range list {
-        if strings.HasPrefix(matches[0], item) || strings.HasPrefix(matches[1], item) {
-            return true
-        }
-    }
-    return false
+	for _, item := range list {
+		if strings.HasPrefix(matches[0], item) {
+			return true
+		}
+	}
+	return false
 }
