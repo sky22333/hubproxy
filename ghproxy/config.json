@@ -3,6 +3,6 @@
   ],
   "blackList": [
     "example1",
-    "example2"
+    "login"
   ]
 }
