@@ -62,6 +62,11 @@ docker run -d \
 
 
 ---
+
+#### 鸣谢：
+
+ghproxy基于go语言的Gin框架，镜像加速基于`registry`镜像实现
+
 前端借鉴了[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go)修改并增加了更多特性
 
 
