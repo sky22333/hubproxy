@@ -3,11 +3,12 @@
 - 使用`docker`一键部署多种仓库的镜像加速
 - `docker`镜像默认缓存3天（可自行修改）
 - 支持`github`文件加速
+- 支持`api.github.com`
+- 支持Al模型库Hugging Face
+- 支持docker-ce官方压缩包下载
 - 超级轻量级
 - 简单方便
 - 自动配置HTTPS
-- 支持Al模型库Hugging Face
-- 支持docker-ce官方压缩包下载
 
 ---
 
@@ -61,7 +62,7 @@ docker run -d \
 
 
 ---
-前端基于[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)修改，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go)修改，并且增加支持`api.github.com`
+前端借鉴了[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go)修改并增加了更多特性
 
 
 
