@@ -378,7 +378,7 @@
             <h3>使用说明</h3>
             <ol>
                 <li>支持GitHub文件、Releases、archive、gist、raw.githubusercontent.com文件下载</li>
-                <li>复制GitHub文件的原始链接，粘贴到上方输入框。可直接点击加速下载，或者复制完整的加速链接</li>
+                <li>输入GitHub文件的完整链接，然后点击下载，或者复制。</li>
                 <li>输入的GitHub链接需要带https，不支持项目文件夹的下载</li>
             </ol>
             <h3>页面合法输入示例</h3>
@@ -486,7 +486,6 @@
         const urlInput = document.getElementById('url-input');
         const copyButton = document.getElementById('copy-button');
 
-        // 初始化下拉选择器
         const initializeNodeSelector = () => {
             nodeSelector.innerHTML = '';
             nodes.forEach(mirror => {
@@ -497,7 +496,6 @@
             });
         };
 
-        // 测试单个节点的延迟
         const testMirror = async (mirror) => {
             const start = Date.now();
             try {
@@ -513,14 +511,12 @@
             }
         };
 
-        // 更新进度条
         const updateProgress = (completed, total) => {
             const percentage = Math.round((completed / total) * 100);
             progressBarFill.style.width = `${percentage}%`;
             progressText.textContent = `${percentage}%`;
         };
 
-        // 运行节点测速
         const runMirrorCheck = async () => {
             progressContainer.style.display = 'block';
             mirrorResults.innerHTML = '';
@@ -543,7 +539,6 @@
             }
         };
 
-        // 提交表单时的事件处理函数
         document.addEventListener('DOMContentLoaded', function () {
             initializeNodeSelector();
             document.getElementById('url-form').addEventListener('submit', function (e) {
@@ -560,10 +555,8 @@
             });
         });
 
-        // 绑定节点测速按钮事件
         mirrorCheckButton.addEventListener('click', runMirrorCheck);
 
-        // 绑定选择节点按钮事件
         mirrorResults.addEventListener('click', function (e) {
             if (e.target.classList.contains('select-node-btn')) {
                 const selectedMirror = e.target.getAttribute('data-mirror');
@@ -571,7 +564,6 @@
             }
         });
 
-        // 绑定复制按钮事件
         copyButton.addEventListener('click', function () {
             const url = urlInput.value;
             if (url.toLowerCase().indexOf("github".toLowerCase()) < 0) {
