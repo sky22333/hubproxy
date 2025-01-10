@@ -44,7 +44,7 @@ docker compose up -d
 ---
 ---
 
-#### 单独部署Github文件加速
+#### 单独部署Github文件加速（可选）
 ```
 docker run -d \
   --name ghproxy \
