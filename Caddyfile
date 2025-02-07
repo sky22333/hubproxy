@@ -21,3 +21,7 @@ quay.{$DOMAIN} {
 k8s.{$DOMAIN} {
     reverse_proxy * k8s:5000
 }
+
+huggingface.{$DOMAIN} {
+    reverse_proxy * huggingface:5000
+}

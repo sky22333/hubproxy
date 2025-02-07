@@ -50,3 +50,10 @@ services:
     image: "ghcr.io/sky22333/hub-proxy"
     container_name: "ghproxy"
     restart: "always"
+
+  huggingface:
+    image: "registry:2.8.3"
+    container_name: "huggingface"
+    restart: "always"
+    volumes:
+      - "./huggingface/config.yml:/etc/docker/registry/config.yml"

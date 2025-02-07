@@ -1,0 +1,16 @@
+version: 0.1
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+  maintenance:
+    uploadpurging:
+      enabled: true
+      age: 72h
+      dryrun: false
+      interval: 1m
+http:
+  addr: 0.0.0.0:5000
+proxy:
+  remoteurl: https://huggingface.co
