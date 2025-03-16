@@ -11,8 +11,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 允许推送和修改仓库文件
-      packages: write  # 允许推送到 GHCR
+      contents: write
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -40,28 +40,12 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # 进入 ghproxy 目录，确保 Docker 构建基于该目录
           cd ghproxy
-
-          # 使用 ghproxy 目录作为构建上下文，并明确指定 Dockerfile
           docker buildx build --push \
             --platform linux/amd64,linux/arm64 \
             --tag ghcr.io/${{ github.repository }}:${{ env.VERSION }} \
             --tag ghcr.io/${{ github.repository }}:latest \
             --build-arg VERSION=${{ env.VERSION }} \
-            -f Dockerfile .  # 指定 Dockerfile 文件并将上下文设置为当前目录
+            -f Dockerfile .
         env:
           GHCR_PUBLIC: true  # 将镜像设置为公开
-
-      - name: Create GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.VERSION }}
-          release_name: ${{ env.VERSION }}
-          draft: false
-          prerelease: false
-          body: |
-            ## Changes
-            - See the [commit history](https://github.com/${{ github.repository }}/commits/${{ env.VERSION }}) for more details.
