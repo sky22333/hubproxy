@@ -3,6 +3,10 @@ hub.{$DOMAIN} {
 }
 
 docker.{$DOMAIN} {
+    @v2_manifest_blob path_regexp v2_rewrite ^/v2/([^/]+)/(manifests|blobs)/(.*)$
+    handle @v2_manifest_blob {
+        rewrite * /v2/library/{re.v2_rewrite.1}/{re.v2_rewrite.2}/{re.v2_rewrite.3}
+    }
     reverse_proxy * docker:5000
 }
 
