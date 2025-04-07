@@ -32,7 +32,7 @@ var (
 		regexp.MustCompile(`^(?:https?://)?huggingface\.co(?:/spaces)?/([^/]+)/(.+)$`),
 		regexp.MustCompile(`^(?:https?://)?cdn-lfs\.hf\.co(?:/spaces)?/([^/]+)/([^/]+)(?:/(.*))?$`),
 		regexp.MustCompile(`^(?:https?://)?download\.docker\.com/([^/]+)/.*\.(tgz|zip)$`),
-		regexp.MustCompile(`^(?:https?://)?([a-zA-Z0-9-]+\.)*githubassets\.com/([^/]+)/.+?$`),
+		regexp.MustCompile(`^(?:https?://)?(github|opengraph)\.githubassets\.com/([^/]+)/.+?$`),
 	}
 	httpClient *http.Client
 	config     *Config
