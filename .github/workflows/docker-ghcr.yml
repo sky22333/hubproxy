@@ -38,13 +38,19 @@ jobs:
       - name: Set version from input
         run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
+      - name: Convert repository name to lowercase
+        run: |
+          # 将 github.repository 整体转换为小写
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
+
       - name: Build and push Docker image
         run: |
           cd ghproxy
           docker buildx build --push \
             --platform linux/amd64,linux/arm64 \
-            --tag ghcr.io/${{ github.repository }}:${{ env.VERSION }} \
-            --tag ghcr.io/${{ github.repository }}:latest \
+            --tag ghcr.io/${{ env.REPO_LOWER }}:${{ env.VERSION }} \
+            --tag ghcr.io/${{ env.REPO_LOWER }}:latest \
             --build-arg VERSION=${{ env.VERSION }} \
             -f Dockerfile .
         env:
