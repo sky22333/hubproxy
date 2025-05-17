@@ -96,8 +96,9 @@ func main() {
 		c.File("./public/bj.svg")
 	})
 	
-	// 最后才注册NoRoute处理器，处理不能直接匹配的路径
-	router.NoRoute(handler)
+	// 注册NoRoute处理器，应用限流中间件
+	// 为GitHub文件下载应用限流
+	ApplyRateLimit(router, "*", "GET", handler)
 
 	err := router.Run(fmt.Sprintf("%s:%d", host, port))
 	if err != nil {

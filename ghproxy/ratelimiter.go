@@ -265,7 +265,7 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 		// 检查是否允许本次请求
 		if !ipLimiter.Allow() {
 			c.JSON(429, gin.H{
-				"error": "请求频率过高，每两小时最多下载10个镜像包",
+				"error": "请求频率过高，触发IP限流",
 			})
 			c.Abort()
 			return
@@ -295,22 +295,3 @@ func ApplyRateLimit(router *gin.Engine, path string, method string, handler gin.
 		router.Any(path, RateLimitMiddleware(limiter), handler)
 	}
 }
-
-// 示例：使用此限流器
-/*
-func initSkopeoRoutes(router *gin.Engine) {
-
-	os.MkdirAll("./temp", 0755)
-
-	router.GET("/ws/:taskId", handleWebSocket)
-	
-	// 对下载API应用限流
-	ApplyRateLimit(router, "/api/download", "POST", handleDownload)
-	
-	// 常规路由
-	router.GET("/api/task/:taskId", getTaskStatus)
-	router.GET("/api/files/:filename", serveFile)
-	
-	go cleanupTempFiles()
-}
-*/ 
