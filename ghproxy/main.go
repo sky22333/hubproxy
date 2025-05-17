@@ -70,12 +70,15 @@ func main() {
 			loadConfig()
 		}
 	}()
-	// 前端访问路径，默认根路径
-	router.Static("/", "./public")
-	router.NoRoute(handler)
 	
-	// 初始化Skopeo相关路由
+	// 前端静态文件
+	router.Static("/", "./public")
+	
+	// 初始化Skopeo相关路由 - 必须先于NoRoute注册
 	initSkopeoRoutes(router)
+	
+	// 注册NoRoute处理器
+	router.NoRoute(handler)
 
 	err := router.Run(fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
