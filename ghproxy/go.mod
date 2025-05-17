@@ -1,10 +1,13 @@
 module ghproxy
 
-go 1.22.5
+go 1.23.0
+
+toolchain go1.24.1
 
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/gorilla/websocket v1.5.1
+	golang.org/x/sync v0.14.0
 )
 
 require (

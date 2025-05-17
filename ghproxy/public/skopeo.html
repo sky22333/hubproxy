@@ -222,6 +222,13 @@
             display: none;
         }
 
+        .total-progress {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: var(--inputcolor);
+            border-radius: 10px;
+        }
+
         .progress-bar {
             height: 20px;
             background-color: #39c5bb;
@@ -231,8 +238,10 @@
         }
 
         .progress-text {
-            margin-top: 5px;
-            font-size: 14px;
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
         }
 
         .image-progress {
@@ -328,10 +337,12 @@
         
         <div class="progress-container" id="progressContainer">
             <h4>整体进度</h4>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="totalProgressBar"></div>
+            <div class="total-progress">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="totalProgressBar"></div>
+                </div>
+                <div class="progress-text" id="totalProgressText">0%</div>
             </div>
-            <div class="progress-text" id="totalProgressText">0%</div>
             
             <div class="image-progress" id="imageProgressList">
                 <!-- Image progress items will be added here -->
@@ -425,6 +436,10 @@
                         currentTaskId = data.taskId;
                         showProgressUI();
                         connectWebSocket(currentTaskId);
+                        
+                        // 显示初始任务总数
+                        const totalCount = data.totalCount || images.length;
+                        totalProgressText.textContent = `0/${totalCount} - 0%`;
                     } else {
                         showToast('下载任务创建失败');
                     }
@@ -440,6 +455,11 @@
                 downloadButton.style.display = 'none';
                 imageInput.disabled = true;
                 platformInput.disabled = true;
+                
+                // 设置初始总进度显示
+                const totalCount = images.length;
+                totalProgressBar.style.width = '0%';
+                totalProgressText.textContent = `0/${totalCount} - 0%`;
                 
                 // 初始化每个镜像的进度条
                 imageProgressList.innerHTML = '';
@@ -529,8 +549,9 @@
             // 更新总体进度
             function updateProgress(data) {
                 // 更新总进度
-                totalProgressBar.style.width = `${data.totalProgress}%`;
-                totalProgressText.textContent = `${Math.round(data.totalProgress)}%`;
+                const progressPercent = data.totalCount > 0 ? (data.completedCount / data.totalCount) * 100 : 0;
+                totalProgressBar.style.width = `${progressPercent}%`;
+                totalProgressText.textContent = `${data.completedCount}/${data.totalCount} - ${Math.round(progressPercent)}%`;
                 
                 // 更新各个镜像的进度
                 data.images.forEach(imgData => {

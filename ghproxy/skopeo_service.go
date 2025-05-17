@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -47,7 +46,8 @@ type ImageTask struct {
 type DownloadTask struct {
 	ID            string       `json:"id"`
 	Images        []*ImageTask `json:"images"`
-	TotalProgress float64      `json:"totalProgress"`
+	CompletedCount int         `json:"completedCount"` // 已完成任务数
+	TotalCount    int          `json:"totalCount"`     // 总任务数
 	Status        TaskStatus   `json:"status"`
 	OutputFile    string       `json:"-"` // 最终输出文件
 	TempDir       string       `json:"-"` // 临时目录
@@ -189,7 +189,8 @@ func getTaskStatus(c *gin.Context) {
 	// 创建任务状态副本以避免序列化过程中的锁
 	taskCopy := &DownloadTask{
 		ID:            task.ID,
-		TotalProgress: 0,
+		CompletedCount: 0,
+		TotalCount:    len(task.Images),
 		Status:        TaskStatus(""),
 		Images:        nil,
 	}
@@ -200,7 +201,7 @@ func getTaskStatus(c *gin.Context) {
 	task.StatusLock.RUnlock()
 	
 	task.ProgressLock.RLock()
-	taskCopy.TotalProgress = task.TotalProgress
+	taskCopy.CompletedCount = task.CompletedCount
 	task.ProgressLock.RUnlock()
 	
 	// 复制镜像信息
@@ -250,21 +251,42 @@ func initTask(task *DownloadTask) {
 			imgTask := task.Images[update.ImageIndex]
 			task.ImageLock.RUnlock()
 			
+			statusChanged := false
+			prevStatus := ""
+			
 			// 更新镜像进度和状态
 			imgTask.lock.Lock()
 			if update.Progress > 0 {
 				imgTask.Progress = update.Progress
 			}
-			if update.Status != "" {
+			if update.Status != "" && update.Status != imgTask.Status {
+				prevStatus = imgTask.Status
 				imgTask.Status = update.Status
+				statusChanged = true
 			}
 			if update.Error != "" {
 				imgTask.Error = update.Error
 			}
 			imgTask.lock.Unlock()
 			
-			// 更新总进度
-			updateTaskTotalProgress(task)
+			// 检查状态变化并更新完成计数
+			if statusChanged {
+				task.ProgressLock.Lock()
+				// 如果之前不是Completed，现在是Completed，增加计数
+				if prevStatus != string(StatusCompleted) && update.Status == string(StatusCompleted) {
+					task.CompletedCount++
+					fmt.Printf("任务 %s: 镜像 %d 完成，当前完成数: %d/%d\n", 
+						task.ID, update.ImageIndex, task.CompletedCount, task.TotalCount)
+				}
+				// 如果之前是Completed，现在不是，减少计数
+				if prevStatus == string(StatusCompleted) && update.Status != string(StatusCompleted) {
+					task.CompletedCount--
+					if task.CompletedCount < 0 {
+						task.CompletedCount = 0
+					}
+				}
+				task.ProgressLock.Unlock()
+			}
 			
 			// 发送更新到客户端
 			sendTaskUpdate(task)
@@ -289,30 +311,35 @@ func sendProgressUpdate(task *DownloadTask, index int, progress float64, status 
 	}
 }
 
-// 更新总进度 - 不需要外部锁
+// 更新总进度 - 重新计算已完成任务数
 func updateTaskTotalProgress(task *DownloadTask) {
 	task.ProgressLock.Lock()
 	defer task.ProgressLock.Unlock()
 	
-	totalProgress := 0.0
+	completedCount := 0
 	
 	task.ImageLock.RLock()
-	imageCount := len(task.Images)
+	totalCount := len(task.Images)
 	task.ImageLock.RUnlock()
 	
-	if imageCount == 0 {
+	if totalCount == 0 {
 		return
 	}
 	
 	task.ImageLock.RLock()
 	for _, img := range task.Images {
 		img.lock.Lock()
-		totalProgress += img.Progress
+		if img.Status == string(StatusCompleted) {
+			completedCount++
+		}
 		img.lock.Unlock()
 	}
 	task.ImageLock.RUnlock()
 	
-	task.TotalProgress = totalProgress / float64(imageCount)
+	task.CompletedCount = completedCount
+	task.TotalCount = totalCount
+	
+	fmt.Printf("任务 %s: 进度更新 %d/%d 已完成\n", task.ID, completedCount, totalCount)
 }
 
 // 处理下载请求
@@ -351,7 +378,8 @@ func handleDownload(c *gin.Context) {
 	task := &DownloadTask{
 		ID:            taskID,
 		Images:        imageTasks,
-		TotalProgress: 0,
+		CompletedCount: 0,
+		TotalCount:    len(imageTasks),
 		Status:        StatusPending,
 		TempDir:       tempDir,
 	}
@@ -374,6 +402,7 @@ func handleDownload(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"taskId": taskID,
 		"status": "started",
+		"totalCount": len(imageTasks),
 	})
 }
 
@@ -383,6 +412,16 @@ func processDownloadTask(task *DownloadTask, platform string) {
 	task.StatusLock.Lock()
 	task.Status = StatusRunning
 	task.StatusLock.Unlock()
+	
+	// 初始化总任务数
+	task.ImageLock.RLock()
+	imageCount := len(task.Images)
+	task.ImageLock.RUnlock()
+	
+	task.ProgressLock.Lock()
+	task.TotalCount = imageCount
+	task.CompletedCount = 0
+	task.ProgressLock.Unlock()
 	
 	// 通知客户端任务已开始
 	sendTaskUpdate(task)
@@ -395,7 +434,7 @@ func processDownloadTask(task *DownloadTask, platform string) {
 	
 	// 启动并发下载
 	task.ImageLock.RLock()
-	imageCount := len(task.Images)
+	imageCount = len(task.Images)
 	task.ImageLock.RUnlock()
 	
 	// 创建工作池限制并发数
@@ -427,6 +466,9 @@ func processDownloadTask(task *DownloadTask, platform string) {
 	
 	// 等待所有下载完成
 	err := g.Wait()
+	
+	// 再次计算已完成任务数，确保正确
+	updateTaskTotalProgress(task)
 	
 	// 检查是否有错误发生
 	if err != nil {
@@ -496,15 +538,20 @@ func processDownloadTask(task *DownloadTask, platform string) {
 	task.OutputFile = finalFilePath
 	task.Status = StatusCompleted
 	
-	// 设置总进度为100%
+	// 设置完成计数为总任务数
 	task.ProgressLock.Lock()
-	task.TotalProgress = 100
+	task.CompletedCount = task.TotalCount
 	task.ProgressLock.Unlock()
 	
 	task.StatusLock.Unlock()
 
 	// 发送最终状态更新
 	sendTaskUpdate(task)
+	
+	// 确保所有进度都达到100%
+	ensureTaskCompletion(task)
+	
+	fmt.Printf("任务 %s 全部完成: %d/%d\n", task.ID, task.CompletedCount, task.TotalCount)
 }
 
 // 下载单个镜像（带上下文控制）
@@ -575,7 +622,6 @@ func downloadImageWithContext(ctx context.Context, task *DownloadTask, index int
 	}
 
 	// 使用进度通道传递进度信息
-	progressChan := make(chan float64, 10)
 	outputChan := make(chan string, 20)
 	done := make(chan struct{})
 	
@@ -606,7 +652,11 @@ func downloadImageWithContext(ctx context.Context, task *DownloadTask, index int
 				return
 				
 			case <-done:
-				// 命令完成
+				// 命令完成，强制更新到100%
+				if lastProgress < 100 {
+					fmt.Printf("镜像 %s 下载完成，强制更新进度到100%%\n", imgTask.Image)
+					sendProgressUpdate(task, index, 100, string(StatusCompleted), "")
+				}
 				return
 				
 			case output := <-outputChan:
@@ -652,6 +702,14 @@ func downloadImageWithContext(ctx context.Context, task *DownloadTask, index int
 							}
 						}
 					}
+				}
+				
+				// 如果发现完成标记，立即更新到100%
+				if checkForCompletionMarkers(output) {
+					fmt.Printf("镜像 %s 检测到完成标记\n", imgTask.Image)
+					lastProgress = 100
+					sendProgressUpdate(task, index, 100, string(StatusCompleted), "")
+					stagnantTime = 0
 				}
 				
 			case <-ticker.C:
@@ -716,7 +774,7 @@ func downloadImageWithContext(ctx context.Context, task *DownloadTask, index int
 		return fmt.Errorf(errMsg)
 	}
 	
-	// 更新状态为已完成
+	// 确保更新状态为已完成，进度为100%
 	sendProgressUpdate(task, index, 100, string(StatusCompleted), "")
 	return nil
 }
@@ -796,7 +854,8 @@ func sendTaskUpdate(task *DownloadTask) {
 	// 复制任务状态避免序列化时锁定
 	taskCopy := &DownloadTask{
 		ID:            task.ID,
-		TotalProgress: 0,
+		CompletedCount: 0,
+		TotalCount:    len(task.Images),
 		Status:        TaskStatus(""),
 		Images:        nil,
 	}
@@ -807,7 +866,7 @@ func sendTaskUpdate(task *DownloadTask) {
 	task.StatusLock.RUnlock()
 	
 	task.ProgressLock.RLock()
-	taskCopy.TotalProgress = task.TotalProgress
+	taskCopy.CompletedCount = task.CompletedCount
 	task.ProgressLock.RUnlock()
 	
 	// 复制镜像信息
@@ -879,6 +938,16 @@ func serveFile(c *gin.Context) {
 		return
 	}
 	
+	// 确保任务状态为已完成，并且所有进度都是100%
+	task.StatusLock.RLock()
+	isCompleted := task.Status == StatusCompleted
+	task.StatusLock.RUnlock()
+	
+	if isCompleted {
+		// 确保所有进度达到100%
+		ensureTaskCompletion(task)
+	}
+	
 	// 检查文件是否存在
 	filePath := task.OutputFile
 	if filePath == "" || !fileExists(filePath) {
@@ -940,4 +1009,66 @@ func cleanupTempFiles() {
 			fmt.Printf("清理临时文件失败: %v\n", err)
 		}
 	}
+}
+
+// 完成任务处理函数，确保进度是100%
+func ensureTaskCompletion(task *DownloadTask) {
+	// 重新检查一遍所有镜像的进度
+	task.ImageLock.RLock()
+	completedCount := 0
+	totalCount := len(task.Images)
+	
+	for i, img := range task.Images {
+		img.lock.Lock()
+		if img.Status == string(StatusCompleted) {
+			// 确保进度为100%
+			if img.Progress < 100 {
+				img.Progress = 100
+				fmt.Printf("确保镜像 %d 进度为100%%\n", i)
+			}
+			completedCount++
+		}
+		img.lock.Unlock()
+	}
+	task.ImageLock.RUnlock()
+	
+	// 更新完成计数
+	task.ProgressLock.Lock()
+	task.CompletedCount = completedCount
+	task.TotalCount = totalCount
+	task.ProgressLock.Unlock()
+	
+	// 如果任务状态为已完成，但计数不匹配，修正计数
+	task.StatusLock.RLock()
+	isCompleted := task.Status == StatusCompleted
+	task.StatusLock.RUnlock()
+	
+	if isCompleted && completedCount != totalCount {
+		task.ProgressLock.Lock()
+		task.CompletedCount = totalCount
+		task.ProgressLock.Unlock()
+		fmt.Printf("任务 %s 状态已完成，强制设置计数为 %d/%d\n", task.ID, totalCount, totalCount)
+	}
+	
+	// 发送最终更新
+	sendTaskUpdate(task)
+}
+
+// 处理下载单个镜像的输出中的完成标记
+func checkForCompletionMarkers(output string) bool {
+	// 已知的完成标记
+	completionMarkers := []string{
+		"Writing manifest to image destination",
+		"Copying config complete",
+		"Storing signatures",
+		"Writing manifest complete",
+	}
+	
+	for _, marker := range completionMarkers {
+		if strings.Contains(output, marker) {
+			return true
+		}
+	}
+	
+	return false
 } 
