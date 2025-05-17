@@ -256,7 +256,7 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 		// 如果IP在黑名单中
 		if !allowed {
 			c.JSON(403, gin.H{
-				"error": "您的IP已被限制访问",
+				"error": "您已被限制访问",
 			})
 			c.Abort()
 			return
@@ -265,7 +265,7 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 		// 检查是否允许本次请求
 		if !ipLimiter.Allow() {
 			c.JSON(429, gin.H{
-				"error": "请求频率过高，触发IP限流",
+				"error": "请求频率过快，暂时限制访问",
 			})
 			c.Abort()
 			return
