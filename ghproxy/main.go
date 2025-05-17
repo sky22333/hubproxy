@@ -71,13 +71,32 @@ func main() {
 		}
 	}()
 	
-	// 前端静态文件
-	router.Static("/", "./public")
-	
-	// 初始化Skopeo相关路由 - 必须先于NoRoute注册
+	// 初始化Skopeo相关路由 - 必须在任何通配符路由之前注册
 	initSkopeoRoutes(router)
 	
-	// 注册NoRoute处理器
+	// 单独处理根路径请求，避免冲突
+	router.GET("/", func(c *gin.Context) {
+		c.File("./public/index.html")
+	})
+	
+	// 指定具体的静态文件路径，避免使用通配符
+	router.Static("/public", "./public")
+	
+	// 对于.html等特定文件也直接注册
+	router.GET("/skopeo.html", func(c *gin.Context) {
+		c.File("./public/skopeo.html")
+	})
+	
+	// 图标文件
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.File("./public/favicon.ico")
+	})
+	
+	router.GET("/bj.svg", func(c *gin.Context) {
+		c.File("./public/bj.svg")
+	})
+	
+	// 最后才注册NoRoute处理器，处理不能直接匹配的路径
 	router.NoRoute(handler)
 
 	err := router.Run(fmt.Sprintf("%s:%d", host, port))
