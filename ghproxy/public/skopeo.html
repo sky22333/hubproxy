@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Docker镜像批量下载工具,docker镜像打包下载">
+    <meta name="keywords" content="Docker,镜像下载,skopeo,docker镜像打包">
+    <meta name="color-scheme" content="dark light">
+    <title>Docker镜像批量下载</title>
+    <link rel="icon" href="./favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
+    <style>
+        :root {
+            --color: #ffffff;
+            --fontcolor: #333;
+            --inputcolor: #f5f5f5;
+            --inputcolor-font: #333;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color: #53535338;
+                --fontcolor: #b8b8b8;
+                --inputcolor: #012333;
+                --inputcolor-font: #969696d8;
+            }
+        }
+
+        body {
+            background-color: var(--color);
+            background-image: url('./bj.svg');
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: fixed;
+            color: var(--fontcolor);
+            font-family: 'Misans', Arial, sans-serif;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+
+        *::-webkit-scrollbar {
+            height: 10px;
+            margin-top: 0px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background-color: black;
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: #39c5bb;
+            border-radius: 10px;
+        }
+
+        .container {
+            max-width: 80%;
+            text-align: center;
+            min-height: 65%;
+            line-height: 1.25;
+            margin-top: 30px;
+        }
+
+        h1 {
+            color: var(--fontcolor);
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .rounded-button {
+            border-radius: 6px;
+            transition: background-color 0.3s, transform 0.2s;
+            padding: 10px 30px;
+            background-color: #555c5c;
+            color: rgb(255, 255, 255);
+            border: none;
+            margin-bottom: 3%;
+        }
+
+        .rounded-button:hover {
+            background-color: #39c5bcda;
+            transform: scale(1.05);
+        }
+
+        footer {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 10px;
+            line-height: 1.25;
+            margin-top: 20px;
+        }
+
+        pre {
+            background: #012333;
+            color: #39c5bc;
+            padding: 15px 20px 15px 20px;
+            margin: 0px 0;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        pre::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 10px;
+            height: 10px;
+            background: #bd3c35;
+            border-radius: 50%;
+            box-shadow: 20px 0 0 #d69f27, 40px 0 0 #39c5bb;
+        }
+
+        code {
+            font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.9em;
+            margin-bottom: 0px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                max-width: 100%;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 65%;
+                font-size: 1rem;
+            }
+
+            h1 {
+                margin-bottom: 30px;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 3%;
+        }
+
+        .form-control {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+        }
+
+        .form-control:focus {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+        }
+
+        #toast {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #39c5bcde;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 90%;
+            z-index: 1000;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 2px 8px;
+            background-color: #f5f5f5;
+            border: 0px solid #eeeeee;
+            color: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background-color: #39c5bc;
+            color: white;
+            transform: scale(1.05);
+            text-decoration: none;
+        }
+
+        .image-item {
+            display: flex;
+            align-items: center;
+            background-color: var(--inputcolor);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+
+        .image-name {
+            flex-grow: 1;
+            text-align: left;
+            padding-left: 10px;
+            color: var(--inputcolor-font);
+        }
+
+        #imageList {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background-color: #39c5bb;
+            width: 0%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        .image-progress {
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        .image-progress-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .image-progress-name {
+            flex: 0 0 200px;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .image-progress-bar-container {
+            flex-grow: 1;
+            height: 15px;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin: 0 10px;
+        }
+
+        .image-progress-bar {
+            height: 100%;
+            background-color: #39c5bb;
+            border-radius: 5px;
+            width: 0%;
+        }
+
+        .image-progress-text {
+            flex: 0 0 50px;
+            text-align: right;
+        }
+        
+        .download-button {
+            display: none;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #39c5bb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .download-button:hover {
+            background-color: #2ea89e;
+            transform: scale(1.05);
+        }
+
+        textarea.form-control {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .info-text {
+            font-size: 0.9rem;
+            color: var(--fontcolor);
+            opacity: 0.8;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/" class="back-button">返回</a>
+    <div class="container">
+        <h1>Docker镜像批量下载</h1>
+        
+        <div class="form-group">
+            <div class="info-text">每行输入一个镜像名称，如：nginx:latest, redis:6 等</div>
+            <textarea class="form-control" id="imageInput" placeholder="输入镜像名称，每行一个&#10;例如：&#10;nginx:latest&#10;redis:6&#10;mysql:8"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <div class="info-text">镜像架构，默认为 amd64</div>
+            <input type="text" class="form-control" id="platformInput" placeholder="输入架构，例如：amd64, arm64等" value="amd64">
+        </div>
+        
+        <button class="btn rounded-button" id="downloadButton">开始下载</button>
+        
+        <div id="imageList"></div>
+        
+        <div class="progress-container" id="progressContainer">
+            <h4>整体进度</h4>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="totalProgressBar"></div>
+            </div>
+            <div class="progress-text" id="totalProgressText">0%</div>
+            
+            <div class="image-progress" id="imageProgressList">
+                <!-- Image progress items will be added here -->
+            </div>
+            
+            <button class="download-button" id="getFileButton">下载文件</button>
+        </div>
+    </div>
+    
+    <div id="toast" style="display:none;"></div>
+    
+    <footer>
+        <a href="https://github.com/sky22333/hub-proxy" target="_blank" class="github-link">
+            <svg height="32" viewBox="0 0 16 16" width="32">
+                <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+        </a>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageInput = document.getElementById('imageInput');
+            const platformInput = document.getElementById('platformInput');
+            const imageList = document.getElementById('imageList');
+            const downloadButton = document.getElementById('downloadButton');
+            const progressContainer = document.getElementById('progressContainer');
+            const totalProgressBar = document.getElementById('totalProgressBar');
+            const totalProgressText = document.getElementById('totalProgressText');
+            const imageProgressList = document.getElementById('imageProgressList');
+            const getFileButton = document.getElementById('getFileButton');
+            
+            let images = [];
+            let currentTaskId = null;
+            let websocket = null;
+            
+            // 从多行文本框解析镜像列表
+            function parseImageList() {
+                const text = imageInput.value.trim();
+                if (!text) {
+                    return [];
+                }
+                
+                // 按行分割并过滤空行
+                return text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+            }
+            
+            // 渲染镜像列表
+            function renderImageList(images) {
+                imageList.innerHTML = '';
+                imageList.style.display = 'block';
+                
+                images.forEach(image => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'image-item';
+                    
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'image-name';
+                    nameDiv.textContent = image;
+                    
+                    itemDiv.appendChild(nameDiv);
+                    imageList.appendChild(itemDiv);
+                });
+            }
+            
+            // 开始下载
+            function startDownload() {
+                images = parseImageList();
+                
+                if (images.length === 0) {
+                    showToast('请至少输入一个镜像');
+                    return;
+                }
+                
+                // 获取平台值
+                const platform = platformInput.value.trim() || 'amd64';
+                
+                // 显示镜像列表
+                renderImageList(images);
+                
+                // 准备请求数据
+                const requestData = {
+                    images: images,
+                    platform: platform
+                };
+                
+                // 发送下载请求
+                fetch('/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.taskId) {
+                        currentTaskId = data.taskId;
+                        showProgressUI();
+                        connectWebSocket(currentTaskId);
+                    } else {
+                        showToast('下载任务创建失败');
+                    }
+                })
+                .catch(error => {
+                    showToast('请求失败: ' + error.message);
+                });
+            }
+            
+            // 显示进度UI
+            function showProgressUI() {
+                progressContainer.style.display = 'block';
+                downloadButton.style.display = 'none';
+                imageInput.disabled = true;
+                platformInput.disabled = true;
+                
+                // 初始化每个镜像的进度条
+                imageProgressList.innerHTML = '';
+                images.forEach(image => {
+                    addImageProgressItem(image, 0);
+                });
+            }
+            
+            // 添加单个镜像进度项
+            function addImageProgressItem(image, progress) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'image-progress-item';
+                itemDiv.id = `progress-${image.replace(/[\/\.:]/g, '_')}`;
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'image-progress-name';
+                nameDiv.title = image;
+                nameDiv.textContent = image;
+                
+                const barContainerDiv = document.createElement('div');
+                barContainerDiv.className = 'image-progress-bar-container';
+                
+                const barDiv = document.createElement('div');
+                barDiv.className = 'image-progress-bar';
+                barDiv.style.width = `${progress}%`;
+                
+                const textDiv = document.createElement('div');
+                textDiv.className = 'image-progress-text';
+                textDiv.textContent = `${Math.round(progress)}%`;
+                
+                barContainerDiv.appendChild(barDiv);
+                itemDiv.appendChild(nameDiv);
+                itemDiv.appendChild(barContainerDiv);
+                itemDiv.appendChild(textDiv);
+                
+                imageProgressList.appendChild(itemDiv);
+            }
+            
+            // 更新镜像进度
+            function updateImageProgress(image, progress, status) {
+                const itemId = `progress-${image.replace(/[\/\.:]/g, '_')}`;
+                const item = document.getElementById(itemId);
+                
+                if (item) {
+                    const bar = item.querySelector('.image-progress-bar');
+                    const text = item.querySelector('.image-progress-text');
+                    
+                    bar.style.width = `${progress}%`;
+                    text.textContent = `${Math.round(progress)}%`;
+                    
+                    if (status === 'failed') {
+                        bar.style.backgroundColor = '#bd3c35';
+                        text.textContent = '失败';
+                    } else if (status === 'completed') {
+                        bar.style.backgroundColor = '#4CAF50';
+                        text.textContent = '完成';
+                    }
+                }
+            }
+            
+            // 连接WebSocket
+            function connectWebSocket(taskId) {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/${taskId}`;
+                
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function() {
+                    console.log('WebSocket连接已建立');
+                };
+                
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    updateProgress(data);
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('WebSocket错误:', error);
+                    showToast('WebSocket连接错误');
+                };
+                
+                websocket.onclose = function() {
+                    console.log('WebSocket连接已关闭');
+                };
+            }
+            
+            // 更新总体进度
+            function updateProgress(data) {
+                // 更新总进度
+                totalProgressBar.style.width = `${data.totalProgress}%`;
+                totalProgressText.textContent = `${Math.round(data.totalProgress)}%`;
+                
+                // 更新各个镜像的进度
+                data.images.forEach(imgData => {
+                    updateImageProgress(imgData.image, imgData.progress, imgData.status);
+                });
+                
+                // 如果任务完成，显示下载按钮
+                if (data.status === 'completed') {
+                    getFileButton.style.display = 'inline-block';
+                    
+                    if (websocket) {
+                        websocket.close();
+                    }
+                }
+            }
+            
+            // 下载文件
+            function downloadFile() {
+                if (!currentTaskId) {
+                    showToast('没有可下载的文件');
+                    return;
+                }
+                
+                window.location.href = `/api/files/${currentTaskId}_file`;
+            }
+            
+            // 显示提示消息
+            function showToast(message) {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.style.display = 'block';
+                
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 3000);
+            }
+            
+            // 事件监听
+            downloadButton.addEventListener('click', startDownload);
+            getFileButton.addEventListener('click', downloadFile);
+        });
+    </script>
+</body>
+</html> 

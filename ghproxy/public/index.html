@@ -351,6 +351,28 @@
             text-decoration: none;
         }
 
+        .download-button {
+            position: fixed;
+            top: 20px;
+            right: 80px;
+            padding: 2px 8px;
+            background-color: #f5f5f5;
+            border: 0px solid #eeeeee;
+            color: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        
+        .download-button:hover {
+            background-color: #39c5bc;
+            color: white;
+            transform: scale(1.05);
+            text-decoration: none;
+        }
+
         .github-link {
             display: inline-block;
             position: static;
@@ -372,6 +394,7 @@
 
 <body>
     <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="hosts-button">hosts</a>
+    <a href="/skopeo.html" class="download-button">镜像下载</a>
     <div class="container">
         <h1>Github文件加速</h1>
         <div class="form-group">
