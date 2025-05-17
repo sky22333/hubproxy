@@ -61,7 +61,7 @@ docker run -d \
 
 ### 预览
 
-![预览](./.github/workflows/gh.jpg)
+![预览](./.github/workflows/ghp.jpg)
 
 ![预览](./.github/workflows/docker.jpg)
 
