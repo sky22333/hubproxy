@@ -195,53 +195,19 @@
             text-decoration: none;
         }
 
-        .image-item {
-            display: flex;
-            align-items: center;
-            background-color: var(--inputcolor);
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-        }
-
-        .image-name {
-            flex-grow: 1;
-            text-align: left;
-            padding-left: 10px;
-            color: var(--inputcolor-font);
-        }
-
-        #imageList {
-            margin-top: 20px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
         .progress-container {
             margin-top: 20px;
             display: none;
         }
 
-        .total-progress {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: var(--inputcolor);
-            border-radius: 10px;
-        }
-
-        .progress-bar {
-            height: 20px;
-            background-color: #39c5bb;
-            width: 0%;
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-
-        .progress-text {
-            margin-top: 10px;
+        .total-progress-text {
             font-size: 16px;
             font-weight: bold;
-            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: var(--inputcolor);
+            border-radius: 10px;
+            display: inline-block;
         }
 
         .image-progress {
@@ -333,16 +299,8 @@
         
         <button class="btn rounded-button" id="downloadButton">开始下载</button>
         
-        <div id="imageList"></div>
-        
         <div class="progress-container" id="progressContainer">
-            <h4>整体进度</h4>
-            <div class="total-progress">
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="totalProgressBar"></div>
-                </div>
-                <div class="progress-text" id="totalProgressText">0%</div>
-            </div>
+            <div class="total-progress-text" id="totalProgressText">0/0 - 0%</div>
             
             <div class="image-progress" id="imageProgressList">
                 <!-- Image progress items will be added here -->
@@ -358,10 +316,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             const imageInput = document.getElementById('imageInput');
             const platformInput = document.getElementById('platformInput');
-            const imageList = document.getElementById('imageList');
             const downloadButton = document.getElementById('downloadButton');
             const progressContainer = document.getElementById('progressContainer');
-            const totalProgressBar = document.getElementById('totalProgressBar');
             const totalProgressText = document.getElementById('totalProgressText');
             const imageProgressList = document.getElementById('imageProgressList');
             const getFileButton = document.getElementById('getFileButton');
@@ -383,24 +339,6 @@
                     .filter(line => line.length > 0);
             }
             
-            // 渲染镜像列表
-            function renderImageList(images) {
-                imageList.innerHTML = '';
-                imageList.style.display = 'block';
-                
-                images.forEach(image => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'image-item';
-                    
-                    const nameDiv = document.createElement('div');
-                    nameDiv.className = 'image-name';
-                    nameDiv.textContent = image;
-                    
-                    itemDiv.appendChild(nameDiv);
-                    imageList.appendChild(itemDiv);
-                });
-            }
-            
             // 开始下载
             function startDownload() {
                 images = parseImageList();
@@ -412,9 +350,6 @@
                 
                 // 获取平台值
                 const platform = platformInput.value.trim() || 'amd64';
-                
-                // 显示镜像列表
-                renderImageList(images);
                 
                 // 准备请求数据
                 const requestData = {
@@ -458,7 +393,6 @@
                 
                 // 设置初始总进度显示
                 const totalCount = images.length;
-                totalProgressBar.style.width = '0%';
                 totalProgressText.textContent = `0/${totalCount} - 0%`;
                 
                 // 初始化每个镜像的进度条
@@ -548,9 +482,8 @@
             
             // 更新总体进度
             function updateProgress(data) {
-                // 更新总进度
+                // 更新总进度文本
                 const progressPercent = data.totalCount > 0 ? (data.completedCount / data.totalCount) * 100 : 0;
-                totalProgressBar.style.width = `${progressPercent}%`;
                 totalProgressText.textContent = `${data.completedCount}/${data.totalCount} - ${Math.round(progressPercent)}%`;
                 
                 // 更新各个镜像的进度
@@ -595,4 +528,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
