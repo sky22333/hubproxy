@@ -96,9 +96,11 @@ func main() {
 		c.File("./public/bj.svg")
 	})
 	
+	// 创建GitHub文件下载专用的限流器
+	githubLimiter := NewIPRateLimiter()
+	
 	// 注册NoRoute处理器，应用限流中间件
-	// 为GitHub文件下载应用限流
-	ApplyRateLimit(router, "*", "GET", handler)
+	router.NoRoute(RateLimitMiddleware(githubLimiter), handler)
 
 	err := router.Run(fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
