@@ -99,8 +99,8 @@ func initSkopeoRoutes(router *gin.Engine) {
 	// WebSocket路由 - 用于实时获取进度
 	router.GET("/ws/:taskId", handleWebSocket)
 
-	// 创建下载任务
-	router.POST("/api/download", handleDownload)
+	// 创建下载任务，应用限流中间件
+	ApplyRateLimit(router, "/api/download", "POST", handleDownload)
 
 	// 获取任务状态
 	router.GET("/api/task/:taskId", getTaskStatus)
@@ -979,10 +979,34 @@ func fileExists(path string) bool {
 
 // 清理过期临时文件
 func cleanupTempFiles() {
-	for {
-		time.Sleep(1 * time.Hour)
-		
-		// 遍历temp目录
+	// 创建两个定时器
+	hourlyTicker := time.NewTicker(1 * time.Hour)
+	fiveMinTicker := time.NewTicker(5 * time.Minute)
+	
+	// 清理所有文件的函数
+	cleanAll := func() {
+		fmt.Printf("执行清理所有临时文件\n")
+		entries, err := os.ReadDir("./temp")
+		if err == nil {
+			for _, entry := range entries {
+				entryPath := filepath.Join("./temp", entry.Name())
+				info, err := entry.Info()
+				if err == nil {
+					if info.IsDir() {
+						os.RemoveAll(entryPath)
+					} else {
+						os.Remove(entryPath)
+					}
+				}
+			}
+		} else {
+			fmt.Printf("清理临时文件失败: %v\n", err)
+		}
+	}
+	
+	// 检查文件大小并在需要时清理
+	checkSizeAndClean := func() {
+		var totalSize int64 = 0
 		err := filepath.Walk("./temp", func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -993,20 +1017,36 @@ func cleanupTempFiles() {
 				return nil
 			}
 			
-			// 如果文件或目录超过2小时未修改，则删除
-			if time.Since(info.ModTime()) > 2*time.Hour {
-				if info.IsDir() {
-					os.RemoveAll(path)
-					return filepath.SkipDir
-				}
-				os.Remove(path)
+			if !info.IsDir() {
+				totalSize += info.Size()
 			}
 			
 			return nil
 		})
 		
 		if err != nil {
-			fmt.Printf("清理临时文件失败: %v\n", err)
+			fmt.Printf("计算临时文件总大小失败: %v\n", err)
+			return
+		}
+		
+		// 如果总大小超过10GB，清理所有文件，防止恶意下载导致磁盘爆满
+		if totalSize > 10*1024*1024*1024 { // 15GB
+			fmt.Printf("临时文件总大小超过10GB (当前: %.2f GB)，清理所有文件\n", float64(totalSize)/(1024*1024*1024))
+			cleanAll()
+		} else {
+			fmt.Printf("临时文件总大小: %.2f GB\n", float64(totalSize)/(1024*1024*1024))
+		}
+	}
+	
+	// 主循环
+	for {
+		select {
+		case <-hourlyTicker.C:
+			// 每小时清理所有文件
+			cleanAll()
+		case <-fiveMinTicker.C:
+			// 每5分钟检查一次总文件大小
+			checkSizeAndClean()
 		}
 	}
 }
