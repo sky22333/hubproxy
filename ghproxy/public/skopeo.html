@@ -285,11 +285,11 @@
 <body>
     <a href="/" class="back-button">返回</a>
     <div class="container">
-        <h1>Docker镜像批量下载</h1>
+        <h1>Docker离线镜像包批量下载</h1>
         
         <div class="form-group">
-            <div class="info-text">每行输入一个镜像名称，如：nginx:latest, redis:6 等</div>
-            <textarea class="form-control" id="imageInput" placeholder="输入镜像名称，每行一个&#10;例如：&#10;nginx:latest&#10;redis:6&#10;mysql:8"></textarea>
+            <div class="info-text">每行输入一个镜像，跟docker pull的格式一样，多个镜像会自动打包为zip包，单个镜像为tar包。</div>
+            <textarea class="form-control" id="imageInput" placeholder="例如：&#10;nginx&#10;stilleshan/frpc&#10;stilleshan/frpc:0.62.1"></textarea>
         </div>
         
         <div class="form-group">
