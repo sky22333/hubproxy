@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -326,14 +327,28 @@ func downloadImage(task *DownloadTask, index int, imgTask *ImageTask, platform s
 		if strings.Contains(platform, "--") {
 			platformArg = platform
 		} else {
-			// 仅指定架构名称的情况
-			platformArg = fmt.Sprintf("--override-os linux --override-arch %s", platform)
+			// 处理特殊架构格式，如 arm/v7
+			if strings.Contains(platform, "/") {
+				parts := strings.Split(platform, "/")
+				if len(parts) == 2 {
+					// 适用于arm/v7这样的格式
+					platformArg = fmt.Sprintf("--override-os linux --override-arch %s --override-variant %s", parts[0], parts[1])
+				} else {
+					// 对于其他带/的格式，直接按原格式处理
+					platformArg = fmt.Sprintf("--override-os linux --override-arch %s", platform)
+				}
+			} else {
+				// 仅指定架构名称的情况
+				platformArg = fmt.Sprintf("--override-os linux --override-arch %s", platform)
+			}
 		}
 	}
 
 	// 构建命令
 	cmd := fmt.Sprintf("skopeo copy %s docker://%s docker-archive:%s", 
 		platformArg, imgTask.Image, outputPath)
+	
+	fmt.Printf("执行命令: %s\n", cmd)
 	
 	// 执行命令
 	command := exec.Command("sh", "-c", cmd)
@@ -347,6 +362,14 @@ func downloadImage(task *DownloadTask, index int, imgTask *ImageTask, platform s
 		return
 	}
 
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		imgTask.Status = string(StatusFailed)
+		imgTask.Error = fmt.Sprintf("无法创建标准输出管道: %v", err)
+		sendImageUpdate(task, index)
+		return
+	}
+
 	if err := command.Start(); err != nil {
 		imgTask.Status = string(StatusFailed)
 		imgTask.Error = fmt.Sprintf("启动命令失败: %v", err)
@@ -354,42 +377,89 @@ func downloadImage(task *DownloadTask, index int, imgTask *ImageTask, platform s
 		return
 	}
 
+	// 模拟逐步进度增加，确保用户体验更好
+	go func() {
+		// 每500ms检查一次进度，如果进度没有变化，则稍微增加一点
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		
+		lastProgress := 0.0
+		stagnantCount := 0
+		
+		for {
+			select {
+			case <-ticker.C:
+				// 检查命令是否还在运行
+				if command.ProcessState != nil && command.ProcessState.Exited() {
+					return
+				}
+				
+				// 如果进度停滞，小幅增加进度，提高用户体验
+				task.Lock.Lock()
+				currentProgress := imgTask.Progress
+				if currentProgress == lastProgress {
+					stagnantCount++
+					if stagnantCount > 5 && currentProgress < 90 { // 连续5次无变化且未接近完成
+						// 缓慢增加进度，但不超过95%
+						newProgress := currentProgress + 0.5
+						if newProgress > 95 {
+							newProgress = 95
+						}
+						imgTask.Progress = newProgress
+						updateTaskProgress(task)
+						sendImageUpdate(task, index)
+					}
+				} else {
+					stagnantCount = 0
+					lastProgress = currentProgress
+				}
+				task.Lock.Unlock()
+			}
+		}
+	}()
+
 	// 读取stderr以获取进度信息
 	go func() {
-		buf := make([]byte, 1024)
-		for {
-			n, err := stderr.Read(buf)
-			if n > 0 {
-				output := string(buf[:n])
-				// 解析进度信息 (这里简化处理，假设skopeo输出进度信息)
-				// 实际需要根据skopeo的真实输出格式进行解析
-				if strings.Contains(output, "%") {
-					// 简单解析，实际使用时可能需要更复杂的解析逻辑
-					parts := strings.Split(output, "%")
-					if len(parts) > 0 {
-						numStr := strings.TrimSpace(parts[0])
-						numStr = strings.TrimLeft(numStr, "Copying blob ")
-						numStr = strings.TrimLeft(numStr, "Copying config ")
-						numStr = strings.TrimRight(numStr, " / ")
-						numStr = strings.TrimSpace(numStr)
-						// 尝试提取最后一个数字作为进度
-						fields := strings.Fields(numStr)
-						if len(fields) > 0 {
-							lastField := fields[len(fields)-1]
-							progress := 0.0
-							fmt.Sscanf(lastField, "%f", &progress)
-							if progress > 0 && progress <= 100 {
-								imgTask.Progress = progress
-								updateTaskProgress(task)
-								sendImageUpdate(task, index)
-							}
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			output := scanner.Text()
+			fmt.Printf("镜像 %s 进度输出: %s\n", imgTask.Image, output)
+			
+			// 解析进度信息
+			if strings.Contains(output, "%") {
+				parts := strings.Split(output, "%")
+				if len(parts) > 0 {
+					numStr := strings.TrimSpace(parts[0])
+					numStr = strings.TrimLeft(numStr, "Copying blob ")
+					numStr = strings.TrimLeft(numStr, "Copying config ")
+					numStr = strings.TrimRight(numStr, " / ")
+					numStr = strings.TrimSpace(numStr)
+					
+					// 尝试提取最后一个数字作为进度
+					fields := strings.Fields(numStr)
+					if len(fields) > 0 {
+						lastField := fields[len(fields)-1]
+						progress := 0.0
+						fmt.Sscanf(lastField, "%f", &progress)
+						if progress > 0 && progress <= 100 {
+							task.Lock.Lock()
+							imgTask.Progress = progress
+							task.Lock.Unlock()
+							updateTaskProgress(task)
+							sendImageUpdate(task, index)
 						}
 					}
 				}
 			}
-			if err != nil {
-				break
-			}
+		}
+	}()
+	
+	// 读取stdout
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			output := scanner.Text()
+			fmt.Printf("镜像 %s 标准输出: %s\n", imgTask.Image, output)
 		}
 	}()
 
@@ -409,8 +479,10 @@ func downloadImage(task *DownloadTask, index int, imgTask *ImageTask, platform s
 	}
 
 	// 更新状态为已完成
+	task.Lock.Lock()
 	imgTask.Status = string(StatusCompleted)
 	imgTask.Progress = 100
+	task.Lock.Unlock()
 	updateTaskProgress(task)
 	sendImageUpdate(task, index)
 }
