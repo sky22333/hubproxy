@@ -326,20 +326,17 @@
             let currentTaskId = null;
             let websocket = null;
             
-            // 从多行文本框解析镜像列表
             function parseImageList() {
                 const text = imageInput.value.trim();
                 if (!text) {
                     return [];
                 }
                 
-                // 按行分割并过滤空行
                 return text.split('\n')
                     .map(line => line.trim())
                     .filter(line => line.length > 0);
             }
             
-            // 开始下载
             function startDownload() {
                 images = parseImageList();
                 
@@ -348,16 +345,12 @@
                     return;
                 }
                 
-                // 获取平台值
                 const platform = platformInput.value.trim() || 'amd64';
-                
-                // 准备请求数据
                 const requestData = {
                     images: images,
                     platform: platform
                 };
                 
-                // 发送下载请求
                 fetch('/api/download', {
                     method: 'POST',
                     headers: {
@@ -372,7 +365,6 @@
                         showProgressUI();
                         connectWebSocket(currentTaskId);
                         
-                        // 显示初始任务总数
                         const totalCount = data.totalCount || images.length;
                         totalProgressText.textContent = `0/${totalCount} - 0%`;
                     } else {
@@ -384,25 +376,21 @@
                 });
             }
             
-            // 显示进度UI
             function showProgressUI() {
                 progressContainer.style.display = 'block';
                 downloadButton.style.display = 'none';
                 imageInput.disabled = true;
                 platformInput.disabled = true;
                 
-                // 设置初始总进度显示
                 const totalCount = images.length;
                 totalProgressText.textContent = `0/${totalCount} - 0%`;
                 
-                // 初始化每个镜像的进度条
                 imageProgressList.innerHTML = '';
                 images.forEach(image => {
                     addImageProgressItem(image, 0);
                 });
             }
             
-            // 添加单个镜像进度项
             function addImageProgressItem(image, progress) {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'image-progress-item';
@@ -432,7 +420,6 @@
                 imageProgressList.appendChild(itemDiv);
             }
             
-            // 更新镜像进度
             function updateImageProgress(image, progress, status) {
                 const itemId = `progress-${image.replace(/[\/\.:]/g, '_')}`;
                 const item = document.getElementById(itemId);
@@ -454,7 +441,6 @@
                 }
             }
             
-            // 连接WebSocket
             function connectWebSocket(taskId) {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}/ws/${taskId}`;
@@ -462,7 +448,7 @@
                 websocket = new WebSocket(wsUrl);
                 
                 websocket.onopen = function() {
-                    console.log('WebSocket连接已建立');
+                    console.log('ws');
                 };
                 
                 websocket.onmessage = function(event) {
@@ -480,18 +466,14 @@
                 };
             }
             
-            // 更新总体进度
             function updateProgress(data) {
-                // 更新总进度文本
                 const progressPercent = data.totalCount > 0 ? (data.completedCount / data.totalCount) * 100 : 0;
                 totalProgressText.textContent = `${data.completedCount}/${data.totalCount} - ${Math.round(progressPercent)}%`;
-                
-                // 更新各个镜像的进度
+
                 data.images.forEach(imgData => {
                     updateImageProgress(imgData.image, imgData.progress, imgData.status);
                 });
                 
-                // 如果任务完成，显示下载按钮
                 if (data.status === 'completed') {
                     getFileButton.style.display = 'inline-block';
                     
@@ -501,7 +483,6 @@
                 }
             }
             
-            // 下载文件
             function downloadFile() {
                 if (!currentTaskId) {
                     showToast('没有可下载的文件');
@@ -511,7 +492,6 @@
                 window.location.href = `/api/files/${currentTaskId}_file`;
             }
             
-            // 显示提示消息
             function showToast(message) {
                 const toast = document.getElementById('toast');
                 toast.textContent = message;
@@ -522,7 +502,6 @@
                 }, 3000);
             }
             
-            // 事件监听
             downloadButton.addEventListener('click', startDownload);
             getFileButton.addEventListener('click', downloadFile);
         });
