@@ -1,12 +1,12 @@
 ### Docker和Github加速二合一
 
 - 使用`docker`一键部署多种仓库的镜像加速
-- `docker`镜像默认缓存3天（可自行修改）
+- `docker`镜像默认缓存3天
 - 支持在线下载`docker`离线镜像包
 - 具有自动清理机制
 - 支持`github`文件加速
 - 支持`api.github.com`
-- 支持shell脚本嵌套代理
+- 支持shell脚本嵌套加速
 - 支持Al模型库Hugging Face
 - 支持IP限流，默认每个IP，每小时20次请求。
 - 轻量级，简单方便
