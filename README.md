@@ -6,6 +6,7 @@
 - 具有自动清理机制
 - 支持`github`文件加速
 - 支持`api.github.com`
+- 支持shell脚本嵌套代理
 - 支持Al模型库Hugging Face
 - 支持IP限流，默认每个IP，每小时20次请求。
 - 轻量级，简单方便
