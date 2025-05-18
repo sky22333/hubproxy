@@ -168,17 +168,27 @@ func proxy(c *gin.Context, u string) {
 		}
 	}(resp.Body)
 
-	if contentLength, ok := resp.Header["Content-Length"]; ok {
-		if size, err := strconv.Atoi(contentLength[0]); err == nil && size > sizeLimit {
+	// 检查文件大小限制
+	if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
+		if size, err := strconv.Atoi(contentLength); err == nil && size > sizeLimit {
 			c.String(http.StatusRequestEntityTooLarge, "File too large.")
 			return
 		}
 	}
 
+	// 清理安全相关的头
 	resp.Header.Del("Content-Security-Policy")
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
+	
+	// 对于需要处理的shell文件，我们使用chunked传输
+	isShellFile := strings.HasSuffix(strings.ToLower(u), ".sh")
+	if isShellFile {
+		resp.Header.Del("Content-Length")
+		resp.Header.Set("Transfer-Encoding", "chunked")
+	}
 
+	// 复制其他响应头
 	for key, values := range resp.Header {
 		for _, value := range values {
 			c.Header(key, value)
@@ -196,10 +206,7 @@ func proxy(c *gin.Context, u string) {
 
 	c.Status(resp.StatusCode)
 
-	// 检查是否为.sh文件
-	isShellFile := strings.HasSuffix(strings.ToLower(u), ".sh")
-	isCompressed := resp.Header.Get("Content-Encoding") == "gzip"
-
+	// 处理响应体
 	if isShellFile {
 		// 获取真实域名
 		realHost := c.Request.Header.Get("X-Forwarded-Host")
@@ -211,7 +218,7 @@ func proxy(c *gin.Context, u string) {
 			realHost = "https://" + realHost
 		}
 		// 使用ProcessGitHubURLs处理.sh文件
-		processedBody, _, err := ProcessGitHubURLs(resp.Body, isCompressed, realHost, true)
+		processedBody, _, err := ProcessGitHubURLs(resp.Body, resp.Header.Get("Content-Encoding") == "gzip", realHost, true)
 		if err != nil {
 			c.String(http.StatusInternalServerError, fmt.Sprintf("处理shell文件时发生错误: %v", err))
 			return

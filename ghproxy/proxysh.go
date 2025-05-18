@@ -53,6 +53,7 @@ func ProcessGitHubURLs(input io.ReadCloser, isCompressed bool, host string, isSh
 		return input, 0, nil
 	}
 
+	// 使用更大的缓冲区以提高性能
 	pipeReader, pipeWriter := io.Pipe()
 	var written int64
 
@@ -69,7 +70,7 @@ func ProcessGitHubURLs(input io.ReadCloser, isCompressed bool, host string, isSh
 
 		defer input.Close()
 
-		reader := input
+		var reader io.Reader = input
 		if isCompressed {
 			debugPrintf("检测到压缩文件，进行解压处理\n")
 			gzipReader, gzipErr := gzip.NewReader(input)
@@ -80,52 +81,72 @@ func ProcessGitHubURLs(input io.ReadCloser, isCompressed bool, host string, isSh
 			defer gzipReader.Close()
 			reader = gzipReader
 		}
-		bufReader := bufio.NewReader(reader)
 
-		var bufWriter *bufio.Writer
+		// 使用更大的缓冲区
+		bufReader := bufio.NewReaderSize(reader, 32*1024) // 32KB buffer
+		var writer io.Writer = pipeWriter
+
 		if isCompressed {
-			gzipWriter := gzip.NewWriter(pipeWriter)
+			gzipWriter := gzip.NewWriter(writer)
 			defer gzipWriter.Close()
-			bufWriter = bufio.NewWriterSize(gzipWriter, 4096)
-		} else {
-			bufWriter = bufio.NewWriterSize(pipeWriter, 4096)
+			writer = gzipWriter
 		}
+
+		bufWriter := bufio.NewWriterSize(writer, 32*1024) // 32KB buffer
 		defer bufWriter.Flush()
 
 		written, err = processContent(bufReader, bufWriter, host)
+		if err != nil {
+			debugPrintf("处理内容时发生错误: %v\n", err)
+			return
+		}
+		
 		debugPrintf("文件处理完成，共处理 %d 字节\n", written)
 	}()
 
 	return pipeReader, written, nil
 }
 
-// processContent 处理文件内容，返回处理的字节数
+// processContent 优化处理文件内容的函数
 func processContent(reader *bufio.Reader, writer *bufio.Writer, host string) (int64, error) {
 	var written int64
 	lineNum := 0
+	
+	// 预分配buffer以减少内存分配
+	buf := make([]byte, 32*1024)
 	
 	for {
 		lineNum++
 		line, err := reader.ReadString('\n')
 		if err != nil && err != io.EOF {
-			return written, err
+			return written, fmt.Errorf("读取行时发生错误: %w", err)
 		}
 
 		if line != "" {
 			// 在处理前先检查是否包含GitHub URL
-			matches := urlPattern.FindAllString(line, -1)
-			if len(matches) > 0 {
-				debugPrintf("\n在第 %d 行发现 %d 个GitHub URL:\n", lineNum, len(matches))
-				for _, match := range matches {
-					debugPrintf("原始URL: %s\n", match)
+			if strings.Contains(line, "github.com") || 
+			   strings.Contains(line, "raw.githubusercontent.com") {
+				matches := urlPattern.FindAllString(line, -1)
+				if len(matches) > 0 {
+					debugPrintf("\n在第 %d 行发现 %d 个GitHub URL:\n", lineNum, len(matches))
+					for _, match := range matches {
+						debugPrintf("原始URL: %s\n", match)
+					}
 				}
-			}
-
-			modifiedLine := processLine(line, host, lineNum)
-			n, writeErr := writer.WriteString(modifiedLine)
-			written += int64(n)
-			if writeErr != nil {
-				return written, writeErr
+				
+				modifiedLine := processLine(line, host, lineNum)
+				n, writeErr := writer.WriteString(modifiedLine)
+				if writeErr != nil {
+					return written, fmt.Errorf("写入修改后的行时发生错误: %w", writeErr)
+				}
+				written += int64(n)
+			} else {
+				// 如果行中没有GitHub URL，直接写入
+				n, writeErr := writer.WriteString(line)
+				if writeErr != nil {
+					return written, fmt.Errorf("写入原始行时发生错误: %w", writeErr)
+				}
+				written += int64(n)
 			}
 		}
 
@@ -133,6 +154,12 @@ func processContent(reader *bufio.Reader, writer *bufio.Writer, host string) (in
 			break
 		}
 	}
+
+	// 确保所有数据都被写入
+	if err := writer.Flush(); err != nil {
+		return written, fmt.Errorf("刷新缓冲区时发生错误: %w", err)
+	}
+	
 	return written, nil
 }
 
