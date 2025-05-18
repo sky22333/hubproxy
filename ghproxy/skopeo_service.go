@@ -1030,7 +1030,7 @@ func cleanupTempFiles() {
 		}
 		
 		// 如果总大小超过10GB，清理所有文件，防止恶意下载导致磁盘爆满
-		if totalSize > 10*1024*1024*1024 { // 15GB
+		if totalSize > 10*1024*1024*1024 {
 			fmt.Printf("临时文件总大小超过10GB (当前: %.2f GB)，清理所有文件\n", float64(totalSize)/(1024*1024*1024))
 			cleanAll()
 		} else {

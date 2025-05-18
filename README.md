@@ -58,6 +58,53 @@ docker run -d \
 ---
 ---
 
+
+<details>
+  <summary>CF-CDN获取用户真实IP</summary>
+  
+
+-   替换`Caddyfile`配置
+
+```
+hub.{$DOMAIN} {
+    reverse_proxy * ghproxy:5000 {
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto {http.request.scheme}
+        header_up CF-IPCountry {http.request.header.CF-IPCountry}
+    }
+}
+
+docker.{$DOMAIN} {
+    @v2_manifest_blob path_regexp v2_rewrite ^/v2/([^/]+)/(manifests|blobs)/(.*)$
+    handle @v2_manifest_blob {
+        rewrite * /v2/library/{re.v2_rewrite.1}/{re.v2_rewrite.2}/{re.v2_rewrite.3}
+    }
+
+    reverse_proxy * docker:5000 {
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto {http.request.scheme}
+        header_up CF-IPCountry {http.request.header.CF-IPCountry}
+    }
+}
+
+ghcr.{$DOMAIN} {
+    reverse_proxy * ghcr:5000 {
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto {http.request.scheme}
+        header_up CF-IPCountry {http.request.header.CF-IPCountry}
+    }
+}
+```
+
+</details>
+
+
+---
+---
+
 ### 预览
 
 ![预览](./.github/workflows/ghp.jpg)
