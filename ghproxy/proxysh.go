@@ -112,9 +112,6 @@ func processContent(reader *bufio.Reader, writer *bufio.Writer, host string) (in
 	var written int64
 	lineNum := 0
 	
-	// 预分配buffer以减少内存分配
-	buf := make([]byte, 32*1024)
-	
 	for {
 		lineNum++
 		line, err := reader.ReadString('\n')
