@@ -360,6 +360,12 @@ func handleDownload(c *gin.Context) {
 		return
 	}
 
+	// 添加镜像数量限制10个，防止恶意刷流量
+	if len(req.Images) > 10 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "您下载的数量太多，宝宝承受不住"})
+		return
+	}
+
 	// 创建新任务
 	taskID := generateTaskID()
 	tempDir := filepath.Join("./temp", taskID)
