@@ -13,15 +13,3 @@ docker.{$DOMAIN} {
 ghcr.{$DOMAIN} {
     reverse_proxy * ghcr:5000
 }
-
-gcr.{$DOMAIN} {
-    reverse_proxy * gcr:5000
-}
-
-quay.{$DOMAIN} {
-    reverse_proxy * quay:5000
-}
-
-k8s.{$DOMAIN} {
-    reverse_proxy * k8s:5000
-}

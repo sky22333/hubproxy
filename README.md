@@ -16,7 +16,7 @@
 
 ### 使用Docker部署
 
-1：域名解析：将`hub`，`quay`，`ghcr`，`gcr`，`docker`，`k8s`这个几个解析为你的二级域名。
+1：域名解析：将`hub`，`ghcr`，`docker`这个几个解析为你的二级域名。
 
 > 嫌麻烦也可以直接泛解析
 
@@ -71,8 +71,7 @@ docker run -d \
 
 ghproxy基于go语言的Gin框架，镜像加速基于`registry`镜像实现
 
-前端借鉴了[这个项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI，ghproxy后端基于[这个项目](https://github.com/moeyy01/gh-proxy-go)修改并增加了更多特性
-
+前端借鉴了[此项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI
 
 
 ### 免责声明

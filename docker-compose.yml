@@ -11,13 +11,6 @@ services:
       - DOMAIN=example.com                  # 修改为你的根域名
     restart: always
 
-  quay:
-    image: "registry:2.8.3"
-    container_name: "quay"
-    restart: "always"
-    volumes:
-      - "./quay/config.yml:/etc/docker/registry/config.yml"
-
   ghcr:
     image: "registry:2.8.3"
     container_name: "ghcr"
@@ -25,26 +18,12 @@ services:
     volumes:
       - "./ghcr/config.yml:/etc/docker/registry/config.yml"
 
-  gcr:
-    image: "registry:2.8.3"
-    container_name: "gcr"
-    restart: "always"
-    volumes:
-      - "./gcr/config.yml:/etc/docker/registry/config.yml"
-
   docker:
     image: "registry:2.8.3"
     container_name: "docker"
     restart: "always"
     volumes:
       - "./docker/config.yml:/etc/docker/registry/config.yml"
-
-  k8s:
-    image: "registry:2.8.3"
-    container_name: "k8s"
-    restart: "always"
-    volumes:
-      - "./k8s/config.yml:/etc/docker/registry/config.yml"
 
   ghproxy:
     image: "ghcr.io/sky22333/hub-proxy"
