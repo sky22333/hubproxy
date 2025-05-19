@@ -34,7 +34,8 @@ func debugPrintf(format string, args ...interface{}) {
 	}
 }
 
-// ProcessGitHubURLs 处理数据流中的GitHub URL，将其替换为代理URL
+// ProcessGitHubURLs 处理数据流中的GitHub URL，将其替换为代理URL。
+// 此功能借鉴了https://github.com/WJQSERVER-STUDIO/ghproxy，版权归`WJQSERVER-STUDIO`所有。
 // 参数:
 //   - input: 输入数据流
 //   - isCompressed: 是否为gzip压缩数据
