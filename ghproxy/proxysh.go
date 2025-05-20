@@ -35,17 +35,8 @@ func debugPrintf(format string, args ...interface{}) {
 }
 
 // ProcessGitHubURLs 处理数据流中的GitHub URL，将其替换为代理URL。
-// 此功能借鉴了https://github.com/WJQSERVER-STUDIO/ghproxy，版权归`WJQSERVER-STUDIO`所有。
-// 参数:
-//   - input: 输入数据流
-//   - isCompressed: 是否为gzip压缩数据
-//   - host: 代理服务器域名
-//   - isShellFile: 是否为.sh文件 (如果为true，则会处理其中的GitHub URL)
-//
-// 返回:
-//   - io.Reader: 处理后的数据流
-//   - int64: 写入的字节数
-//   - error: 错误信息
+// 此处思路借鉴了 https://github.com/WJQSERVER-STUDIO/ghproxy/blob/main/proxy/nest.go
+
 func ProcessGitHubURLs(input io.ReadCloser, isCompressed bool, host string, isShellFile bool) (io.Reader, int64, error) {
 	debugPrintf("开始处理文件: isCompressed=%v, host=%s, isShellFile=%v\n", isCompressed, host, isShellFile)
 	

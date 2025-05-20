@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Docker镜像搜索">
+    <meta name="keywords" content="Docker,镜像搜索,docker search">
+    <meta name="color-scheme" content="dark light">
+    <title>Docker镜像搜索</title>
+    <link rel="icon" href="./favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
+    <style>
+        :root {
+            --color: #ffffff;
+            --fontcolor: #333;
+            --inputcolor: #f5f5f5;
+            --inputcolor-font: #333;
+            --card-bg: #f8f9fa;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color: #53535338;
+                --fontcolor: #b8b8b8;
+                --inputcolor: #012333;
+                --inputcolor-font: #969696d8;
+                --card-bg: #012333;
+            }
+        }
+
+        body {
+            background-color: var(--color);
+            background-image: url('./bj.svg');
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: fixed;
+            color: var(--fontcolor);
+            font-family: 'Misans', Arial, sans-serif;
+            padding: 30px;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--fontcolor);
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+        }
+
+        .form-control {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+            border-radius: 20px;
+            padding: 10px 20px;
+        }
+
+        .form-control:focus {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+        }
+
+        .search-button {
+            border-radius: 20px;
+            padding: 10px 30px;
+            background-color: #39c5bc;
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-button:hover {
+            transform: scale(1.05);
+            background-color: #2ea8a0;
+        }
+
+        .result-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #39c5bc;
+        }
+
+        .result-description {
+            color: var(--fontcolor);
+            margin-bottom: 15px;
+        }
+
+        .result-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--fontcolor);
+            opacity: 0.8;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 2px 8px;
+            background-color: #f5f5f5;
+            border: 0px solid #eeeeee;
+            color: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background-color: #39c5bc;
+            color: white;
+            transform: scale(1.05);
+            text-decoration: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #39c5bc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #toast {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #39c5bcde;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 90%;
+            z-index: 1000;
+            display: none;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #39c5bc;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            transform: scale(1.05);
+            background-color: #2ea8a0;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">返回</a>
+    <div class="container">
+        <h1>Docker镜像搜索</h1>
+        
+        <div class="search-container">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="输入镜像名称搜索...">
+                <div class="input-group-append">
+                    <button class="btn search-button" id="searchButton">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>正在搜索...</p>
+        </div>
+
+        <div id="searchResults"></div>
+        
+        <div class="pagination">
+            <button id="prevPage" disabled>上一页</button>
+            <button id="nextPage" disabled>下一页</button>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentQuery = '';
+
+        document.getElementById('searchButton').addEventListener('click', () => {
+            currentPage = 1;
+            performSearch();
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentPage = 1;
+                performSearch();
+            }
+        });
+
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                performSearch();
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                performSearch();
+            }
+        });
+
+        function showLoading() {
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('searchResults').innerHTML = '';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        function updatePagination() {
+            const prevButton = document.getElementById('prevPage');
+            const nextButton = document.getElementById('nextPage');
+            
+            prevButton.disabled = currentPage <= 1;
+            nextButton.disabled = currentPage >= totalPages;
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                showToast('请输入搜索关键词');
+                return;
+            }
+
+            currentQuery = query;
+            showLoading();
+
+            try {
+                const response = await fetch(`/search?q=${encodeURIComponent(query)}&page=${currentPage}&page_size=10`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '搜索请求失败');
+                }
+
+                totalPages = Math.ceil(data.count / 10);
+                displayResults(data.results);
+                updatePagination();
+            } catch (error) {
+                showToast('搜索失败，请稍后重试');
+                console.error('搜索错误:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsContainer.innerHTML = '<div class="text-center">未找到相关镜像</div>';
+                return;
+            }
+
+            results.forEach(result => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                const stars = result.star_count ? `⭐ ${result.star_count}` : '';
+                const pulls = result.pull_count ? `⬇️ ${formatNumber(result.pull_count)}` : '';
+                const repoName = result.namespace ? `${result.namespace}/${result.name}` : result.name;
+                const isOfficial = result.is_official ? '<span class="badge badge-info ml-2">官方</span>' : '';
+
+                card.innerHTML = `
+                    <div class="result-title">
+                        <a href="https://hub.docker.com/${result.is_official ? '_' : 'r'}/${repoName}" target="_blank" style="color: inherit; text-decoration: none;">
+                            ${repoName}${isOfficial}
+                        </a>
+                    </div>
+                    <div class="result-description">${result.description || '暂无描述'}</div>
+                    <div class="result-meta">
+                        <span>${stars} ${pulls}</span>
+                        <span>${result.is_private ? '私有' : '公开'}</span>
+                    </div>
+                `;
+
+                resultsContainer.appendChild(card);
+            });
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+    </script>
+</body>
+</html> 
