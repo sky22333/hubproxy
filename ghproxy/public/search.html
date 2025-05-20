@@ -298,38 +298,80 @@
             width: 100%;
             margin-top: 20px;
             position: relative;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #39c5bc;
+            box-shadow: 0 2px 8px rgba(57, 197, 188, 0.1);
+        }
+
+        .tag-search-container::before {
+            content: '🔍 标签搜索';
+            display: block;
+            margin-bottom: 10px;
+            color: #39c5bc;
+            font-weight: bold;
+            font-size: 0.9rem;
         }
 
         .tag-search-input {
             width: 100%;
-            padding: 10px 15px;
+            padding: 12px 40px 12px 15px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
             background-color: var(--inputcolor);
             color: var(--inputcolor-font);
-            font-size: 0.9rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
 
         .tag-search-input:focus {
             outline: none;
             border-color: #39c5bc;
+            box-shadow: 0 0 0 3px rgba(57, 197, 188, 0.2);
+        }
+
+        .tag-search-input::placeholder {
+            color: #888;
+            font-style: italic;
         }
 
         .tag-search-clear {
             position: absolute;
-            right: 10px;
+            right: 25px;
             top: 50%;
-            transform: translateY(-50%);
+            transform: translateY(-5%);
             background: none;
             border: none;
             color: var(--fontcolor);
             cursor: pointer;
-            padding: 5px;
+            padding: 8px;
             opacity: 0.6;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .tag-search-clear:hover {
             opacity: 1;
+            background-color: rgba(57, 197, 188, 0.1);
+            transform: translateY(-5%) scale(1.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tag-search-container {
+                border-color: #39c5bc;
+                box-shadow: 0 2px 8px rgba(57, 197, 188, 0.2);
+            }
+            
+            .tag-search-input::placeholder {
+                color: #666;
+            }
         }
 
         .tag-title {
@@ -887,11 +929,11 @@
                             docker pull ${fullRepoName}
                             <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}')">复制</button>
                         </div>
-                        <div class="tag-search-container">
-                            <input type="text" class="tag-search-input" placeholder="搜索标签..." oninput="filterTags(this.value)">
-                            <button class="tag-search-clear" onclick="clearTagSearch()">✕</button>
-                        </div>
                     </div>
+                </div>
+                <div class="tag-search-container">
+                    <input type="text" class="tag-search-input" placeholder="输入关键词搜索标签，支持模糊匹配..." oninput="filterTags(this.value)">
+                    <button class="tag-search-clear" onclick="clearTagSearch()">×</button>
                 </div>
                 <div id="tagsContainer"></div>
             `;
