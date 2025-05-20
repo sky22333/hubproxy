@@ -105,15 +105,6 @@ ghcr.{$DOMAIN} {
 ---
 ---
 
-### 预览
-
-![预览](./.github/workflows/ghp.jpg)
-
-![预览](./.github/workflows/docker.jpg)
-
-
----
-
 #### 鸣谢：
 
 ghproxy基于go语言的Gin框架，镜像加速基于`registry`镜像实现
