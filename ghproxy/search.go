@@ -232,23 +232,20 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	}
 	
 	// 构建搜索URL
-	baseURL := "https://registry.hub.docker.com/v2/repositories/"
+	baseURL := "https://registry.hub.docker.com/v2"
 	var fullURL string
 	var params url.Values
 	
 	if isUserRepo && namespace != "" {
-		// 如果是用户/仓库格式，直接搜索用户的仓库
-		fullURL = fmt.Sprintf("%s%s/", baseURL, namespace)
+		// 如果是用户/仓库格式，使用repositories接口
+		fullURL = fmt.Sprintf("%s/repositories/%s/", baseURL, namespace)
 		params = url.Values{
 			"page":      {fmt.Sprintf("%d", page)},
 			"page_size": {fmt.Sprintf("%d", pageSize)},
 		}
-		if repoName != "" {
-			params.Set("name", repoName)
-		}
 	} else {
 		// 普通搜索
-		fullURL = baseURL + "search/"
+		fullURL = baseURL + "/search/repositories/"
 		params = url.Values{
 			"query":     {query},
 			"page":      {fmt.Sprintf("%d", page)},
@@ -310,6 +307,10 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			case http.StatusTooManyRequests:
 				lastErr = fmt.Errorf("请求过于频繁，请稍后重试")
 			case http.StatusNotFound:
+				if isUserRepo && namespace != "" {
+					// 如果用户仓库搜索失败，尝试普通搜索
+					return searchDockerHub(ctx, repoName, page, pageSize)
+				}
 				lastErr = fmt.Errorf("未找到相关镜像")
 			case http.StatusBadGateway, http.StatusServiceUnavailable:
 				lastErr = fmt.Errorf("Docker Hub服务暂时不可用，请稍后重试")
@@ -349,10 +350,20 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			for _, repo := range userRepos.Results {
 				// 如果指定了仓库名，只保留匹配的结果
 				if repoName == "" || strings.Contains(strings.ToLower(repo.Name), strings.ToLower(repoName)) {
+					// 确保设置正确的命名空间和名称
 					repo.Namespace = namespace
+					if !strings.Contains(repo.Name, "/") {
+						repo.Name = fmt.Sprintf("%s/%s", namespace, repo.Name)
+					}
 					result.Results = append(result.Results, repo)
 				}
 			}
+			
+			// 如果没有找到结果，尝试普通搜索
+			if len(result.Results) == 0 {
+				return searchDockerHub(ctx, repoName, page, pageSize)
+			}
+			
 			result.Count = len(result.Results)
 		} else {
 			// 解析普通搜索响应
@@ -376,8 +387,21 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 						result.Results[i].Name = parts[1]
 					} else if result.Results[i].RepoOwner != "" {
 						result.Results[i].Namespace = result.Results[i].RepoOwner
+						result.Results[i].Name = fmt.Sprintf("%s/%s", result.Results[i].RepoOwner, result.Results[i].Name)
 					}
 				}
+			}
+			
+			// 如果是用户/仓库搜索，过滤结果
+			if isUserRepo && namespace != "" {
+				filteredResults := make([]Repository, 0)
+				for _, repo := range result.Results {
+					if strings.EqualFold(repo.Namespace, namespace) {
+						filteredResults = append(filteredResults, repo)
+					}
+				}
+				result.Results = filteredResults
+				result.Count = len(filteredResults)
 			}
 		}
 		
