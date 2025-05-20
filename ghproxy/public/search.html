@@ -352,6 +352,45 @@
         .back-to-search:hover {
             text-decoration: underline;
         }
+
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 15px;
+            color: var(--fontcolor);
+            opacity: 0.8;
+        }
+
+        .badge-automated {
+            background-color: #28a745;
+            color: white;
+            margin-left: 5px;
+        }
+
+        .tag-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            color: var(--fontcolor);
+            opacity: 0.8;
+        }
+
+        .vulnerability-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .arch-item {
+            background-color: var(--inputcolor);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: help;
+        }
     </style>
 </head>
 <body>
@@ -526,11 +565,7 @@
                 return;
             }
 
-            console.log('搜索结果:', results);
-
             results.forEach(result => {
-                console.log('处理结果:', result);
-                
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
@@ -540,23 +575,25 @@
                 const starCount = result.star_count || 0;
                 const pullCount = result.pull_count || 0;
                 const lastUpdated = result.last_updated || new Date();
-                
-                const stars = starCount ? `⭐ ${formatNumber(starCount)}` : '';
-                const pulls = pullCount ? `⬇️ ${formatNumber(pullCount)}` : '';
                 const repoName = namespace ? `${namespace}/${name}` : name;
                 const officialBadge = result.is_official ? '<span class="badge badge-official">官方</span>' : '';
                 const orgBadge = result.organization ? `<span class="badge badge-organization">By ${result.organization}</span>` : '';
+                const automatedBadge = result.is_automated ? '<span class="badge badge-automated">自动构建</span>' : '';
 
                 card.innerHTML = `
                     <div class="result-title">
                         ${repoName}
                         ${officialBadge}
                         ${orgBadge}
+                        ${automatedBadge}
                     </div>
                     <div class="result-description">${description}</div>
                     <div class="result-meta">
-                        <span>${stars} ${pulls}</span>
-                        <span>更新于 ${formatTimeAgo(lastUpdated)}</span>
+                        <span>
+                            ${starCount > 0 ? `<span class="meta-item">⭐ ${formatNumber(starCount)}</span>` : ''}
+                            ${pullCount > 0 ? `<span class="meta-item">⬇️ ${formatNumber(pullCount)}</span>` : ''}
+                        </span>
+                        <span class="meta-item">更新于 ${formatTimeAgo(lastUpdated)}</span>
                     </div>
                 `;
 
@@ -599,8 +636,15 @@
                         <div class="tag-title">
                             ${repoName}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
+                            ${currentRepo.organization ? `<span class="badge badge-organization">By ${currentRepo.organization}</span>` : ''}
+                            ${currentRepo.is_automated ? '<span class="badge badge-automated">自动构建</span>' : ''}
                         </div>
                         <div class="tag-description">${currentRepo.description || '暂无描述'}</div>
+                        <div class="tag-meta">
+                            ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatNumber(currentRepo.star_count)}</span>` : ''}
+                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatNumber(currentRepo.pull_count)}</span>` : ''}
+                            <span class="meta-item">更新于 ${formatTimeAgo(currentRepo.last_updated)}</span>
+                        </div>
                         <div class="tag-pull-command">
                             docker pull ${repoName}
                             <button class="copy-button" onclick="copyToClipboard('docker pull ${repoName}')">复制</button>
@@ -610,32 +654,33 @@
             `;
 
             let tagsHtml = tags.map(tag => {
-                const vulnIndicators = Object.entries(tag.vulnerabilities)
+                const vulnIndicators = Object.entries(tag.vulnerabilities || {})
                     .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
                     .join('');
+
+                const images = tag.images || [];
+                const architectures = images.map(img => {
+                    const arch = `${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}`;
+                    const size = formatSize(img.size);
+                    return `<div class="arch-item" title="大小: ${size}">${arch}</div>`;
+                }).join('');
 
                 return `
                     <div class="tag-item">
                         <div class="tag-name">
                             ${tag.name}
-                            <div class="vulnerability-indicator">${vulnIndicators}</div>
+                            ${vulnIndicators ? `<div class="vulnerability-indicator">${vulnIndicators}</div>` : ''}
                         </div>
                         <div class="tag-meta">
-                            最后更新: ${formatTimeAgo(tag.last_updated)}
-                            由 ${tag.last_pusher} 推送
+                            <span>最后更新: ${formatTimeAgo(tag.last_updated)}</span>
+                            ${tag.last_pusher ? `<span>由 ${tag.last_pusher} 推送</span>` : ''}
+                            ${tag.full_size ? `<span>大小: ${formatSize(tag.full_size)}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
                             docker pull ${repoName}:${tag.name}
                             <button class="copy-button" onclick="copyToClipboard('docker pull ${repoName}:${tag.name}')">复制</button>
                         </div>
-                        <div class="tag-architectures">
-                            ${tag.images.map(img => `
-                                <div class="arch-item">
-                                    ${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}
-                                    (${formatSize(img.size)})
-                                </div>
-                            `).join('')}
-                        </div>
+                        ${architectures ? `<div class="tag-architectures">${architectures}</div>` : ''}
                     </div>
                 `;
             }).join('');

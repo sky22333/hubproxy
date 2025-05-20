@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +28,7 @@ type Repository struct {
 	Namespace      string    `json:"namespace"`
 	Description    string    `json:"description"`
 	IsOfficial     bool      `json:"is_official"`
+	IsAutomated    bool      `json:"is_automated"`
 	StarCount      int       `json:"star_count"`
 	PullCount      int       `json:"pull_count"`
 	LastUpdated    time.Time `json:"last_updated"`
@@ -95,96 +96,110 @@ func setCacheResult(key string, data interface{}) {
 	}
 }
 
-// searchWithSkopeo 使用skopeo搜索镜像
-func searchWithSkopeo(ctx context.Context, query string) (*SearchResult, error) {
-	// 执行skopeo search命令
-	cmd := exec.CommandContext(ctx, "skopeo", "list-tags", fmt.Sprintf("docker://docker.io/%s", query))
-	output, err := cmd.CombinedOutput()
+// searchDockerHub 搜索镜像
+func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*SearchResult, error) {
+	cacheKey := fmt.Sprintf("search:%s:%d:%d", query, page, pageSize)
+	if cached, ok := getCachedResult(cacheKey); ok {
+		return cached.(*SearchResult), nil
+	}
+
+	// 构建Docker Hub API请求
+	baseURL := "https://hub.docker.com/v2/search/repositories/"
+	params := url.Values{}
+	params.Set("query", query)
+	params.Set("page", fmt.Sprintf("%d", page))
+	params.Set("page_size", fmt.Sprintf("%d", pageSize))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"?"+params.Encode(), nil)
 	if err != nil {
-		// 如果是因为找不到镜像，尝试搜索
-		cmd = exec.CommandContext(ctx, "skopeo", "search", fmt.Sprintf("docker://%s", query))
-		output, err = cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("搜索失败: %v, 输出: %s", err, string(output))
-		}
+		return nil, fmt.Errorf("创建请求失败: %v", err)
 	}
 
-	// 解析输出
+	// 添加必要的请求头
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
+	// 发送请求
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("发送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
+	}
+
+	// 解析响应
 	var result SearchResult
-	result.Results = make([]Repository, 0)
-
-	// 按行解析输出
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		// 解析仓库信息
-		parts := strings.Fields(line)
-		if len(parts) < 1 {
-			continue
-		}
-
-		fullName := parts[0]
-		nameParts := strings.Split(fullName, "/")
-		
-		repo := Repository{}
-		
-		if len(nameParts) == 1 {
-			repo.Name = nameParts[0]
-			repo.Namespace = "library"
-			repo.IsOfficial = true
-		} else {
-			repo.Name = nameParts[len(nameParts)-1]
-			repo.Namespace = strings.Join(nameParts[:len(nameParts)-1], "/")
-		}
-
-		if len(parts) > 1 {
-			repo.Description = strings.Join(parts[1:], " ")
-		}
-
-		result.Results = append(result.Results, repo)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %v", err)
 	}
 
-	result.Count = len(result.Results)
+	// 缓存结果
+	setCacheResult(cacheKey, &result)
 	return &result, nil
 }
 
-// getTagsWithSkopeo 使用skopeo获取标签信息
-func getTagsWithSkopeo(ctx context.Context, namespace, name string) ([]TagInfo, error) {
-	repoName := name
-	if namespace != "library" {
-		repoName = namespace + "/" + name
+// getRepositoryTags 获取仓库标签信息
+func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, error) {
+	cacheKey := fmt.Sprintf("tags:%s:%s", namespace, name)
+	if cached, ok := getCachedResult(cacheKey); ok {
+		return cached.([]TagInfo), nil
 	}
 
-	// 执行skopeo list-tags命令
-	cmd := exec.CommandContext(ctx, "skopeo", "list-tags", fmt.Sprintf("docker://docker.io/%s", repoName))
-	output, err := cmd.CombinedOutput()
+	// 构建API URL
+	var baseURL string
+	if namespace == "library" {
+		baseURL = fmt.Sprintf("https://hub.docker.com/v2/repositories/library/%s/tags", name)
+	} else {
+		baseURL = fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags", namespace, name)
+	}
+
+	params := url.Values{}
+	params.Set("page_size", "100")
+	params.Set("ordering", "last_updated")
+
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"?"+params.Encode(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("获取标签失败: %v, 输出: %s", err, string(output))
+		return nil, fmt.Errorf("创建请求失败: %v", err)
 	}
 
-	var tags []TagInfo
-	if err := json.Unmarshal(output, &tags); err != nil {
-		// 如果解析JSON失败，尝试按行解析
-		lines := strings.Split(string(output), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-			
-			tag := TagInfo{
-				Name: line,
-				LastUpdated: time.Now(),
-			}
-			tags = append(tags, tag)
-		}
+	// 添加必要的请求头
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+
+	// 发送请求
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("发送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
 	}
 
-	return tags, nil
+	// 解析响应
+	var result struct {
+		Count    int       `json:"count"`
+		Next     string    `json:"next"`
+		Previous string    `json:"previous"`
+		Results  []TagInfo `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %v", err)
+	}
+
+	// 缓存结果
+	setCacheResult(cacheKey, result.Results)
+	return result.Results, nil
 }
 
 // RegisterSearchRoute 注册搜索相关路由
@@ -197,7 +212,23 @@ func RegisterSearchRoute(r *gin.Engine) {
 			return
 		}
 
-		result, err := searchWithSkopeo(c.Request.Context(), query)
+		page := 1
+		pageSize := 25
+		if p := c.Query("page"); p != "" {
+			fmt.Sscanf(p, "%d", &page)
+		}
+		if ps := c.Query("page_size"); ps != "" {
+			fmt.Sscanf(ps, "%d", &pageSize)
+		}
+
+		// 如果是搜索官方镜像
+		if strings.HasPrefix(query, "library/") || !strings.Contains(query, "/") {
+			if !strings.HasPrefix(query, "library/") {
+				query = "library/" + query
+			}
+		}
+
+		result, err := searchDockerHub(c.Request.Context(), query, page, pageSize)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -210,10 +241,8 @@ func RegisterSearchRoute(r *gin.Engine) {
 	r.GET("/tags/:namespace/:name", func(c *gin.Context) {
 		namespace := c.Param("namespace")
 		name := c.Param("name")
-		
-		fmt.Printf("获取标签请求: namespace=%s, name=%s\n", namespace, name)
-		
-		tags, err := getTagsWithSkopeo(c.Request.Context(), namespace, name)
+
+		tags, err := getRepositoryTags(c.Request.Context(), namespace, name)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
