@@ -104,13 +104,16 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	}
 
 	// 构建Docker Hub API请求
-	baseURL := "https://hub.docker.com/v2/search/repositories/"
+	baseURL := "https://registry.hub.docker.com/v2/search/repositories/"
 	params := url.Values{}
 	params.Set("query", query)
 	params.Set("page", fmt.Sprintf("%d", page))
 	params.Set("page_size", fmt.Sprintf("%d", pageSize))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"?"+params.Encode(), nil)
+	fullURL := baseURL + "?" + params.Encode()
+	fmt.Printf("搜索URL: %s\n", fullURL)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %v", err)
 	}
@@ -127,19 +130,33 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	}
 	defer resp.Body.Close()
 
+	// 读取响应体
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应失败: %v", err)
+	}
+
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
 	}
 
+	// 打印响应内容以便调试
+	fmt.Printf("搜索响应: %s\n", string(body))
+
 	// 解析响应
 	var result SearchResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %v", err)
 	}
 
-	// 缓存结果
+	// 打印解析后的结果
+	fmt.Printf("搜索结果: 总数=%d, 结果数=%d\n", result.Count, len(result.Results))
+	for i, repo := range result.Results {
+		fmt.Printf("仓库[%d]: 名称=%s, 命名空间=%s, 描述=%s, 是否官方=%v\n",
+			i, repo.Name, repo.Namespace, repo.Description, repo.IsOfficial)
+	}
+
 	setCacheResult(cacheKey, &result)
 	return &result, nil
 }
@@ -154,16 +171,19 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 	// 构建API URL
 	var baseURL string
 	if namespace == "library" {
-		baseURL = fmt.Sprintf("https://hub.docker.com/v2/repositories/library/%s/tags", name)
+		baseURL = fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/library/%s/tags", name)
 	} else {
-		baseURL = fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/%s/tags", namespace, name)
+		baseURL = fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/%s/%s/tags", namespace, name)
 	}
 
 	params := url.Values{}
 	params.Set("page_size", "100")
 	params.Set("ordering", "last_updated")
 
-	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"?"+params.Encode(), nil)
+	fullURL := baseURL + "?" + params.Encode()
+	fmt.Printf("获取标签URL: %s\n", fullURL)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %v", err)
 	}
@@ -180,11 +200,19 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 	}
 	defer resp.Body.Close()
 
+	// 读取响应体
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应失败: %v", err)
+	}
+
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
 	}
+
+	// 打印响应内容以便调试
+	fmt.Printf("标签响应: %s\n", string(body))
 
 	// 解析响应
 	var result struct {
@@ -193,11 +221,17 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 		Previous string    `json:"previous"`
 		Results  []TagInfo `json:"results"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %v", err)
 	}
 
-	// 缓存结果
+	// 打印解析后的结果
+	fmt.Printf("标签结果: 总数=%d, 结果数=%d\n", result.Count, len(result.Results))
+	for i, tag := range result.Results {
+		fmt.Printf("标签[%d]: 名称=%s, 大小=%d, 更新时间=%v\n",
+			i, tag.Name, tag.FullSize, tag.LastUpdated)
+	}
+
 	setCacheResult(cacheKey, result.Results)
 	return result.Results, nil
 }
@@ -222,14 +256,15 @@ func RegisterSearchRoute(r *gin.Engine) {
 		}
 
 		// 如果是搜索官方镜像
-		if strings.HasPrefix(query, "library/") || !strings.Contains(query, "/") {
-			if !strings.HasPrefix(query, "library/") {
-				query = "library/" + query
-			}
+		if !strings.Contains(query, "/") {
+			query = "library/" + query
 		}
+
+		fmt.Printf("搜索请求: query=%s, page=%d, pageSize=%d\n", query, page, pageSize)
 
 		result, err := searchDockerHub(c.Request.Context(), query, page, pageSize)
 		if err != nil {
+			fmt.Printf("搜索失败: %v\n", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -242,8 +277,16 @@ func RegisterSearchRoute(r *gin.Engine) {
 		namespace := c.Param("namespace")
 		name := c.Param("name")
 
+		fmt.Printf("获取标签请求: namespace=%s, name=%s\n", namespace, name)
+
+		if namespace == "" || name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "命名空间和名称不能为空"})
+			return
+		}
+
 		tags, err := getRepositoryTags(c.Request.Context(), namespace, name)
 		if err != nil {
+			fmt.Printf("获取标签失败: %v\n", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

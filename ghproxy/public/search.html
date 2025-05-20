@@ -514,6 +514,7 @@
             showLoading();
 
             try {
+                console.log('执行搜索:', query);
                 const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
@@ -521,10 +522,11 @@
                     throw new Error(data.error || '搜索请求失败');
                 }
 
+                console.log('搜索响应:', data);
                 displayResults(data.results);
             } catch (error) {
-                showToast('搜索失败，请稍后重试');
                 console.error('搜索错误:', error);
+                showToast(error.message || '搜索失败，请稍后重试');
             } finally {
                 hideLoading();
             }
@@ -565,10 +567,13 @@
                 return;
             }
 
+            console.log('显示搜索结果:', results);
+
             results.forEach(result => {
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
+                // 确保所有字段都有值
                 const name = result.name || '';
                 const namespace = result.namespace || '';
                 const description = result.description || '暂无描述';
@@ -579,6 +584,14 @@
                 const officialBadge = result.is_official ? '<span class="badge badge-official">官方</span>' : '';
                 const orgBadge = result.organization ? `<span class="badge badge-organization">By ${result.organization}</span>` : '';
                 const automatedBadge = result.is_automated ? '<span class="badge badge-automated">自动构建</span>' : '';
+
+                console.log('处理仓库:', {
+                    name,
+                    namespace,
+                    repoName,
+                    isOfficial: result.is_official,
+                    organization: result.organization
+                });
 
                 card.innerHTML = `
                     <div class="result-title">
@@ -598,8 +611,9 @@
                 `;
 
                 card.addEventListener('click', () => {
+                    console.log('点击仓库:', name, namespace);
                     currentRepo = result;
-                    loadTags(result.namespace || 'library', result.name);
+                    loadTags(namespace || 'library', name);
                 });
 
                 resultsContainer.appendChild(card);
@@ -609,18 +623,25 @@
         async function loadTags(namespace, name) {
             showLoading();
             try {
-                const response = await fetch(`/tags/${namespace}/${name}`);
-                const tags = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(tags.error || '获取标签信息失败');
+                console.log('加载标签:', namespace, name);
+                if (!name) {
+                    showToast('镜像名称不能为空');
+                    return;
                 }
 
-                displayTags(tags);
+                const response = await fetch(`/tags/${namespace}/${name}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '获取标签信息失败');
+                }
+
+                console.log('标签数据:', data);
+                displayTags(data);
                 showTagList();
             } catch (error) {
-                showToast('获取标签信息失败，请稍后重试');
-                console.error('获取标签错误:', error);
+                console.error('加载标签错误:', error);
+                showToast(error.message || '获取标签信息失败，请稍后重试');
             } finally {
                 hideLoading();
             }
