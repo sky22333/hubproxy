@@ -603,8 +603,17 @@
             showLoading();
 
             try {
-                console.log('执行搜索:', query);
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}&page=${currentPage}&page_size=25`);
+                // 处理搜索查询
+                let searchQuery = query;
+                let targetRepo = '';
+                if (query.includes('/')) {
+                    const [namespace, repo] = query.split('/');
+                    searchQuery = namespace; // 只使用斜杠前面的用户空间
+                    targetRepo = repo.toLowerCase(); // 保存目标仓库名用于排序
+                }
+
+                console.log('执行搜索:', searchQuery);
+                const response = await fetch(`/search?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=25`);
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -617,7 +626,8 @@
                 totalPages = Math.ceil(data.count / 25);
                 updatePagination();
                 
-                displayResults(data.results);
+                // 传入目标仓库名进行排序
+                displayResults(data.results, targetRepo);
             } catch (error) {
                 console.error('搜索错误:', error);
                 showToast(error.message || '搜索失败，请稍后重试');
@@ -693,7 +703,7 @@
             }
         }
 
-        function displayResults(results) {
+        function displayResults(results, targetRepo = '') {
             const resultsContainer = document.getElementById('searchResults');
             resultsContainer.innerHTML = '';
 
@@ -702,11 +712,25 @@
                 return;
             }
 
-            // 对结果进行排序：官方镜像优先，然后按照拉取次数排序
+            // 对结果进行排序
             results.sort((a, b) => {
+                // 如果有目标仓库名，将匹配的排在最前面
+                if (targetRepo) {
+                    const aName = (a.name || a.repo_name || '').toLowerCase();
+                    const bName = (b.name || b.repo_name || '').toLowerCase();
+                    const aMatch = aName === targetRepo || aName.endsWith('/' + targetRepo);
+                    const bMatch = bName === targetRepo || bName.endsWith('/' + targetRepo);
+                    
+                    if (aMatch && !bMatch) return -1;
+                    if (!aMatch && bMatch) return 1;
+                }
+                
+                // 其次按照官方镜像排序
                 if (a.is_official !== b.is_official) {
                     return b.is_official - a.is_official;
                 }
+                
+                // 最后按照拉取次数排序
                 return b.pull_count - a.pull_count;
             });
 
