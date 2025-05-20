@@ -17,6 +17,7 @@
             --inputcolor: #f5f5f5;
             --inputcolor-font: #333;
             --card-bg: #f8f9fa;
+            --border-color: #dee2e6;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -26,6 +27,7 @@
                 --inputcolor: #012333;
                 --inputcolor-font: #969696d8;
                 --card-bg: #012333;
+                --border-color: #2d3338;
             }
         }
 
@@ -91,6 +93,8 @@
             padding: 20px;
             margin-bottom: 20px;
             transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
         }
 
         .result-card:hover {
@@ -103,11 +107,15 @@
             font-weight: bold;
             margin-bottom: 10px;
             color: #39c5bc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .result-description {
             color: var(--fontcolor);
             margin-bottom: 15px;
+            font-size: 0.9rem;
         }
 
         .result-meta {
@@ -202,6 +210,148 @@
             transform: scale(1.05);
             background-color: #2ea8a0;
         }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+
+        .badge-official {
+            background-color: #39c5bc;
+            color: white;
+        }
+
+        .badge-organization {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .tag-list {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .tag-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tag-info {
+            flex: 1;
+        }
+
+        .tag-title {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tag-description {
+            color: var(--fontcolor);
+            opacity: 0.8;
+        }
+
+        .tag-pull-command {
+            background-color: var(--inputcolor);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .copy-button {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: #39c5bc;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .tag-item {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .tag-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #39c5bc;
+        }
+
+        .tag-meta {
+            font-size: 0.9rem;
+            color: var(--fontcolor);
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .tag-architectures {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .arch-item {
+            background-color: var(--inputcolor);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+
+        .vulnerability-indicator {
+            display: inline-flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .vulnerability-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .vulnerability-critical { background-color: #dc3545; }
+        .vulnerability-high { background-color: #fd7e14; }
+        .vulnerability-medium { background-color: #ffc107; }
+        .vulnerability-low { background-color: #28a745; }
+        .vulnerability-unknown { background-color: #6c757d; }
+
+        .search-results {
+            transition: all 0.3s ease;
+        }
+
+        .back-to-search {
+            margin-bottom: 20px;
+            color: #39c5bc;
+            cursor: pointer;
+            display: none;
+        }
+
+        .back-to-search:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -220,15 +370,21 @@
 
         <div class="loading">
             <div class="loading-spinner"></div>
-            <p>正在搜索...</p>
+            <p>正在加载...</p>
         </div>
 
-        <div id="searchResults"></div>
-        
-        <div class="pagination">
-            <button id="prevPage" disabled>上一页</button>
-            <button id="nextPage" disabled>下一页</button>
+        <div class="back-to-search">← 返回搜索结果</div>
+
+        <div class="search-results">
+            <div id="searchResults"></div>
+            
+            <div class="pagination">
+                <button id="prevPage" disabled>上一页</button>
+                <button id="nextPage" disabled>下一页</button>
+            </div>
         </div>
+
+        <div class="tag-list" id="tagList"></div>
     </div>
 
     <div id="toast"></div>
@@ -237,6 +393,7 @@
         let currentPage = 1;
         let totalPages = 1;
         let currentQuery = '';
+        let currentRepo = null;
 
         document.getElementById('searchButton').addEventListener('click', () => {
             currentPage = 1;
@@ -264,9 +421,12 @@
             }
         });
 
+        document.querySelector('.back-to-search').addEventListener('click', () => {
+            showSearchResults();
+        });
+
         function showLoading() {
             document.querySelector('.loading').style.display = 'block';
-            document.getElementById('searchResults').innerHTML = '';
         }
 
         function hideLoading() {
@@ -290,6 +450,20 @@
             nextButton.disabled = currentPage >= totalPages;
         }
 
+        function showSearchResults() {
+            document.querySelector('.search-results').style.display = 'block';
+            document.querySelector('.tag-list').style.display = 'none';
+            document.querySelector('.back-to-search').style.display = 'none';
+            document.querySelector('.search-container').style.display = 'block';
+        }
+
+        function showTagList() {
+            document.querySelector('.search-results').style.display = 'none';
+            document.querySelector('.tag-list').style.display = 'block';
+            document.querySelector('.back-to-search').style.display = 'block';
+            document.querySelector('.search-container').style.display = 'none';
+        }
+
         async function performSearch() {
             const query = document.getElementById('searchInput').value.trim();
             if (!query) {
@@ -301,14 +475,14 @@
             showLoading();
 
             try {
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}&page=${currentPage}&page_size=10`);
+                const response = await fetch(`/search?q=${encodeURIComponent(query)}&page=${currentPage}&page_size=25`);
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.error || '搜索请求失败');
                 }
 
-                totalPages = Math.ceil(data.count / 10);
+                totalPages = Math.ceil(data.count / 25);
                 displayResults(data.results);
                 updatePagination();
             } catch (error) {
@@ -317,6 +491,32 @@
             } finally {
                 hideLoading();
             }
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000000) {
+                return (num / 1000000000).toFixed(1) + 'B+';
+            }
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M+';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K+';
+            }
+            return num.toString();
+        }
+
+        function formatTimeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 1) return '昨天';
+            if (diffDays < 7) return `${diffDays}天前`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+            if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`;
+            return `${Math.floor(diffDays / 365)}年前`;
         }
 
         function displayResults(results) {
@@ -332,45 +532,136 @@
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
-                const stars = result.star_count ? `⭐ ${result.star_count}` : '';
+                const stars = result.star_count ? `⭐ ${formatNumber(result.star_count)}` : '';
                 const pulls = result.pull_count ? `⬇️ ${formatNumber(result.pull_count)}` : '';
                 const repoName = result.namespace ? `${result.namespace}/${result.name}` : result.name;
-                const isOfficial = result.is_official ? '<span class="badge badge-info ml-2">官方</span>' : '';
+                const officialBadge = result.is_official ? '<span class="badge badge-official">官方</span>' : '';
+                const orgBadge = result.organization ? `<span class="badge badge-organization">By ${result.organization}</span>` : '';
 
                 card.innerHTML = `
                     <div class="result-title">
-                        <a href="https://hub.docker.com/${result.is_official ? '_' : 'r'}/${repoName}" target="_blank" style="color: inherit; text-decoration: none;">
-                            ${repoName}${isOfficial}
-                        </a>
+                        ${repoName}
+                        ${officialBadge}
+                        ${orgBadge}
                     </div>
                     <div class="result-description">${result.description || '暂无描述'}</div>
                     <div class="result-meta">
                         <span>${stars} ${pulls}</span>
-                        <span>${result.is_private ? '私有' : '公开'}</span>
+                        <span>更新于 ${formatTimeAgo(result.last_updated)}</span>
                     </div>
                 `;
+
+                card.addEventListener('click', () => {
+                    currentRepo = result;
+                    loadTags(result.namespace || 'library', result.name);
+                });
 
                 resultsContainer.appendChild(card);
             });
         }
 
-        function formatNumber(num) {
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M';
+        async function loadTags(namespace, name) {
+            showLoading();
+            try {
+                const response = await fetch(`/tags/${namespace}/${name}`);
+                const tags = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(tags.error || '获取标签信息失败');
+                }
+
+                displayTags(tags);
+                showTagList();
+            } catch (error) {
+                showToast('获取标签信息失败，请稍后重试');
+                console.error('获取标签错误:', error);
+            } finally {
+                hideLoading();
             }
-            if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K';
-            }
-            return num.toString();
         }
 
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('zh-CN', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+        function displayTags(tags) {
+            const tagList = document.getElementById('tagList');
+            const repoName = currentRepo.namespace ? `${currentRepo.namespace}/${currentRepo.name}` : currentRepo.name;
+            
+            let header = `
+                <div class="tag-header">
+                    <div class="tag-info">
+                        <div class="tag-title">
+                            ${repoName}
+                            ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
+                            ${currentRepo.organization ? `<span class="badge badge-organization">By ${currentRepo.organization}</span>` : ''}
+                        </div>
+                        <div class="tag-description">${currentRepo.description || '暂无描述'}</div>
+                        <div class="tag-pull-command">
+                            docker pull ${repoName}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${repoName}')">复制</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            let tagsHtml = tags.map(tag => {
+                const vulnIndicators = Object.entries(tag.vulnerabilities)
+                    .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
+                    .join('');
+
+                return `
+                    <div class="tag-item">
+                        <div class="tag-name">
+                            ${tag.name}
+                            <div class="vulnerability-indicator">${vulnIndicators}</div>
+                        </div>
+                        <div class="tag-meta">
+                            最后更新: ${formatTimeAgo(tag.last_updated)}
+                            由 ${tag.last_pusher} 推送
+                        </div>
+                        <div class="tag-pull-command">
+                            docker pull ${repoName}:${tag.name}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${repoName}:${tag.name}')">复制</button>
+                        </div>
+                        <div class="tag-architectures">
+                            ${tag.images.map(img => `
+                                <div class="arch-item">
+                                    ${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}
+                                    (${formatSize(img.size)})
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            tagList.innerHTML = header + tagsHtml;
+        }
+
+        function formatSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${size.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败');
             });
+        }
+
+        // 初始加载
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialQuery = urlParams.get('q');
+        if (initialQuery) {
+            document.getElementById('searchInput').value = initialQuery;
+            performSearch();
         }
     </script>
 </body>
