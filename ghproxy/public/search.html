@@ -647,13 +647,14 @@
                 card.className = 'result-card';
                 
                 // 构建显示名称
-                let displayName = result.name;
+                let displayName = '';
                 if (result.is_official) {
                     // 对于官方镜像，去掉 library/ 前缀
-                    displayName = result.name.replace('library/', '');
+                    displayName = (result.name || result.repo_name || '').replace('library/', '');
                 } else {
                     // 对于非官方镜像，显示完整路径
-                    displayName = `${result.namespace}/${result.name}`;
+                    const name = result.name || result.repo_name || '';
+                    displayName = result.namespace ? `${result.namespace}/${name}` : name;
                 }
 
                 const description = result.short_description || '暂无描述';
@@ -694,7 +695,8 @@
                 card.addEventListener('click', () => {
                     currentRepo = result;
                     const namespace = result.namespace || (result.is_official ? 'library' : '');
-                    const repoName = result.name.replace('library/', '');
+                    const name = result.name || result.repo_name || '';
+                    const repoName = name.replace('library/', '');
                     if (!namespace || !repoName) {
                         showToast('无效的仓库信息');
                         return;
