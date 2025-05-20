@@ -86,6 +86,9 @@ func main() {
 	router.GET("/skopeo.html", func(c *gin.Context) {
 		c.File("./public/skopeo.html")
 	})
+	router.GET("/search.html", func(c *gin.Context) {
+		c.File("./public/search.html")
+	})
 	
 	// 图标文件
 	router.GET("/favicon.ico", func(c *gin.Context) {
@@ -96,7 +99,7 @@ func main() {
 		c.File("./public/bj.svg")
 	})
 	// 注册dockerhub搜索路由
-	dockerhub.RegisterSearchRoute(router)
+	RegisterSearchRoute(router)
 	// 创建GitHub文件下载专用的限流器
 	githubLimiter := NewIPRateLimiter()
 	
