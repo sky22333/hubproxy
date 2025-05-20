@@ -219,63 +219,179 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 		return cached.(*SearchResult), nil
 	}
 	
-	// 重试逻辑
+	// 判断是否是用户/仓库格式的搜索
+	isUserRepo := strings.Contains(query, "/")
+	var namespace, repoName string
+	
+	if isUserRepo {
+		parts := strings.Split(query, "/")
+		if len(parts) == 2 {
+			namespace = parts[0]
+			repoName = parts[1]
+		}
+	}
+	
+	// 构建搜索URL
+	baseURL := "https://registry.hub.docker.com/v2/repositories/"
+	var fullURL string
+	var params url.Values
+	
+	if isUserRepo && namespace != "" {
+		// 如果是用户/仓库格式，直接搜索用户的仓库
+		fullURL = fmt.Sprintf("%s%s/", baseURL, namespace)
+		params = url.Values{
+			"page":      {fmt.Sprintf("%d", page)},
+			"page_size": {fmt.Sprintf("%d", pageSize)},
+		}
+		if repoName != "" {
+			params.Set("name", repoName)
+		}
+	} else {
+		// 普通搜索
+		fullURL = baseURL + "search/"
+		params = url.Values{
+			"query":     {query},
+			"page":      {fmt.Sprintf("%d", page)},
+			"page_size": {fmt.Sprintf("%d", pageSize)},
+		}
+	}
+	
+	fullURL = fullURL + "?" + params.Encode()
+	fmt.Printf("搜索URL: %s\n", fullURL)
+	
+	// 发送请求
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %v", err)
+	}
+	
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+	
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			IdleConnTimeout:     90 * time.Second,
+			DisableCompression:  true,
+			DisableKeepAlives:   false,
+			MaxIdleConnsPerHost: 10,
+		},
+	}
+	
 	var result *SearchResult
 	var lastErr error
 	
-	// 判断是否是用户/仓库格式的搜索
-	isUserRepo := strings.Contains(query, "/")
-	
+	// 重试逻辑
 	for retries := 3; retries > 0; retries-- {
-		if isUserRepo {
-			// 对于用户/仓库格式，尝试精确搜索和模糊搜索
-			parts := strings.Split(query, "/")
-			if len(parts) == 2 {
-				// 先尝试精确搜索
-				result, lastErr = trySearchDockerHub(ctx, query, page, pageSize)
-				if lastErr == nil && len(result.Results) == 0 {
-					// 如果精确搜索没有结果，尝试模糊搜索
-					result, lastErr = trySearchDockerHub(ctx, parts[1], page, pageSize)
-					if lastErr == nil {
-						// 过滤出属于指定用户的结果
-						filteredResults := make([]Repository, 0)
-						for _, repo := range result.Results {
-							if strings.EqualFold(repo.Namespace, parts[0]) || 
-							   strings.EqualFold(repo.RepoOwner, parts[0]) {
-								filteredResults = append(filteredResults, repo)
-							}
-						}
-						result.Results = filteredResults
-						result.Count = len(filteredResults)
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("发送请求失败: %v", err)
+			if !isRetryableError(err) {
+				break
+			}
+			time.Sleep(time.Second * time.Duration(4-retries))
+			continue
+		}
+		defer resp.Body.Close()
+		
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			lastErr = fmt.Errorf("读取响应失败: %v", err)
+			if !isRetryableError(err) {
+				break
+			}
+			time.Sleep(time.Second * time.Duration(4-retries))
+			continue
+		}
+		
+		if resp.StatusCode != http.StatusOK {
+			switch resp.StatusCode {
+			case http.StatusTooManyRequests:
+				lastErr = fmt.Errorf("请求过于频繁，请稍后重试")
+			case http.StatusNotFound:
+				lastErr = fmt.Errorf("未找到相关镜像")
+			case http.StatusBadGateway, http.StatusServiceUnavailable:
+				lastErr = fmt.Errorf("Docker Hub服务暂时不可用，请稍后重试")
+			default:
+				lastErr = fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
+			}
+			if !isRetryableError(lastErr) {
+				break
+			}
+			time.Sleep(time.Second * time.Duration(4-retries))
+			continue
+		}
+		
+		// 解析响应
+		if isUserRepo && namespace != "" {
+			// 解析用户仓库列表响应
+			var userRepos struct {
+				Count    int          `json:"count"`
+				Next     string       `json:"next"`
+				Previous string       `json:"previous"`
+				Results  []Repository `json:"results"`
+			}
+			if err := json.Unmarshal(body, &userRepos); err != nil {
+				lastErr = fmt.Errorf("解析响应失败: %v", err)
+				break
+			}
+			
+			// 转换为SearchResult格式
+			result = &SearchResult{
+				Count:    userRepos.Count,
+				Next:     userRepos.Next,
+				Previous: userRepos.Previous,
+				Results:  make([]Repository, 0),
+			}
+			
+			// 处理结果
+			for _, repo := range userRepos.Results {
+				// 如果指定了仓库名，只保留匹配的结果
+				if repoName == "" || strings.Contains(strings.ToLower(repo.Name), strings.ToLower(repoName)) {
+					repo.Namespace = namespace
+					result.Results = append(result.Results, repo)
+				}
+			}
+			result.Count = len(result.Results)
+		} else {
+			// 解析普通搜索响应
+			result = &SearchResult{}
+			if err := json.Unmarshal(body, &result); err != nil {
+				lastErr = fmt.Errorf("解析响应失败: %v", err)
+				break
+			}
+			
+			// 处理搜索结果
+			for i := range result.Results {
+				if result.Results[i].IsOfficial {
+					if !strings.Contains(result.Results[i].Name, "/") {
+						result.Results[i].Name = "library/" + result.Results[i].Name
+					}
+					result.Results[i].Namespace = "library"
+				} else {
+					parts := strings.Split(result.Results[i].Name, "/")
+					if len(parts) > 1 {
+						result.Results[i].Namespace = parts[0]
+						result.Results[i].Name = parts[1]
+					} else if result.Results[i].RepoOwner != "" {
+						result.Results[i].Namespace = result.Results[i].RepoOwner
 					}
 				}
 			}
-		} else {
-			result, lastErr = trySearchDockerHub(ctx, query, page, pageSize)
 		}
 		
-		if lastErr == nil {
-			break
-		}
-		
-		if !isRetryableError(lastErr) {
-			return nil, fmt.Errorf("搜索失败: %v", lastErr)
-		}
-		
-		time.Sleep(time.Second * time.Duration(4-retries))
+		// 成功获取结果，跳出重试循环
+		lastErr = nil
+		break
 	}
 	
 	if lastErr != nil {
-		return nil, fmt.Errorf("搜索失败，已重试3次: %v", lastErr)
+		return nil, fmt.Errorf("搜索失败: %v", lastErr)
 	}
-	
-	// 过滤和处理搜索结果
-	result.Results = filterSearchResults(result.Results, query)
-	result.Count = len(result.Results)
 	
 	// 缓存结果
 	searchCache.Set(cacheKey, result)
-	
 	return result, nil
 }
 
@@ -294,94 +410,6 @@ func isRetryableError(err error) bool {
 	}
 	
 	return false
-}
-
-// trySearchDockerHub 执行实际的Docker Hub API请求
-func trySearchDockerHub(ctx context.Context, query string, page, pageSize int) (*SearchResult, error) {
-	// 构建Docker Hub API请求
-	baseURL := "https://registry.hub.docker.com/v2/search/repositories/"
-	params := url.Values{}
-	params.Set("query", query)
-	params.Set("page", fmt.Sprintf("%d", page))
-	params.Set("page_size", fmt.Sprintf("%d", pageSize))
-
-	fullURL := baseURL + "?" + params.Encode()
-	fmt.Printf("搜索URL: %s\n", fullURL)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %v", err)
-	}
-
-	// 添加必要的请求头
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-
-	// 发送请求
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			IdleConnTimeout:     90 * time.Second,
-			DisableCompression:  true,
-			DisableKeepAlives:   false,
-			MaxIdleConnsPerHost: 10,
-		},
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("发送请求失败: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// 读取响应体
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %v", err)
-	}
-
-	// 检查响应状态码
-	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusTooManyRequests:
-			return nil, fmt.Errorf("请求过于频繁，请稍后重试")
-		case http.StatusNotFound:
-			return nil, fmt.Errorf("未找到相关镜像")
-		case http.StatusBadGateway, http.StatusServiceUnavailable:
-			return nil, fmt.Errorf("Docker Hub服务暂时不可用，请稍后重试")
-		default:
-			return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
-		}
-	}
-
-	// 解析响应
-	var result SearchResult
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %v", err)
-	}
-
-	// 处理搜索结果
-	for i := range result.Results {
-		if result.Results[i].IsOfficial {
-			// 确保官方镜像有正确的名称格式
-			if !strings.Contains(result.Results[i].Name, "/") {
-				result.Results[i].Name = "library/" + result.Results[i].Name
-			}
-			result.Results[i].Namespace = "library"
-		} else {
-			// 从 repo_name 中提取 namespace
-			parts := strings.Split(result.Results[i].Name, "/")
-			if len(parts) > 1 {
-				result.Results[i].Namespace = parts[0]
-				result.Results[i].Name = parts[1]
-			} else if result.Results[i].RepoOwner != "" {
-				result.Results[i].Namespace = result.Results[i].RepoOwner
-			}
-		}
-	}
-
-	return &result, nil
 }
 
 // getRepositoryTags 获取仓库标签信息
