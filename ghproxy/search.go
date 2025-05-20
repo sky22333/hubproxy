@@ -35,6 +35,7 @@ type Repository struct {
 	Status         int       `json:"status"`
 	Organization   string    `json:"affiliation"`
 	PullsLastWeek  int       `json:"pulls_last_week"`
+	Namespace      string    `json:"namespace"`
 }
 
 // TagInfo 标签信息
@@ -158,25 +159,40 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			i, repo.Name, repo.RepoOwner, repo.Description, repo.IsOfficial)
 	}
 
+	// 处理搜索结果
+	for i := range result.Results {
+		// 从 repo_name 中提取 namespace
+		if !result.Results[i].IsOfficial {
+			parts := strings.Split(result.Results[i].Name, "/")
+			if len(parts) > 1 {
+				result.Results[i].Namespace = parts[0]
+				result.Results[i].Name = parts[1]
+			} else {
+				result.Results[i].Namespace = result.Results[i].RepoOwner
+			}
+		} else {
+			result.Results[i].Name = strings.TrimPrefix(result.Results[i].Name, "library/")
+			result.Results[i].Namespace = "library"
+		}
+	}
+
 	setCacheResult(cacheKey, &result)
 	return &result, nil
 }
 
 // getRepositoryTags 获取仓库标签信息
 func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, error) {
+	if namespace == "" || name == "" {
+		return nil, fmt.Errorf("无效输入：命名空间和名称不能为空")
+	}
+
 	cacheKey := fmt.Sprintf("tags:%s:%s", namespace, name)
 	if cached, ok := getCachedResult(cacheKey); ok {
 		return cached.([]TagInfo), nil
 	}
 
 	// 构建API URL
-	var baseURL string
-	if namespace == "library" {
-		baseURL = fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/library/%s/tags", name)
-	} else {
-		baseURL = fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/%s/%s/tags", namespace, name)
-	}
-
+	baseURL := fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/%s/%s/tags", namespace, name)
 	params := url.Values{}
 	params.Set("page_size", "100")
 	params.Set("ordering", "last_updated")

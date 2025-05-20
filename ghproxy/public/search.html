@@ -670,7 +670,13 @@
 
                 card.addEventListener('click', () => {
                     currentRepo = result;
-                    loadTags(result.is_official ? 'library' : (result.repo_owner || ''), name);
+                    const namespace = result.namespace || (result.is_official ? 'library' : '');
+                    const repoName = result.name || result.repo_name;
+                    if (!namespace || !repoName) {
+                        showToast('无效的仓库信息');
+                        return;
+                    }
+                    loadTags(namespace, repoName);
                 });
 
                 resultsContainer.appendChild(card);
@@ -681,23 +687,18 @@
             showLoading();
             try {
                 console.log('加载标签:', namespace, name);
-                if (!name) {
-                    showToast('镜像名称不能为空');
+                if (!namespace || !name) {
+                    showToast('命名空间和镜像名称不能为空');
                     return;
                 }
 
-                // 处理官方镜像
-                if (currentRepo.is_official) {
-                    namespace = 'library';
-                }
-
-                const response = await fetch(`/tags/${namespace}/${name}`);
-                const data = await response.json();
-
+                const response = await fetch(`/tags/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`);
                 if (!response.ok) {
-                    throw new Error(data.error || '获取标签信息失败');
+                    const errorText = await response.text();
+                    throw new Error(errorText || '获取标签信息失败');
                 }
 
+                const data = await response.json();
                 console.log('标签数据:', data);
                 displayTags(data);
                 showTagList();
@@ -711,24 +712,28 @@
 
         function displayTags(tags) {
             const tagList = document.getElementById('tagList');
-            const repoName = currentRepo.repo_name;
+            const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
+            const repoName = currentRepo.name || currentRepo.repo_name;
+            const fullRepoName = namespace ? `${namespace}/${repoName}` : repoName;
             
             let header = `
                 <div class="tag-header">
                     <div class="tag-info">
                         <div class="tag-title">
-                            ${repoName}
+                            ${fullRepoName}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
+                            ${currentRepo.affiliation ? `<span class="badge badge-organization">By ${currentRepo.affiliation}</span>` : ''}
                             ${currentRepo.is_automated ? '<span class="badge badge-automated">自动构建</span>' : ''}
                         </div>
                         <div class="tag-description">${currentRepo.short_description || '暂无描述'}</div>
                         <div class="tag-meta">
                             ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatNumber(currentRepo.star_count)}</span>` : ''}
                             ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatNumber(currentRepo.pull_count)}</span>` : ''}
+                            ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${formatTimeAgo(currentRepo.last_updated)}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
-                            docker pull ${repoName}
-                            <button class="copy-button" onclick="copyToClipboard('docker pull ${repoName}')">复制</button>
+                            docker pull ${fullRepoName}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}')">复制</button>
                         </div>
                     </div>
                 </div>
@@ -758,8 +763,8 @@
                             ${tag.full_size ? `<span>大小: ${formatSize(tag.full_size)}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
-                            docker pull ${repoName}:${tag.name}
-                            <button class="copy-button" onclick="copyToClipboard('docker pull ${repoName}:${tag.name}')">复制</button>
+                            docker pull ${fullRepoName}:${tag.name}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}:${tag.name}')">复制</button>
                         </div>
                         ${architectures ? `<div class="tag-architectures">${architectures}</div>` : ''}
                     </div>
