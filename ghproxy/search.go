@@ -89,6 +89,18 @@ var (
 	}
 )
 
+// 添加全局HTTP客户端配置
+var defaultHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression:  true,
+		DisableKeepAlives:   false,
+		MaxIdleConnsPerHost: 10,
+	},
+}
+
 func (c *Cache) Get(key string) (interface{}, bool) {
 	c.mu.RLock()
 	entry, exists := c.data[key]
@@ -255,25 +267,8 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	
 	fullURL = fullURL + "?" + params.Encode()
 	
-	// 发送请求
-	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %v", err)
-	}
-	
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-	
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			MaxIdleConns:        100,
-			IdleConnTimeout:     90 * time.Second,
-			DisableCompression:  true,
-			DisableKeepAlives:   false,
-			MaxIdleConnsPerHost: 10,
-		},
-	}
+	// 使用全局HTTP客户端
+	client := defaultHTTPClient
 	
 	var result *SearchResult
 	var lastErr error
@@ -454,6 +449,9 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 
 	fullURL := baseURL + "?" + params.Encode()
 
+	// 使用全局HTTP客户端
+	client := defaultHTTPClient
+
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %v", err)
@@ -464,7 +462,6 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
 	// 发送请求
-	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("发送请求失败: %v", err)

@@ -66,6 +66,7 @@
             color: var(--inputcolor-font);
             border-radius: 20px;
             padding: 10px 20px;
+            height: 46px;
         }
 
         .form-control:focus {
@@ -80,11 +81,23 @@
             color: white;
             border: none;
             transition: all 0.3s ease;
+            height: 46px;
+            margin-left: 10px;
         }
 
         .search-button:hover {
             transform: scale(1.05);
             background-color: #2ea8a0;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group-append {
+            display: flex;
+            align-items: center;
         }
 
         .result-card {
@@ -535,6 +548,72 @@
     <div id="toast"></div>
 
     <script>
+        // 添加统一的格式化工具对象
+        const formatUtils = {
+            formatNumber(num) {
+                if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B+';
+                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M+';
+                if (num >= 1000) return (num / 1000).toFixed(1) + 'K+';
+                return num.toString();
+            },
+            formatTimeAgo(dateString) {
+                if (!dateString) return '未知时间';
+                try {
+                    let date;
+                    date = new Date(dateString);
+                    if (isNaN(date.getTime())) {
+                        const formats = [
+                            { regex: /^(\d{4})-(\d{2})-(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                            { regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                            { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, handler: (m) => new Date(m[3], m[1] - 1, m[2]) }
+                        ];
+                        
+                        for (const format of formats) {
+                            const match = dateString.match(format.regex);
+                            if (match) {
+                                date = format.handler(match);
+                                if (!isNaN(date.getTime())) break;
+                            }
+                        }
+                        
+                        if (isNaN(date.getTime())) {
+                            return '未知时间';
+                        }
+                    }
+                    
+                    const now = new Date();
+                    const diffTime = Math.abs(now - date);
+                    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+                    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    const diffMonths = Math.floor(diffDays / 30);
+                    const diffYears = Math.floor(diffDays / 365);
+                    
+                    if (diffMinutes < 1) return '刚刚';
+                    if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+                    if (diffHours < 24) return `${diffHours}小时前`;
+                    if (diffDays < 7) return `${diffDays}天前`;
+                    if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+                    if (diffMonths < 12) return `${diffMonths}个月前`;
+                    if (diffYears < 1) return '近1年';
+                    return `${diffYears}年前`;
+                } catch (error) {
+                    console.warn('日期处理错误:', error);
+                    return '未知时间';
+                }
+            },
+            formatSize(bytes) {
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let size = bytes;
+                let unitIndex = 0;
+                while (size >= 1024 && unitIndex < units.length - 1) {
+                    size /= 1024;
+                    unitIndex++;
+                }
+                return `${size.toFixed(2)} ${units[unitIndex]}`;
+            }
+        };
+
         let currentPage = 1;
         let totalPages = 1;
         let currentQuery = '';
@@ -715,72 +794,6 @@
             }
         }
 
-        function formatNumber(num) {
-            if (num >= 1000000000) {
-                return (num / 1000000000).toFixed(1) + 'B+';
-            }
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1) + 'M+';
-            }
-            if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'K+';
-            }
-            return num.toString();
-        }
-
-        function formatTimeAgo(dateString) {
-            if (!dateString) return '未知时间';
-            
-            try {
-                let date;
-                // 尝试标准格式解析
-                date = new Date(dateString);
-                
-                // 如果解析失败，尝试其他常见格式
-                if (isNaN(date.getTime())) {
-                    const formats = [
-                        { regex: /^(\d{4})-(\d{2})-(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
-                        { regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
-                        { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, handler: (m) => new Date(m[3], m[1] - 1, m[2]) }
-                    ];
-                    
-                    for (const format of formats) {
-                        const match = dateString.match(format.regex);
-                        if (match) {
-                            date = format.handler(match);
-                            if (!isNaN(date.getTime())) break;
-                        }
-                    }
-                    
-                    if (isNaN(date.getTime())) {
-                        return '未知时间';
-                    }
-                }
-                
-                const now = new Date();
-                const diffTime = Math.abs(now - date);
-                const diffMinutes = Math.floor(diffTime / (1000 * 60));
-                const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                const diffMonths = Math.floor(diffDays / 30);
-                const diffYears = Math.floor(diffDays / 365);
-                
-                // 更精确的时间显示
-                if (diffMinutes < 1) return '刚刚';
-                if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-                if (diffHours < 24) return `${diffHours}小时前`;
-                if (diffDays < 7) return `${diffDays}天前`;
-                if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-                if (diffMonths < 12) return `${diffMonths}个月前`;
-                if (diffYears < 1) return '近1年';
-                return `${diffYears}年前`;
-                
-            } catch (error) {
-                console.warn('日期处理错误:', error);
-                return '未知时间';
-            }
-        }
-
         function displayResults(results, targetRepo = '') {
             const resultsContainer = document.getElementById('searchResults');
             resultsContainer.innerHTML = '';
@@ -839,8 +852,8 @@
                 if (organization) badges.push(`<span class="badge badge-organization">By ${organization}</span>`);
 
                 const stats = [];
-                if (starCount > 0) stats.push(`<span class="meta-item">⭐ ${formatNumber(starCount)}</span>`);
-                if (pullCount > 0) stats.push(`<span class="meta-item">⬇️ ${formatNumber(pullCount)}+</span>`);
+                if (starCount > 0) stats.push(`<span class="meta-item">⭐ ${formatUtils.formatNumber(starCount)}</span>`);
+                if (pullCount > 0) stats.push(`<span class="meta-item">⬇️ ${formatUtils.formatNumber(pullCount)}+</span>`);
 
                 card.innerHTML = `
                     <div class="result-title">
@@ -851,12 +864,12 @@
                     <div class="result-meta">
                         <div class="meta-stats">
                             ${stats.join(' ')}
-                            ${lastUpdated ? `<span class="meta-item">更新于 ${formatTimeAgo(lastUpdated)}</span>` : ''}
+                            ${lastUpdated ? `<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(lastUpdated)}</span>` : ''}
                         </div>
                         ${pullsLastWeek > 0 ? `
                         <div class="meta-pulls">
                             <div>本周拉取次数</div>
-                            <div class="pulls-count">${formatNumber(pullsLastWeek)}</div>
+                            <div class="pulls-count">${formatUtils.formatNumber(pullsLastWeek)}</div>
                         </div>
                         ` : ''}
                     </div>
@@ -921,9 +934,9 @@
                         </div>
                         <div class="tag-description">${currentRepo.short_description || '暂无描述'}</div>
                         <div class="tag-meta">
-                            ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatNumber(currentRepo.star_count)}</span>` : ''}
-                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatNumber(currentRepo.pull_count)}+</span>` : ''}
-                            ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${formatTimeAgo(currentRepo.last_updated)}</span>` : ''}
+                            ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatUtils.formatNumber(currentRepo.star_count)}</span>` : ''}
+                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatUtils.formatNumber(currentRepo.pull_count)}+</span>` : ''}
+                            ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(currentRepo.last_updated)}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
                             docker pull ${fullRepoName}
@@ -961,7 +974,7 @@
                 const images = tag.images || [];
                 const architectures = images.map(img => {
                     const arch = `${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}`;
-                    const size = formatSize(img.size);
+                    const size = formatUtils.formatSize(img.size);
                     return `<div class="arch-item" title="大小: ${size}">${arch}</div>`;
                 }).join('');
 
@@ -972,9 +985,9 @@
                             ${vulnIndicators ? `<div class="vulnerability-indicator">${vulnIndicators}</div>` : ''}
                         </div>
                         <div class="tag-meta">
-                            <span>最后更新: ${formatTimeAgo(tag.last_updated)}</span>
+                            <span>最后更新: ${formatUtils.formatTimeAgo(tag.last_updated)}</span>
                             ${tag.last_pusher ? `<span>由 ${tag.last_pusher} 推送</span>` : ''}
-                            ${tag.full_size ? `<span>大小: ${formatSize(tag.full_size)}</span>` : ''}
+                            ${tag.full_size ? `<span>大小: ${formatUtils.formatSize(tag.full_size)}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
                             docker pull ${fullRepoName}:${tag.name}
@@ -1040,19 +1053,6 @@
                 searchInput.value = '';
                 filterTags('');
             }
-        }
-
-        function formatSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let size = bytes;
-            let unitIndex = 0;
-            
-            while (size >= 1024 && unitIndex < units.length - 1) {
-                size /= 1024;
-                unitIndex++;
-            }
-            
-            return `${size.toFixed(2)} ${units[unitIndex]}`;
         }
 
         function copyToClipboard(text) {
