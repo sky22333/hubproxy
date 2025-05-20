@@ -26,6 +26,6 @@ services:
       - "./docker/config.yml:/etc/docker/registry/config.yml"
 
   ghproxy:
-    image: "ghcr.io/sky22333/hub-proxy"
+    image: "ghcr.io/sky22333/hubproxy"
     container_name: "ghproxy"
     restart: "always"

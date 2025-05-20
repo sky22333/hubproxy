@@ -23,7 +23,7 @@
 
 2：拉取本项目
 ```
-git clone https://github.com/sky22333/hub-proxy.git
+git clone https://github.com/sky22333/hubproxy.git
 ```
 
 
@@ -52,7 +52,7 @@ docker run -d \
   --name ghproxy \
   -p 5000:5000 \
   --restart always \
-  ghcr.io/sky22333/hub-proxy
+  ghcr.io/sky22333/hubproxy
 ```
 
 ---
@@ -118,7 +118,7 @@ ghcr.{$DOMAIN} {
 
 ghproxy基于go语言的Gin框架，镜像加速基于`registry`镜像实现
 
-前端借鉴了[此项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI
+前端借鉴了[此项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI，许可证见`ghproxy/LICENSE`
 
 
 ### 免责声明

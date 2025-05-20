@@ -95,9 +95,6 @@ func main() {
 		c.File("./public/favicon.ico")
 	})
 	
-	router.GET("/bj.svg", func(c *gin.Context) {
-		c.File("./public/bj.svg")
-	})
 	// 注册dockerhub搜索路由
 	RegisterSearchRoute(router)
 	// 创建GitHub文件下载专用的限流器
@@ -185,7 +182,7 @@ func proxy(c *gin.Context, u string) {
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
 	
-	// 对于需要处理的shell文件，我们使用chunked传输
+	// 对于需要处理的shell文件，使用chunked传输
 	isShellFile := strings.HasSuffix(strings.ToLower(u), ".sh")
 	if isShellFile {
 		resp.Header.Del("Content-Length")
