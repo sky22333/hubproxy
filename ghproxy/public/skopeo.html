@@ -12,10 +12,12 @@
     <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
     <style>
         :root {
-            --color: #ffffff;
+            --color: #eeeeee;
             --fontcolor: #333;
             --inputcolor: #f5f5f5;
             --inputcolor-font: #333;
+            --card-bg: #f8f9fa;
+            --border-color: #dee2e6;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -24,25 +26,18 @@
                 --fontcolor: #b8b8b8;
                 --inputcolor: #012333;
                 --inputcolor-font: #969696d8;
+                --card-bg: #012333;
+                --border-color: #2d3338;
             }
         }
 
         body {
             background-color: var(--color);
-            background-image: url('./bj.svg');
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-attachment: fixed;
             color: var(--fontcolor);
             font-family: 'Misans', Arial, sans-serif;
             padding: 30px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
             margin: 0;
-            position: relative;
         }
 
         *::-webkit-scrollbar {
