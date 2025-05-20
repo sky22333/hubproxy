@@ -123,22 +123,32 @@
         .result-meta {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             font-size: 0.9rem;
             color: var(--fontcolor);
             opacity: 0.8;
             margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .meta-stats {
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-wrap: wrap;
         }
 
         .meta-pulls {
             font-size: 0.85rem;
             color: #666;
+            text-align: right;
+        }
+
+        .meta-pulls .pulls-count {
+            font-size: 1rem;
+            color: #333;
+            margin-top: 4px;
         }
 
         .badge {
@@ -378,6 +388,18 @@
         .back-to-search:hover {
             text-decoration: underline;
         }
+
+        @media (max-width: 768px) {
+            .result-meta {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .meta-pulls {
+                text-align: left;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -536,7 +558,25 @@
             if (!dateString) return '未知时间';
             
             const date = new Date(dateString);
-            if (isNaN(date.getTime())) return '未知时间';
+            if (isNaN(date.getTime())) {
+                // 尝试解析其他日期格式
+                const formats = [
+                    'YYYY-MM-DD',
+                    'YYYY/MM/DD',
+                    'MM/DD/YYYY',
+                    'DD/MM/YYYY'
+                ];
+                
+                for (const format of formats) {
+                    const d = tryParseDate(dateString, format);
+                    if (d && !isNaN(d.getTime())) {
+                        date = d;
+                        break;
+                    }
+                }
+                
+                if (isNaN(date.getTime())) return '未知时间';
+            }
             
             const now = new Date();
             const diffTime = Math.abs(now - date);
@@ -546,12 +586,28 @@
             const diffMonths = Math.floor(diffDays / 30);
             const diffYears = Math.floor(diffDays / 365);
             
+            if (diffMinutes < 5) return '几秒前';
             if (diffMinutes < 60) return `${diffMinutes}分钟前`;
             if (diffHours < 24) return `${diffHours}小时前`;
             if (diffDays < 7) return `${diffDays}天前`;
             if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
             if (diffMonths < 12) return `${diffMonths}个月前`;
             return `${diffYears}年前`;
+        }
+
+        function tryParseDate(dateString, format) {
+            const parts = dateString.split(/[-/]/);
+            const formatParts = format.split(/[-/]/);
+            const dateObj = {};
+            
+            for (let i = 0; i < formatParts.length; i++) {
+                const part = formatParts[i].toUpperCase();
+                if (part === 'YYYY') dateObj.year = parseInt(parts[i]);
+                else if (part === 'MM') dateObj.month = parseInt(parts[i]) - 1;
+                else if (part === 'DD') dateObj.day = parseInt(parts[i]);
+            }
+            
+            return new Date(dateObj.year, dateObj.month, dateObj.day);
         }
 
         function displayResults(results) {
@@ -562,6 +618,14 @@
                 resultsContainer.innerHTML = '<div class="text-center">未找到相关镜像</div>';
                 return;
             }
+
+            // 对结果进行排序：官方镜像优先，然后按照拉取次数排序
+            results.sort((a, b) => {
+                if (a.is_official !== b.is_official) {
+                    return b.is_official - a.is_official;
+                }
+                return b.pull_count - a.pull_count;
+            });
 
             results.forEach(result => {
                 const card = document.createElement('div');
@@ -597,14 +661,14 @@
                         </div>
                         ${pullsLastWeek > 0 ? `
                         <div class="meta-pulls">
-                            <span class="meta-item">本周拉取: ${formatNumber(pullsLastWeek)}</span>
+                            <div>本周拉取次数</div>
+                            <div class="pulls-count">${formatNumber(pullsLastWeek)}</div>
                         </div>
                         ` : ''}
                     </div>
                 `;
 
                 card.addEventListener('click', () => {
-                    console.log('点击仓库:', name);
                     currentRepo = result;
                     loadTags(result.is_official ? 'library' : (result.repo_owner || ''), name);
                 });

@@ -258,7 +258,7 @@ func RegisterSearchRoute(r *gin.Engine) {
 
 		// 如果是搜索官方镜像
 		if !strings.Contains(query, "/") {
-			query = "library/" + query
+			query = strings.ToLower(query)
 		}
 
 		fmt.Printf("搜索请求: query=%s, page=%d, pageSize=%d\n", query, page, pageSize)
@@ -270,12 +270,22 @@ func RegisterSearchRoute(r *gin.Engine) {
 			return
 		}
 
-		// 处理官方镜像的情况
-		for i := range result.Results {
-			if result.Results[i].IsOfficial {
-				result.Results[i].Name = strings.TrimPrefix(result.Results[i].Name, "library/")
+		// 过滤搜索结果，只保留相关的镜像
+		filteredResults := make([]Repository, 0)
+		searchTerm := strings.ToLower(strings.TrimPrefix(query, "library/"))
+		
+		for _, repo := range result.Results {
+			repoName := strings.ToLower(repo.Name)
+			// 如果是精确匹配或者以搜索词开头，或者包含 "searchTerm/searchTerm"
+			if repoName == searchTerm || 
+			   strings.HasPrefix(repoName, searchTerm+"/") || 
+			   strings.Contains(repoName, "/"+searchTerm) {
+				filteredResults = append(filteredResults, repo)
 			}
 		}
+		
+		result.Results = filteredResults
+		result.Count = len(filteredResults)
 
 		c.JSON(http.StatusOK, result)
 	})
