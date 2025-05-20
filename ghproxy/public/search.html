@@ -475,16 +475,14 @@
             showLoading();
 
             try {
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}&page=${currentPage}&page_size=25`);
+                const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.error || '搜索请求失败');
                 }
 
-                totalPages = Math.ceil(data.count / 25);
                 displayResults(data.results);
-                updatePagination();
             } catch (error) {
                 showToast('搜索失败，请稍后重试');
                 console.error('搜索错误:', error);
@@ -601,7 +599,6 @@
                         <div class="tag-title">
                             ${repoName}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
-                            ${currentRepo.organization ? `<span class="badge badge-organization">By ${currentRepo.organization}</span>` : ''}
                         </div>
                         <div class="tag-description">${currentRepo.description || '暂无描述'}</div>
                         <div class="tag-pull-command">
