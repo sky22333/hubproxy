@@ -267,6 +267,16 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	
 	fullURL = fullURL + "?" + params.Encode()
 	
+	// 创建请求
+	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %v", err)
+	}
+	
+	// 设置请求头
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+	
 	// 使用全局HTTP客户端
 	client := defaultHTTPClient
 	
