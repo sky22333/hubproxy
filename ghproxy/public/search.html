@@ -104,7 +104,7 @@
 
         .result-title {
             font-size: 1.2rem;
-            font-weight: bold;
+            font-weight: 500;
             margin-bottom: 10px;
             color: #0091e2;
             display: flex;
@@ -118,6 +118,7 @@
             margin: 10px 0;
             font-size: 0.95rem;
             line-height: 1.5;
+            opacity: 0.9;
         }
 
         .result-meta {
@@ -137,6 +138,7 @@
             align-items: center;
             gap: 15px;
             flex-wrap: wrap;
+            font-size: 0.95rem;
         }
 
         .meta-pulls {
@@ -152,7 +154,7 @@
         }
 
         .badge {
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 4px;
             font-size: 0.8rem;
             font-weight: normal;
@@ -167,6 +169,7 @@
         .badge-organization {
             background-color: #6c757d;
             color: white;
+            font-weight: normal;
         }
 
         .badge-automated {
@@ -178,6 +181,11 @@
             display: inline-flex;
             align-items: center;
             white-space: nowrap;
+            color: #666;
+        }
+
+        .meta-item .icon {
+            opacity: 0.7;
         }
 
         .back-button {
@@ -399,6 +407,13 @@
                 text-align: left;
                 width: 100%;
             }
+        }
+
+        .icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+            margin-top: -2px;
         }
     </style>
 </head>
@@ -643,11 +658,10 @@
                 const badges = [];
                 if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
                 if (organization) badges.push(`<span class="badge badge-organization">By ${organization}</span>`);
-                if (result.is_automated) badges.push('<span class="badge badge-automated">自动构建</span>');
 
                 const stats = [];
-                if (pullCount > 0) stats.push(`${formatNumber(pullCount)}+`);
-                if (starCount > 0) stats.push(`${formatNumber(starCount)}`);
+                if (pullCount > 0) stats.push(`<svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M13 5.41V21h-2V5.41L5.41 11 4 9.59 12 1.59l8 8L18.59 11z"/></svg>${formatNumber(pullCount)}+`);
+                if (starCount > 0) stats.push(`<svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>${formatNumber(starCount)}`);
 
                 card.innerHTML = `
                     <div class="result-title">
