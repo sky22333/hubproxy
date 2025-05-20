@@ -223,18 +223,45 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	var result *SearchResult
 	var lastErr error
 	
+	// 判断是否是用户/仓库格式的搜索
+	isUserRepo := strings.Contains(query, "/")
+	
 	for retries := 3; retries > 0; retries-- {
-		result, lastErr = trySearchDockerHub(ctx, query, page, pageSize)
+		if isUserRepo {
+			// 对于用户/仓库格式，尝试精确搜索和模糊搜索
+			parts := strings.Split(query, "/")
+			if len(parts) == 2 {
+				// 先尝试精确搜索
+				result, lastErr = trySearchDockerHub(ctx, query, page, pageSize)
+				if lastErr == nil && len(result.Results) == 0 {
+					// 如果精确搜索没有结果，尝试模糊搜索
+					result, lastErr = trySearchDockerHub(ctx, parts[1], page, pageSize)
+					if lastErr == nil {
+						// 过滤出属于指定用户的结果
+						filteredResults := make([]Repository, 0)
+						for _, repo := range result.Results {
+							if strings.EqualFold(repo.Namespace, parts[0]) || 
+							   strings.EqualFold(repo.RepoOwner, parts[0]) {
+								filteredResults = append(filteredResults, repo)
+							}
+						}
+						result.Results = filteredResults
+						result.Count = len(filteredResults)
+					}
+				}
+			}
+		} else {
+			result, lastErr = trySearchDockerHub(ctx, query, page, pageSize)
+		}
+		
 		if lastErr == nil {
 			break
 		}
 		
-		// 判断是否需要重试
 		if !isRetryableError(lastErr) {
 			return nil, fmt.Errorf("搜索失败: %v", lastErr)
 		}
 		
-		// 等待后重试
 		time.Sleep(time.Second * time.Duration(4-retries))
 	}
 	
@@ -316,7 +343,6 @@ func trySearchDockerHub(ctx context.Context, query string, page, pageSize int) (
 
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
-		// 特殊处理常见错误
 		switch resp.StatusCode {
 		case http.StatusTooManyRequests:
 			return nil, fmt.Errorf("请求过于频繁，请稍后重试")
@@ -342,7 +368,6 @@ func trySearchDockerHub(ctx context.Context, query string, page, pageSize int) (
 			if !strings.Contains(result.Results[i].Name, "/") {
 				result.Results[i].Name = "library/" + result.Results[i].Name
 			}
-			// 设置命名空间为 library
 			result.Results[i].Namespace = "library"
 		} else {
 			// 从 repo_name 中提取 namespace
@@ -350,7 +375,7 @@ func trySearchDockerHub(ctx context.Context, query string, page, pageSize int) (
 			if len(parts) > 1 {
 				result.Results[i].Namespace = parts[0]
 				result.Results[i].Name = parts[1]
-			} else {
+			} else if result.Results[i].RepoOwner != "" {
 				result.Results[i].Namespace = result.Results[i].RepoOwner
 			}
 		}
@@ -452,11 +477,6 @@ func RegisterSearchRoute(r *gin.Engine) {
 			fmt.Sscanf(ps, "%d", &pageSize)
 		}
 
-		// 如果是搜索官方镜像
-		if !strings.Contains(query, "/") {
-			query = strings.ToLower(query)
-		}
-
 		fmt.Printf("搜索请求: query=%s, page=%d, pageSize=%d\n", query, page, pageSize)
 
 		result, err := searchDockerHub(c.Request.Context(), query, page, pageSize)
@@ -465,23 +485,6 @@ func RegisterSearchRoute(r *gin.Engine) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
-		// 过滤搜索结果，只保留相关的镜像
-		filteredResults := make([]Repository, 0)
-		searchTerm := strings.ToLower(strings.TrimPrefix(query, "library/"))
-		
-		for _, repo := range result.Results {
-			repoName := strings.ToLower(repo.Name)
-			// 如果是精确匹配或者以搜索词开头，或者包含 "searchTerm/searchTerm"
-			if repoName == searchTerm || 
-			   strings.HasPrefix(repoName, searchTerm+"/") || 
-			   strings.Contains(repoName, "/"+searchTerm) {
-				filteredResults = append(filteredResults, repo)
-			}
-		}
-		
-		result.Results = filteredResults
-		result.Count = len(filteredResults)
 
 		c.JSON(http.StatusOK, result)
 	})

@@ -512,16 +512,70 @@
             prevButton.disabled = currentPage <= 1;
             nextButton.disabled = currentPage >= totalPages;
             
-            // 添加页码显示
+            // 添加页码显示和快速跳转
             const paginationDiv = document.querySelector('.pagination');
-            const pageInfo = document.getElementById('pageInfo');
+            let pageInfo = document.getElementById('pageInfo');
             if (!pageInfo) {
-                const infoSpan = document.createElement('span');
-                infoSpan.id = 'pageInfo';
-                infoSpan.style.margin = '0 10px';
-                paginationDiv.insertBefore(infoSpan, nextButton);
+                const container = document.createElement('div');
+                container.id = 'pageInfo';
+                container.style.margin = '0 10px';
+                container.style.display = 'flex';
+                container.style.alignItems = 'center';
+                container.style.gap = '10px';
+                
+                // 页码显示
+                const pageText = document.createElement('span');
+                pageText.id = 'pageText';
+                
+                // 跳转输入框
+                const jumpInput = document.createElement('input');
+                jumpInput.type = 'number';
+                jumpInput.min = '1';
+                jumpInput.id = 'jumpPage';
+                jumpInput.style.width = '60px';
+                jumpInput.style.padding = '4px';
+                jumpInput.style.borderRadius = '4px';
+                jumpInput.style.border = '1px solid var(--border-color)';
+                jumpInput.style.backgroundColor = 'var(--inputcolor)';
+                jumpInput.style.color = 'var(--inputcolor-font)';
+                
+                // 跳转按钮
+                const jumpButton = document.createElement('button');
+                jumpButton.textContent = '跳转';
+                jumpButton.className = 'btn search-button';
+                jumpButton.style.padding = '4px 8px';
+                jumpButton.onclick = () => {
+                    const page = parseInt(jumpInput.value);
+                    if (page && page >= 1 && page <= totalPages) {
+                        currentPage = page;
+                        performSearch();
+                    } else {
+                        showToast('请输入有效的页码');
+                    }
+                };
+                
+                container.appendChild(pageText);
+                container.appendChild(jumpInput);
+                container.appendChild(jumpButton);
+                
+                // 插入到分页区域
+                paginationDiv.insertBefore(container, nextButton);
+                pageInfo = container;
             }
-            document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
+            
+            // 更新页码显示
+            const pageText = document.getElementById('pageText');
+            pageText.textContent = `第 ${currentPage} / ${totalPages || 1} 页 共 ${totalPages || 1} 页`;
+            
+            // 更新跳转输入框
+            const jumpInput = document.getElementById('jumpPage');
+            if (jumpInput) {
+                jumpInput.max = totalPages;
+                jumpInput.value = currentPage;
+            }
+            
+            // 显示或隐藏分页区域
+            paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
         }
 
         function showSearchResults() {
@@ -560,11 +614,7 @@
                 console.log('搜索响应:', data);
                 
                 // 更新总页数和分页状态
-                if (typeof data.count === 'number') {
-                    totalPages = Math.ceil(data.count / 25);
-                } else {
-                    totalPages = data.results ? Math.ceil(data.results.length / 25) : 1;
-                }
+                totalPages = Math.ceil(data.count / 25);
                 updatePagination();
                 
                 displayResults(data.results);
