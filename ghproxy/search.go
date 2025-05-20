@@ -31,6 +31,10 @@ type Repository struct {
 	StarCount      int       `json:"star_count"`
 	PullCount      int       `json:"pull_count"`
 	RepoOwner      string    `json:"repo_owner"`
+	LastUpdated    string    `json:"last_updated"`
+	Status         int       `json:"status"`
+	Organization   string    `json:"affiliation"`
+	PullsLastWeek  int       `json:"pulls_last_week"`
 }
 
 // TagInfo 标签信息

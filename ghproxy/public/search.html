@@ -106,16 +106,18 @@
             font-size: 1.2rem;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #39c5bc;
+            color: #0091e2;
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .result-description {
             color: var(--fontcolor);
-            margin-bottom: 15px;
-            font-size: 0.9rem;
+            margin: 10px 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
         }
 
         .result-meta {
@@ -125,6 +127,47 @@
             font-size: 0.9rem;
             color: var(--fontcolor);
             opacity: 0.8;
+            margin-top: 15px;
+        }
+
+        .meta-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .meta-pulls {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: normal;
+            white-space: nowrap;
+        }
+
+        .badge-official {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .badge-organization {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .badge-automated {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
         }
 
         .back-button {
@@ -209,23 +252,6 @@
         .pagination button:hover:not(:disabled) {
             transform: scale(1.05);
             background-color: #2ea8a0;
-        }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: normal;
-        }
-
-        .badge-official {
-            background-color: #39c5bc;
-            color: white;
-        }
-
-        .badge-organization {
-            background-color: #6c757d;
-            color: white;
         }
 
         .tag-list {
@@ -351,45 +377,6 @@
 
         .back-to-search:hover {
             text-decoration: underline;
-        }
-
-        .meta-item {
-            display: inline-flex;
-            align-items: center;
-            margin-right: 15px;
-            color: var(--fontcolor);
-            opacity: 0.8;
-        }
-
-        .badge-automated {
-            background-color: #28a745;
-            color: white;
-            margin-left: 5px;
-        }
-
-        .tag-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin: 10px 0;
-            font-size: 0.9rem;
-            color: var(--fontcolor);
-            opacity: 0.8;
-        }
-
-        .vulnerability-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-left: 10px;
-        }
-
-        .arch-item {
-            background-color: var(--inputcolor);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.8rem;
-            cursor: help;
         }
     </style>
 </head>
@@ -546,16 +533,25 @@
         }
 
         function formatTimeAgo(dateString) {
+            if (!dateString) return '未知时间';
+            
             const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '未知时间';
+            
             const now = new Date();
             const diffTime = Math.abs(now - date);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffMinutes = Math.floor(diffTime / (1000 * 60));
+            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const diffMonths = Math.floor(diffDays / 30);
+            const diffYears = Math.floor(diffDays / 365);
             
-            if (diffDays === 1) return '昨天';
+            if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+            if (diffHours < 24) return `${diffHours}小时前`;
             if (diffDays < 7) return `${diffDays}天前`;
             if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-            if (diffDays < 365) return `${Math.floor(diffDays / 30)}个月前`;
-            return `${Math.floor(diffDays / 365)}年前`;
+            if (diffMonths < 12) return `${diffMonths}个月前`;
+            return `${diffYears}年前`;
         }
 
         function displayResults(results) {
@@ -567,49 +563,50 @@
                 return;
             }
 
-            console.log('显示搜索结果:', results);
-
             results.forEach(result => {
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
-                // 确保所有字段都有值
                 const name = result.repo_name || '';
                 const description = result.short_description || '暂无描述';
                 const starCount = result.star_count || 0;
                 const pullCount = result.pull_count || 0;
-                const repoOwner = result.repo_owner || '';
-                const repoName = name;
-                const officialBadge = result.is_official ? '<span class="badge badge-official">官方</span>' : '';
-                const automatedBadge = result.is_automated ? '<span class="badge badge-automated">自动构建</span>' : '';
+                const pullsLastWeek = result.pulls_last_week || 0;
+                const lastUpdated = result.last_updated || '';
+                const organization = result.affiliation || '';
 
-                console.log('处理仓库:', {
-                    name,
-                    repoOwner,
-                    repoName,
-                    isOfficial: result.is_official,
-                    isAutomated: result.is_automated
-                });
+                const badges = [];
+                if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
+                if (organization) badges.push(`<span class="badge badge-organization">By ${organization}</span>`);
+                if (result.is_automated) badges.push('<span class="badge badge-automated">自动构建</span>');
+
+                const stats = [];
+                if (pullCount > 0) stats.push(`${formatNumber(pullCount)}+`);
+                if (starCount > 0) stats.push(`${formatNumber(starCount)}`);
 
                 card.innerHTML = `
                     <div class="result-title">
-                        ${repoName}
-                        ${officialBadge}
+                        ${name}
+                        ${badges.join(' ')}
                     </div>
                     <div class="result-description">${description}</div>
                     <div class="result-meta">
-                        <span>
-                            ${starCount > 0 ? `<span class="meta-item">⭐ ${formatNumber(starCount)}</span>` : ''}
-                            ${pullCount > 0 ? `<span class="meta-item">⬇️ ${formatNumber(pullCount)}</span>` : ''}
-                        </span>
-                        <span class="meta-item">更新于 ${formatTimeAgo(result.last_updated)}</span>
+                        <div class="meta-stats">
+                            ${stats.length > 0 ? `<span class="meta-item">${stats.join(' • ')}</span>` : ''}
+                            ${lastUpdated ? `<span class="meta-item">更新于 ${formatTimeAgo(lastUpdated)}</span>` : ''}
+                        </div>
+                        ${pullsLastWeek > 0 ? `
+                        <div class="meta-pulls">
+                            <span class="meta-item">本周拉取: ${formatNumber(pullsLastWeek)}</span>
+                        </div>
+                        ` : ''}
                     </div>
                 `;
 
                 card.addEventListener('click', () => {
-                    console.log('点击仓库:', name, repoOwner);
+                    console.log('点击仓库:', name);
                     currentRepo = result;
-                    loadTags(repoOwner, name);
+                    loadTags(result.is_official ? 'library' : (result.repo_owner || ''), name);
                 });
 
                 resultsContainer.appendChild(card);
