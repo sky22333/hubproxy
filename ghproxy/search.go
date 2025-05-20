@@ -161,8 +161,15 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 
 	// 处理搜索结果
 	for i := range result.Results {
-		// 从 repo_name 中提取 namespace
-		if !result.Results[i].IsOfficial {
+		if result.Results[i].IsOfficial {
+			// 确保官方镜像有正确的名称格式
+			if !strings.Contains(result.Results[i].Name, "/") {
+				result.Results[i].Name = "library/" + result.Results[i].Name
+			}
+			// 设置命名空间为 library
+			result.Results[i].Namespace = "library"
+		} else {
+			// 从 repo_name 中提取 namespace
 			parts := strings.Split(result.Results[i].Name, "/")
 			if len(parts) > 1 {
 				result.Results[i].Namespace = parts[0]
@@ -170,9 +177,6 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			} else {
 				result.Results[i].Namespace = result.Results[i].RepoOwner
 			}
-		} else {
-			result.Results[i].Name = strings.TrimPrefix(result.Results[i].Name, "library/")
-			result.Results[i].Namespace = "library"
 		}
 	}
 

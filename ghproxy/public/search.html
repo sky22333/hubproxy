@@ -647,7 +647,15 @@
                 card.className = 'result-card';
                 
                 // 构建显示名称
-                const displayName = result.is_official ? result.name : `${result.namespace}/${result.name}`;
+                let displayName = result.name;
+                if (result.is_official) {
+                    // 对于官方镜像，去掉 library/ 前缀
+                    displayName = result.name.replace('library/', '');
+                } else {
+                    // 对于非官方镜像，显示完整路径
+                    displayName = `${result.namespace}/${result.name}`;
+                }
+
                 const description = result.short_description || '暂无描述';
                 const starCount = result.star_count || 0;
                 const pullCount = result.pull_count || 0;
@@ -660,8 +668,8 @@
                 if (organization) badges.push(`<span class="badge badge-organization">By ${organization}</span>`);
 
                 const stats = [];
-                if (pullCount > 0) stats.push(`<svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M13 5.41V21h-2V5.41L5.41 11 4 9.59 12 1.59l8 8L18.59 11z"/></svg>${formatNumber(pullCount)}+`);
-                if (starCount > 0) stats.push(`<svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>${formatNumber(starCount)}`);
+                if (starCount > 0) stats.push(`<span class="meta-item">⭐ ${formatNumber(starCount)}</span>`);
+                if (pullCount > 0) stats.push(`<span class="meta-item">⬇️ ${formatNumber(pullCount)}+</span>`);
 
                 card.innerHTML = `
                     <div class="result-title">
@@ -671,7 +679,7 @@
                     <div class="result-description">${description}</div>
                     <div class="result-meta">
                         <div class="meta-stats">
-                            ${stats.length > 0 ? `<span class="meta-item">${stats.join(' • ')}</span>` : ''}
+                            ${stats.join(' ')}
                             ${lastUpdated ? `<span class="meta-item">更新于 ${formatTimeAgo(lastUpdated)}</span>` : ''}
                         </div>
                         ${pullsLastWeek > 0 ? `
@@ -686,7 +694,7 @@
                 card.addEventListener('click', () => {
                     currentRepo = result;
                     const namespace = result.namespace || (result.is_official ? 'library' : '');
-                    const repoName = result.name || result.repo_name;
+                    const repoName = result.name.replace('library/', '');
                     if (!namespace || !repoName) {
                         showToast('无效的仓库信息');
                         return;
