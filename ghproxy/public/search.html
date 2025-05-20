@@ -528,13 +528,24 @@
                 return;
             }
 
+            console.log('搜索结果:', results);
+
             results.forEach(result => {
+                console.log('处理结果:', result);
+                
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
-                const stars = result.star_count ? `⭐ ${formatNumber(result.star_count)}` : '';
-                const pulls = result.pull_count ? `⬇️ ${formatNumber(result.pull_count)}` : '';
-                const repoName = result.namespace ? `${result.namespace}/${result.name}` : result.name;
+                const name = result.name || '';
+                const namespace = result.namespace || '';
+                const description = result.description || '暂无描述';
+                const starCount = result.star_count || 0;
+                const pullCount = result.pull_count || 0;
+                const lastUpdated = result.last_updated || new Date();
+                
+                const stars = starCount ? `⭐ ${formatNumber(starCount)}` : '';
+                const pulls = pullCount ? `⬇️ ${formatNumber(pullCount)}` : '';
+                const repoName = namespace ? `${namespace}/${name}` : name;
                 const officialBadge = result.is_official ? '<span class="badge badge-official">官方</span>' : '';
                 const orgBadge = result.organization ? `<span class="badge badge-organization">By ${result.organization}</span>` : '';
 
@@ -544,10 +555,10 @@
                         ${officialBadge}
                         ${orgBadge}
                     </div>
-                    <div class="result-description">${result.description || '暂无描述'}</div>
+                    <div class="result-description">${description}</div>
                     <div class="result-meta">
                         <span>${stars} ${pulls}</span>
-                        <span>更新于 ${formatTimeAgo(result.last_updated)}</span>
+                        <span>更新于 ${formatTimeAgo(lastUpdated)}</span>
                     </div>
                 `;
 
