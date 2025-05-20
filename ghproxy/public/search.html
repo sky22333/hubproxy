@@ -574,31 +574,27 @@
                 card.className = 'result-card';
                 
                 // 确保所有字段都有值
-                const name = result.name || '';
-                const namespace = result.namespace || '';
-                const description = result.description || '暂无描述';
+                const name = result.repo_name || '';
+                const description = result.short_description || '暂无描述';
                 const starCount = result.star_count || 0;
                 const pullCount = result.pull_count || 0;
-                const lastUpdated = result.last_updated || new Date();
-                const repoName = namespace ? `${namespace}/${name}` : name;
+                const repoOwner = result.repo_owner || '';
+                const repoName = name;
                 const officialBadge = result.is_official ? '<span class="badge badge-official">官方</span>' : '';
-                const orgBadge = result.organization ? `<span class="badge badge-organization">By ${result.organization}</span>` : '';
                 const automatedBadge = result.is_automated ? '<span class="badge badge-automated">自动构建</span>' : '';
 
                 console.log('处理仓库:', {
                     name,
-                    namespace,
+                    repoOwner,
                     repoName,
                     isOfficial: result.is_official,
-                    organization: result.organization
+                    isAutomated: result.is_automated
                 });
 
                 card.innerHTML = `
                     <div class="result-title">
                         ${repoName}
                         ${officialBadge}
-                        ${orgBadge}
-                        ${automatedBadge}
                     </div>
                     <div class="result-description">${description}</div>
                     <div class="result-meta">
@@ -606,14 +602,14 @@
                             ${starCount > 0 ? `<span class="meta-item">⭐ ${formatNumber(starCount)}</span>` : ''}
                             ${pullCount > 0 ? `<span class="meta-item">⬇️ ${formatNumber(pullCount)}</span>` : ''}
                         </span>
-                        <span class="meta-item">更新于 ${formatTimeAgo(lastUpdated)}</span>
+                        <span class="meta-item">更新于 ${formatTimeAgo(result.last_updated)}</span>
                     </div>
                 `;
 
                 card.addEventListener('click', () => {
-                    console.log('点击仓库:', name, namespace);
+                    console.log('点击仓库:', name, repoOwner);
                     currentRepo = result;
-                    loadTags(namespace || 'library', name);
+                    loadTags(repoOwner, name);
                 });
 
                 resultsContainer.appendChild(card);
@@ -657,8 +653,6 @@
                         <div class="tag-title">
                             ${repoName}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
-                            ${currentRepo.organization ? `<span class="badge badge-organization">By ${currentRepo.organization}</span>` : ''}
-                            ${currentRepo.is_automated ? '<span class="badge badge-automated">自动构建</span>' : ''}
                         </div>
                         <div class="tag-description">${currentRepo.description || '暂无描述'}</div>
                         <div class="tag-meta">

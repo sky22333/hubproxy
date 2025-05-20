@@ -24,16 +24,13 @@ type SearchResult struct {
 
 // Repository 仓库信息
 type Repository struct {
-	Name           string    `json:"name"`
-	Namespace      string    `json:"namespace"`
-	Description    string    `json:"description"`
+	Name           string    `json:"repo_name"`
+	Description    string    `json:"short_description"`
 	IsOfficial     bool      `json:"is_official"`
 	IsAutomated    bool      `json:"is_automated"`
 	StarCount      int       `json:"star_count"`
 	PullCount      int       `json:"pull_count"`
-	LastUpdated    time.Time `json:"last_updated"`
-	Status         int       `json:"status"`
-	Organization   string    `json:"organization,omitempty"`
+	RepoOwner      string    `json:"repo_owner"`
 }
 
 // TagInfo 标签信息
@@ -267,6 +264,13 @@ func RegisterSearchRoute(r *gin.Engine) {
 			fmt.Printf("搜索失败: %v\n", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
+		}
+
+		// 处理官方镜像的情况
+		for i := range result.Results {
+			if result.Results[i].IsOfficial {
+				result.Results[i].Name = strings.TrimPrefix(result.Results[i].Name, "library/")
+			}
 		}
 
 		c.JSON(http.StatusOK, result)
