@@ -150,8 +150,8 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	// 打印解析后的结果
 	fmt.Printf("搜索结果: 总数=%d, 结果数=%d\n", result.Count, len(result.Results))
 	for i, repo := range result.Results {
-		fmt.Printf("仓库[%d]: 名称=%s, 命名空间=%s, 描述=%s, 是否官方=%v\n",
-			i, repo.Name, repo.Namespace, repo.Description, repo.IsOfficial)
+		fmt.Printf("仓库[%d]: 名称=%s, 所有者=%s, 描述=%s, 是否官方=%v\n",
+			i, repo.Name, repo.RepoOwner, repo.Description, repo.IsOfficial)
 	}
 
 	setCacheResult(cacheKey, &result)

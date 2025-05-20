@@ -625,6 +625,11 @@
                     return;
                 }
 
+                // 处理官方镜像
+                if (currentRepo.is_official) {
+                    namespace = 'library';
+                }
+
                 const response = await fetch(`/tags/${namespace}/${name}`);
                 const data = await response.json();
 
@@ -645,7 +650,7 @@
 
         function displayTags(tags) {
             const tagList = document.getElementById('tagList');
-            const repoName = currentRepo.namespace ? `${currentRepo.namespace}/${currentRepo.name}` : currentRepo.name;
+            const repoName = currentRepo.repo_name;
             
             let header = `
                 <div class="tag-header">
@@ -653,12 +658,12 @@
                         <div class="tag-title">
                             ${repoName}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
+                            ${currentRepo.is_automated ? '<span class="badge badge-automated">自动构建</span>' : ''}
                         </div>
-                        <div class="tag-description">${currentRepo.description || '暂无描述'}</div>
+                        <div class="tag-description">${currentRepo.short_description || '暂无描述'}</div>
                         <div class="tag-meta">
                             ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatNumber(currentRepo.star_count)}</span>` : ''}
                             ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatNumber(currentRepo.pull_count)}</span>` : ''}
-                            <span class="meta-item">更新于 ${formatTimeAgo(currentRepo.last_updated)}</span>
                         </div>
                         <div class="tag-pull-command">
                             docker pull ${repoName}
