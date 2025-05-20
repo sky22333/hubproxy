@@ -280,16 +280,56 @@
         .tag-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 20px;
             padding: 20px;
             background-color: var(--card-bg);
             border-radius: 10px;
             border: 1px solid var(--border-color);
+            flex-direction: column;
         }
 
         .tag-info {
             flex: 1;
+            width: 100%;
+        }
+
+        .tag-search-container {
+            width: 100%;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .tag-search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+            font-size: 0.9rem;
+        }
+
+        .tag-search-input:focus {
+            outline: none;
+            border-color: #39c5bc;
+        }
+
+        .tag-search-clear {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--fontcolor);
+            cursor: pointer;
+            padding: 5px;
+            opacity: 0.6;
+        }
+
+        .tag-search-clear:hover {
+            opacity: 1;
         }
 
         .tag-title {
@@ -847,11 +887,31 @@
                             docker pull ${fullRepoName}
                             <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}')">复制</button>
                         </div>
+                        <div class="tag-search-container">
+                            <input type="text" class="tag-search-input" placeholder="搜索标签..." oninput="filterTags(this.value)">
+                            <button class="tag-search-clear" onclick="clearTagSearch()">✕</button>
+                        </div>
                     </div>
                 </div>
+                <div id="tagsContainer"></div>
             `;
 
-            let tagsHtml = tags.map(tag => {
+            tagList.innerHTML = header;
+            
+            // 存储所有标签数据供搜索使用
+            window.allTags = tags;
+            // 初始显示所有标签
+            renderFilteredTags(tags);
+        }
+
+        function renderFilteredTags(filteredTags) {
+            const tagsContainer = document.getElementById('tagsContainer');
+            const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
+            const name = currentRepo.name || currentRepo.repo_name || '';
+            const cleanName = name.replace(/^library\//, '');
+            const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
+
+            let tagsHtml = filteredTags.map(tag => {
                 const vulnIndicators = Object.entries(tag.vulnerabilities || {})
                     .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
                     .join('');
@@ -883,7 +943,61 @@
                 `;
             }).join('');
 
-            tagList.innerHTML = header + tagsHtml;
+            if (filteredTags.length === 0) {
+                tagsHtml = '<div class="text-center" style="padding: 20px;">未找到匹配的标签</div>';
+            }
+
+            tagsContainer.innerHTML = tagsHtml;
+        }
+
+        function filterTags(searchText) {
+            if (!window.allTags) return;
+
+            const searchLower = searchText.toLowerCase();
+            let filteredTags;
+
+            if (!searchText) {
+                filteredTags = window.allTags;
+            } else {
+                // 对标签进行评分和排序
+                const scoredTags = window.allTags.map(tag => {
+                    const name = tag.name.toLowerCase();
+                    let score = 0;
+
+                    // 完全匹配
+                    if (name === searchLower) {
+                        score += 100;
+                    }
+                    // 前缀匹配
+                    else if (name.startsWith(searchLower)) {
+                        score += 50;
+                    }
+                    // 包含匹配
+                    else if (name.includes(searchLower)) {
+                        score += 30;
+                    }
+                    // 部分匹配（按单词）
+                    else if (searchLower.split(/\s+/).some(word => name.includes(word))) {
+                        score += 10;
+                    }
+
+                    return { tag, score };
+                }).filter(item => item.score > 0);
+
+                // 按分数排序
+                scoredTags.sort((a, b) => b.score - a.score);
+                filteredTags = scoredTags.map(item => item.tag);
+            }
+
+            renderFilteredTags(filteredTags);
+        }
+
+        function clearTagSearch() {
+            const searchInput = document.querySelector('.tag-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+                filterTags('');
+            }
         }
 
         function formatSize(bytes) {
