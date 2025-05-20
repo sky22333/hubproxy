@@ -631,7 +631,8 @@
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
-                const name = result.repo_name || '';
+                // 构建显示名称
+                const displayName = result.is_official ? result.name : `${result.namespace}/${result.name}`;
                 const description = result.short_description || '暂无描述';
                 const starCount = result.star_count || 0;
                 const pullCount = result.pull_count || 0;
@@ -650,7 +651,7 @@
 
                 card.innerHTML = `
                     <div class="result-title">
-                        ${name}
+                        ${displayName}
                         ${badges.join(' ')}
                     </div>
                     <div class="result-description">${description}</div>
