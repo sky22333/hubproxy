@@ -612,15 +612,12 @@
                     targetRepo = repo.toLowerCase(); // 保存目标仓库名用于排序
                 }
 
-                console.log('执行搜索:', searchQuery);
                 const response = await fetch(`/search?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=25`);
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.error || '搜索请求失败');
                 }
-
-                console.log('搜索响应:', data);
                 
                 // 更新总页数和分页状态
                 totalPages = Math.ceil(data.count / 25);
@@ -674,7 +671,6 @@
                     }
                     
                     if (isNaN(date.getTime())) {
-                        console.warn('无法解析日期:', dateString);
                         return '未知时间';
                     }
                 }
@@ -803,7 +799,6 @@
         async function loadTags(namespace, name) {
             showLoading();
             try {
-                console.log('加载标签:', namespace, name);
                 if (!namespace || !name) {
                     showToast('命名空间和镜像名称不能为空');
                     return;
@@ -816,7 +811,6 @@
                 }
 
                 const data = await response.json();
-                console.log('标签数据:', data);
                 displayTags(data);
                 showTagList();
             } catch (error) {

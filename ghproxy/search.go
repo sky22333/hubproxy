@@ -254,7 +254,6 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	}
 	
 	fullURL = fullURL + "?" + params.Encode()
-	fmt.Printf("搜索URL: %s\n", fullURL)
 	
 	// 发送请求
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
@@ -454,7 +453,6 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 	params.Set("ordering", "last_updated")
 
 	fullURL := baseURL + "?" + params.Encode()
-	fmt.Printf("获取标签URL: %s\n", fullURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
@@ -484,9 +482,6 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 		return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
 	}
 
-	// 打印响应内容以便调试
-	fmt.Printf("标签响应: %s\n", string(body))
-
 	// 解析响应
 	var result struct {
 		Count    int       `json:"count"`
@@ -496,13 +491,6 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %v", err)
-	}
-
-	// 打印解析后的结果
-	fmt.Printf("标签结果: 总数=%d, 结果数=%d\n", result.Count, len(result.Results))
-	for i, tag := range result.Results {
-		fmt.Printf("标签[%d]: 名称=%s, 大小=%d, 更新时间=%v\n",
-			i, tag.Name, tag.FullSize, tag.LastUpdated)
 	}
 
 	// 缓存结果
@@ -529,11 +517,8 @@ func RegisterSearchRoute(r *gin.Engine) {
 			fmt.Sscanf(ps, "%d", &pageSize)
 		}
 
-		fmt.Printf("搜索请求: query=%s, page=%d, pageSize=%d\n", query, page, pageSize)
-
 		result, err := searchDockerHub(c.Request.Context(), query, page, pageSize)
 		if err != nil {
-			fmt.Printf("搜索失败: %v\n", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -546,8 +531,6 @@ func RegisterSearchRoute(r *gin.Engine) {
 		namespace := c.Param("namespace")
 		name := c.Param("name")
 
-		fmt.Printf("获取标签请求: namespace=%s, name=%s\n", namespace, name)
-
 		if namespace == "" || name == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "命名空间和名称不能为空"})
 			return
@@ -555,7 +538,6 @@ func RegisterSearchRoute(r *gin.Engine) {
 
 		tags, err := getRepositoryTags(c.Request.Context(), namespace, name)
 		if err != nil {
-			fmt.Printf("获取标签失败: %v\n", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
