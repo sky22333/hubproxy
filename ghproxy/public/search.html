@@ -511,6 +511,17 @@
             
             prevButton.disabled = currentPage <= 1;
             nextButton.disabled = currentPage >= totalPages;
+            
+            // 添加页码显示
+            const paginationDiv = document.querySelector('.pagination');
+            const pageInfo = document.getElementById('pageInfo');
+            if (!pageInfo) {
+                const infoSpan = document.createElement('span');
+                infoSpan.id = 'pageInfo';
+                infoSpan.style.margin = '0 10px';
+                paginationDiv.insertBefore(infoSpan, nextButton);
+            }
+            document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
         }
 
         function showSearchResults() {
@@ -539,7 +550,7 @@
 
             try {
                 console.log('执行搜索:', query);
-                const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`/search?q=${encodeURIComponent(query)}&page=${currentPage}&page_size=25`);
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -547,6 +558,15 @@
                 }
 
                 console.log('搜索响应:', data);
+                
+                // 更新总页数和分页状态
+                if (typeof data.count === 'number') {
+                    totalPages = Math.ceil(data.count / 25);
+                } else {
+                    totalPages = data.results ? Math.ceil(data.results.length / 25) : 1;
+                }
+                updatePagination();
+                
                 displayResults(data.results);
             } catch (error) {
                 console.error('搜索错误:', error);
@@ -572,57 +592,55 @@
         function formatTimeAgo(dateString) {
             if (!dateString) return '未知时间';
             
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                // 尝试解析其他日期格式
-                const formats = [
-                    'YYYY-MM-DD',
-                    'YYYY/MM/DD',
-                    'MM/DD/YYYY',
-                    'DD/MM/YYYY'
-                ];
+            try {
+                let date;
+                // 尝试标准格式解析
+                date = new Date(dateString);
                 
-                for (const format of formats) {
-                    const d = tryParseDate(dateString, format);
-                    if (d && !isNaN(d.getTime())) {
-                        date = d;
-                        break;
+                // 如果解析失败，尝试其他常见格式
+                if (isNaN(date.getTime())) {
+                    const formats = [
+                        { regex: /^(\d{4})-(\d{2})-(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                        { regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                        { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, handler: (m) => new Date(m[3], m[1] - 1, m[2]) }
+                    ];
+                    
+                    for (const format of formats) {
+                        const match = dateString.match(format.regex);
+                        if (match) {
+                            date = format.handler(match);
+                            if (!isNaN(date.getTime())) break;
+                        }
+                    }
+                    
+                    if (isNaN(date.getTime())) {
+                        console.warn('无法解析日期:', dateString);
+                        return '未知时间';
                     }
                 }
                 
-                if (isNaN(date.getTime())) return '未知时间';
+                const now = new Date();
+                const diffTime = Math.abs(now - date);
+                const diffMinutes = Math.floor(diffTime / (1000 * 60));
+                const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                const diffMonths = Math.floor(diffDays / 30);
+                const diffYears = Math.floor(diffDays / 365);
+                
+                // 更精确的时间显示
+                if (diffMinutes < 1) return '刚刚';
+                if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+                if (diffHours < 24) return `${diffHours}小时前`;
+                if (diffDays < 7) return `${diffDays}天前`;
+                if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+                if (diffMonths < 12) return `${diffMonths}个月前`;
+                if (diffYears < 1) return '近1年';
+                return `${diffYears}年前`;
+                
+            } catch (error) {
+                console.warn('日期处理错误:', error);
+                return '未知时间';
             }
-            
-            const now = new Date();
-            const diffTime = Math.abs(now - date);
-            const diffMinutes = Math.floor(diffTime / (1000 * 60));
-            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            const diffMonths = Math.floor(diffDays / 30);
-            const diffYears = Math.floor(diffDays / 365);
-            
-            if (diffMinutes < 5) return '几秒前';
-            if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-            if (diffHours < 24) return `${diffHours}小时前`;
-            if (diffDays < 7) return `${diffDays}天前`;
-            if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
-            if (diffMonths < 12) return `${diffMonths}个月前`;
-            return `${diffYears}年前`;
-        }
-
-        function tryParseDate(dateString, format) {
-            const parts = dateString.split(/[-/]/);
-            const formatParts = format.split(/[-/]/);
-            const dateObj = {};
-            
-            for (let i = 0; i < formatParts.length; i++) {
-                const part = formatParts[i].toUpperCase();
-                if (part === 'YYYY') dateObj.year = parseInt(parts[i]);
-                else if (part === 'MM') dateObj.month = parseInt(parts[i]) - 1;
-                else if (part === 'DD') dateObj.day = parseInt(parts[i]);
-            }
-            
-            return new Date(dateObj.year, dateObj.month, dateObj.day);
         }
 
         function displayResults(results) {
@@ -738,8 +756,10 @@
         function displayTags(tags) {
             const tagList = document.getElementById('tagList');
             const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
-            const repoName = currentRepo.name || currentRepo.repo_name;
-            const fullRepoName = namespace ? `${namespace}/${repoName}` : repoName;
+            const name = currentRepo.name || currentRepo.repo_name || '';
+            // 移除可能重复的 library/ 前缀
+            const cleanName = name.replace(/^library\//, '');
+            const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
             
             let header = `
                 <div class="tag-header">
@@ -748,12 +768,11 @@
                             ${fullRepoName}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
                             ${currentRepo.affiliation ? `<span class="badge badge-organization">By ${currentRepo.affiliation}</span>` : ''}
-                            ${currentRepo.is_automated ? '<span class="badge badge-automated">自动构建</span>' : ''}
                         </div>
                         <div class="tag-description">${currentRepo.short_description || '暂无描述'}</div>
                         <div class="tag-meta">
                             ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatNumber(currentRepo.star_count)}</span>` : ''}
-                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatNumber(currentRepo.pull_count)}</span>` : ''}
+                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatNumber(currentRepo.pull_count)}+</span>` : ''}
                             ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${formatTimeAgo(currentRepo.last_updated)}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">

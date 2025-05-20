@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -70,41 +71,206 @@ type cacheEntry struct {
 	timestamp time.Time
 }
 
-var (
-	cache     = make(map[string]cacheEntry)
-	cacheLock sync.RWMutex
-	cacheTTL  = 30 * time.Minute
+const (
+	maxCacheSize = 1000 // 最大缓存条目数
+	cacheTTL     = 30 * time.Minute
 )
 
-func getCachedResult(key string) (interface{}, bool) {
-	cacheLock.RLock()
-	defer cacheLock.RUnlock()
-	entry, exists := cache[key]
+type Cache struct {
+	data     map[string]cacheEntry
+	mu       sync.RWMutex
+	maxSize  int
+}
+
+var (
+	searchCache = &Cache{
+		data:    make(map[string]cacheEntry),
+		maxSize: maxCacheSize,
+	}
+)
+
+func (c *Cache) Get(key string) (interface{}, bool) {
+	c.mu.RLock()
+	entry, exists := c.data[key]
+	c.mu.RUnlock()
+	
 	if !exists {
 		return nil, false
 	}
+	
 	if time.Since(entry.timestamp) > cacheTTL {
+		c.mu.Lock()
+		delete(c.data, key)
+		c.mu.Unlock()
 		return nil, false
 	}
+	
 	return entry.data, true
 }
 
-func setCacheResult(key string, data interface{}) {
-	cacheLock.Lock()
-	defer cacheLock.Unlock()
-	cache[key] = cacheEntry{
+func (c *Cache) Set(key string, data interface{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	
+	// 如果缓存已满，删除最旧的条目
+	if len(c.data) >= c.maxSize {
+		oldest := time.Now()
+		var oldestKey string
+		for k, v := range c.data {
+			if v.timestamp.Before(oldest) {
+				oldest = v.timestamp
+				oldestKey = k
+			}
+		}
+		delete(c.data, oldestKey)
+	}
+	
+	c.data[key] = cacheEntry{
 		data:      data,
 		timestamp: time.Now(),
 	}
 }
 
+func (c *Cache) Cleanup() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	
+	now := time.Now()
+	for key, entry := range c.data {
+		if now.Sub(entry.timestamp) > cacheTTL {
+			delete(c.data, key)
+		}
+	}
+}
+
+// 定期清理过期缓存
+func init() {
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		for range ticker.C {
+			searchCache.Cleanup()
+		}
+	}()
+}
+
+// 改进的搜索结果过滤函数
+func filterSearchResults(results []Repository, query string) []Repository {
+	searchTerm := strings.ToLower(strings.TrimPrefix(query, "library/"))
+	filtered := make([]Repository, 0)
+	
+	for _, repo := range results {
+		// 标准化仓库名称
+		repoName := strings.ToLower(repo.Name)
+		repoDesc := strings.ToLower(repo.Description)
+		
+		// 计算相关性得分
+		score := 0
+		
+		// 完全匹配
+		if repoName == searchTerm {
+			score += 100
+		}
+		
+		// 前缀匹配
+		if strings.HasPrefix(repoName, searchTerm) {
+			score += 50
+		}
+		
+		// 包含匹配
+		if strings.Contains(repoName, searchTerm) {
+			score += 30
+		}
+		
+		// 描述匹配
+		if strings.Contains(repoDesc, searchTerm) {
+			score += 10
+		}
+		
+		// 官方镜像加分
+		if repo.IsOfficial {
+			score += 20
+		}
+		
+		// 分数达到阈值的结果才保留
+		if score > 0 {
+			filtered = append(filtered, repo)
+		}
+	}
+	
+	// 按相关性排序
+	sort.Slice(filtered, func(i, j int) bool {
+		// 优先考虑官方镜像
+		if filtered[i].IsOfficial != filtered[j].IsOfficial {
+			return filtered[i].IsOfficial
+		}
+		// 其次考虑拉取次数
+		return filtered[i].PullCount > filtered[j].PullCount
+	})
+	
+	return filtered
+}
+
 // searchDockerHub 搜索镜像
 func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*SearchResult, error) {
 	cacheKey := fmt.Sprintf("search:%s:%d:%d", query, page, pageSize)
-	if cached, ok := getCachedResult(cacheKey); ok {
+	
+	// 尝试从缓存获取
+	if cached, ok := searchCache.Get(cacheKey); ok {
 		return cached.(*SearchResult), nil
 	}
+	
+	// 重试逻辑
+	var result *SearchResult
+	var lastErr error
+	
+	for retries := 3; retries > 0; retries-- {
+		result, lastErr = trySearchDockerHub(ctx, query, page, pageSize)
+		if lastErr == nil {
+			break
+		}
+		
+		// 判断是否需要重试
+		if !isRetryableError(lastErr) {
+			return nil, fmt.Errorf("搜索失败: %v", lastErr)
+		}
+		
+		// 等待后重试
+		time.Sleep(time.Second * time.Duration(4-retries))
+	}
+	
+	if lastErr != nil {
+		return nil, fmt.Errorf("搜索失败，已重试3次: %v", lastErr)
+	}
+	
+	// 过滤和处理搜索结果
+	result.Results = filterSearchResults(result.Results, query)
+	result.Count = len(result.Results)
+	
+	// 缓存结果
+	searchCache.Set(cacheKey, result)
+	
+	return result, nil
+}
 
+// 判断错误是否可重试
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	
+	// 网络错误、超时等可以重试
+	if strings.Contains(err.Error(), "timeout") ||
+	   strings.Contains(err.Error(), "connection refused") ||
+	   strings.Contains(err.Error(), "no such host") ||
+	   strings.Contains(err.Error(), "too many requests") {
+		return true
+	}
+	
+	return false
+}
+
+// trySearchDockerHub 执行实际的Docker Hub API请求
+func trySearchDockerHub(ctx context.Context, query string, page, pageSize int) (*SearchResult, error) {
 	// 构建Docker Hub API请求
 	baseURL := "https://registry.hub.docker.com/v2/search/repositories/"
 	params := url.Values{}
@@ -125,7 +291,17 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
 	// 发送请求
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			IdleConnTimeout:     90 * time.Second,
+			DisableCompression:  true,
+			DisableKeepAlives:   false,
+			MaxIdleConnsPerHost: 10,
+		},
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("发送请求失败: %v", err)
@@ -140,23 +316,23 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
+		// 特殊处理常见错误
+		switch resp.StatusCode {
+		case http.StatusTooManyRequests:
+			return nil, fmt.Errorf("请求过于频繁，请稍后重试")
+		case http.StatusNotFound:
+			return nil, fmt.Errorf("未找到相关镜像")
+		case http.StatusBadGateway, http.StatusServiceUnavailable:
+			return nil, fmt.Errorf("Docker Hub服务暂时不可用，请稍后重试")
+		default:
+			return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
+		}
 	}
-
-	// 打印响应内容以便调试
-	fmt.Printf("搜索响应: %s\n", string(body))
 
 	// 解析响应
 	var result SearchResult
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %v", err)
-	}
-
-	// 打印解析后的结果
-	fmt.Printf("搜索结果: 总数=%d, 结果数=%d\n", result.Count, len(result.Results))
-	for i, repo := range result.Results {
-		fmt.Printf("仓库[%d]: 名称=%s, 所有者=%s, 描述=%s, 是否官方=%v\n",
-			i, repo.Name, repo.RepoOwner, repo.Description, repo.IsOfficial)
 	}
 
 	// 处理搜索结果
@@ -180,7 +356,6 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 		}
 	}
 
-	setCacheResult(cacheKey, &result)
 	return &result, nil
 }
 
@@ -191,7 +366,7 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 	}
 
 	cacheKey := fmt.Sprintf("tags:%s:%s", namespace, name)
-	if cached, ok := getCachedResult(cacheKey); ok {
+	if cached, ok := searchCache.Get(cacheKey); ok {
 		return cached.([]TagInfo), nil
 	}
 
@@ -253,7 +428,8 @@ func getRepositoryTags(ctx context.Context, namespace, name string) ([]TagInfo, 
 			i, tag.Name, tag.FullSize, tag.LastUpdated)
 	}
 
-	setCacheResult(cacheKey, result.Results)
+	// 缓存结果
+	searchCache.Set(cacheKey, result.Results)
 	return result.Results, nil
 }
 
