@@ -1,9 +1,7 @@
 [Unit]
-Description=HubProxy - Docker Registry Proxy Service
-Documentation=https://github.com/sky22333/hubproxy
+Description=hubproxy
 After=network-online.target
 Wants=network-online.target
-AssertPathExists=/opt/hubproxy/hubproxy
 
 [Service]
 Type=simple
@@ -11,29 +9,12 @@ User=root
 Group=root
 WorkingDirectory=/opt/hubproxy
 ExecStart=/opt/hubproxy/hubproxy
-ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
-StartLimitInterval=60
-StartLimitBurst=3
-KillMode=mixed
-KillSignal=SIGTERM
-TimeoutStopSec=30
-TimeoutStartSec=30
-
-# 安全设置 - 保持必要的安全限制
-PrivateTmp=true
-ProtectHome=true
-ReadWritePaths=/opt/hubproxy
-
-# 资源限制
-LimitNOFILE=65536
-LimitNPROC=4096
-
-# 日志设置
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=hubproxy
 
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target
