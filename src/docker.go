@@ -181,6 +181,17 @@ func parseRegistryPath(path string) (imageName, apiType, reference string) {
 
 // handleManifestRequest 处理manifest请求
 func handleManifestRequest(c *gin.Context, imageRef, reference string) {
+	// Manifest缓存逻辑(仅对GET请求缓存)
+	if isCacheEnabled() && c.Request.Method == http.MethodGet {
+		cacheKey := buildManifestCacheKey(imageRef, reference)
+		
+		// 优先从缓存获取
+		if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
+			writeCachedResponse(c, cachedItem)
+			return
+		}
+	}
+	
 	var ref name.Reference
 	var err error
 
@@ -224,9 +235,23 @@ func handleManifestRequest(c *gin.Context, imageRef, reference string) {
 		}
 
 		// 设置响应头
+		headers := map[string]string{
+			"Docker-Content-Digest": desc.Digest.String(),
+			"Content-Length":        fmt.Sprintf("%d", len(desc.Manifest)),
+		}
+		
+		// 缓存响应
+		if isCacheEnabled() {
+			cacheKey := buildManifestCacheKey(imageRef, reference)
+			ttl := getManifestTTL(reference)
+			globalCache.Set(cacheKey, desc.Manifest, string(desc.MediaType), headers, ttl)
+		}
+
+		// 设置响应头
 		c.Header("Content-Type", string(desc.MediaType))
-		c.Header("Docker-Content-Digest", desc.Digest.String())
-		c.Header("Content-Length", fmt.Sprintf("%d", len(desc.Manifest)))
+		for key, value := range headers {
+			c.Header(key, value)
+		}
 
 		// 返回manifest内容
 		c.Data(http.StatusOK, string(desc.MediaType), desc.Manifest)
@@ -318,10 +343,10 @@ func ProxyDockerAuthGin(c *gin.Context) {
 // proxyDockerAuthWithCache 带缓存的认证代理
 func proxyDockerAuthWithCache(c *gin.Context) {
 	// 1. 构建缓存key（基于完整的查询参数）
-	cacheKey := buildCacheKey(c.Request.URL.RawQuery)
+	cacheKey := buildTokenCacheKey(c.Request.URL.RawQuery)
 	
 	// 2. 尝试从缓存获取token
-	if cachedToken := globalTokenCache.Get(cacheKey); cachedToken != "" {
+	if cachedToken := globalCache.GetToken(cacheKey); cachedToken != "" {
 		writeTokenResponse(c, cachedToken)
 		return
 	}
@@ -339,7 +364,7 @@ func proxyDockerAuthWithCache(c *gin.Context) {
 	// 5. 如果认证成功，缓存响应
 	if recorder.statusCode == 200 && len(recorder.body) > 0 {
 		ttl := extractTTLFromResponse(recorder.body)
-		globalTokenCache.Set(cacheKey, string(recorder.body), ttl)
+		globalCache.SetToken(cacheKey, string(recorder.body), ttl)
 	}
 	
 	// 6. 写入实际响应（如果还没写入）
@@ -501,6 +526,17 @@ func handleMultiRegistryRequest(c *gin.Context, registryDomain, remainingPath st
 
 // handleUpstreamManifestRequest 处理上游Registry的manifest请求
 func handleUpstreamManifestRequest(c *gin.Context, imageRef, reference string, mapping RegistryMapping) {
+	// Manifest缓存逻辑(仅对GET请求缓存)
+	if isCacheEnabled() && c.Request.Method == http.MethodGet {
+		cacheKey := buildManifestCacheKey(imageRef, reference)
+		
+		// 优先从缓存获取
+		if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
+			writeCachedResponse(c, cachedItem)
+			return
+		}
+	}
+	
 	var ref name.Reference
 	var err error
 
@@ -541,9 +577,25 @@ func handleUpstreamManifestRequest(c *gin.Context, imageRef, reference string, m
 			return
 		}
 
+		// 设置响应头
+		headers := map[string]string{
+			"Docker-Content-Digest": desc.Digest.String(),
+			"Content-Length":        fmt.Sprintf("%d", len(desc.Manifest)),
+		}
+		
+		// 缓存响应
+		if isCacheEnabled() {
+			cacheKey := buildManifestCacheKey(imageRef, reference)
+			ttl := getManifestTTL(reference)
+			globalCache.Set(cacheKey, desc.Manifest, string(desc.MediaType), headers, ttl)
+		}
+
+		// 设置响应头
 		c.Header("Content-Type", string(desc.MediaType))
-		c.Header("Docker-Content-Digest", desc.Digest.String())
-		c.Header("Content-Length", fmt.Sprintf("%d", len(desc.Manifest)))
+		for key, value := range headers {
+			c.Header(key, value)
+		}
+		
 		c.Data(http.StatusOK, string(desc.MediaType), desc.Manifest)
 	}
 }

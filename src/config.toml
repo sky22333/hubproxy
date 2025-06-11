@@ -82,9 +82,14 @@ enabled = true
 # authType = "basic"
 # enabled = false
 
-# docker的匿名Token缓存配置，显著提升性能
+# 缓存配置：Token和Manifest统一管理，显著提升性能
 [tokenCache]
-# 是否启用token缓存
+# 是否启用缓存(同时控制Token和Manifest缓存)
 enabled = true
-# 默认缓存时间（自动从响应中提取实际TTL）
+# 默认缓存时间（适用于mutable标签，如latest等）
 defaultTTL = "20m"
+# 说明：
+# - immutable digest缓存24小时
+# - latest/main等热门标签缓存5分钟
+# - 普通tag使用defaultTTL
+# - Token自动从响应中提取TTL
