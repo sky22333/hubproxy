@@ -50,10 +50,10 @@ curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install-serv
 # 原命令
 docker pull nginx
 
-# 使用加速（替换 yourdomain.com）
+# 使用加速
 docker pull yourdomain.com/nginx
 
-# ghcr加速（替换 yourdomain.com）
+# ghcr加速
 docker pull yourdomain.com/ghcr.io/user/images
 ```
 
