@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -9,6 +10,23 @@ import (
 	"strconv"
 	"strings"
 )
+
+//go:embed public/*
+var staticFiles embed.FS
+
+// 服务嵌入的静态文件
+func serveEmbedFile(c *gin.Context, filename string) {
+	data, err := staticFiles.ReadFile(filename)
+	if err != nil {
+		c.Status(404)
+		return
+	}
+	contentType := "text/html; charset=utf-8"
+	if strings.HasSuffix(filename, ".ico") {
+		contentType = "image/x-icon"
+	}
+	c.Data(200, contentType, data)
+}
 
 var (
 	exps = []*regexp.Regexp{
@@ -48,21 +66,22 @@ func main() {
 	// 初始化skopeo路由（静态文件和API路由）
 	initSkopeoRoutes(router)
 	
-	// 单独处理根路径请求
+	// 静态文件路由（使用嵌入文件）
 	router.GET("/", func(c *gin.Context) {
-		c.File("./public/index.html")
+		serveEmbedFile(c, "public/index.html")
 	})
-	
-	// 指定具体的静态文件路径
-	router.Static("/public", "./public")
+	router.GET("/public/*filepath", func(c *gin.Context) {
+		filepath := strings.TrimPrefix(c.Param("filepath"), "/")
+		serveEmbedFile(c, "public/"+filepath)
+	})
 	router.GET("/skopeo.html", func(c *gin.Context) {
-		c.File("./public/skopeo.html")
+		serveEmbedFile(c, "public/skopeo.html")
 	})
 	router.GET("/search.html", func(c *gin.Context) {
-		c.File("./public/search.html")
+		serveEmbedFile(c, "public/search.html")
 	})
 	router.GET("/favicon.ico", func(c *gin.Context) {
-		c.File("./public/favicon.ico")
+		serveEmbedFile(c, "public/favicon.ico")
 	})
 
 	// 注册dockerhub搜索路由

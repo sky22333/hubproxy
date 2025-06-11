@@ -16,6 +16,5 @@ RUN apk add --no-cache skopeo && mkdir -p temp && chmod 700 temp
 
 COPY --from=builder /app/hubproxy .
 COPY --from=builder /app/config.toml .
-COPY --from=builder /app/public ./public
 
 CMD ["./hubproxy"]
