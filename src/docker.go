@@ -669,7 +669,7 @@ func handleUpstreamTagsRequest(c *gin.Context, imageRef string, mapping Registry
 func createUpstreamOptions(mapping RegistryMapping) []remote.Option {
 	options := []remote.Option{
 		remote.WithAuth(authn.Anonymous),
-		remote.WithUserAgent("ghproxy/go-containerregistry"),
+		remote.WithUserAgent("hubproxy/go-containerregistry"),
 	}
 
 	// 根据Registry类型添加特定的认证选项
