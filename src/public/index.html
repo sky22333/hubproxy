@@ -428,8 +428,6 @@
                     <strong>GitHub Container Registry：</strong><br>
                     docker pull <span class="domain-base"></span>/ghcr.io/user/image<br><br>
                     
-                    <strong>Google Container Registry：</strong><br>
-                    docker pull <span class="domain-base"></span>/gcr.io/project/image<br><br>
                     
                     <strong>Quay.io Registry：</strong><br>
                     docker pull <span class="domain-base"></span>/quay.io/org/image<br><br>
@@ -454,18 +452,14 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            function getRootDomain() {
-                let hostname = window.location.hostname;
-                let parts = hostname.split('.');
-                if(parts.length > 2) {
-                    return parts.slice(-2).join('.');
-                }
-                return hostname;
+            function getFullDomain() {
+                // 获取完整的域名（包括端口号）
+                return window.location.host;
             }
 
-            let rootDomain = getRootDomain();
+            let fullDomain = getFullDomain();
             document.querySelectorAll('.domain-base').forEach(span => {
-                span.textContent = rootDomain;
+                span.textContent = fullDomain;
             });
 
             const modal = document.getElementById('dockerModal');
