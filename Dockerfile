@@ -11,8 +11,8 @@ FROM alpine
 
 WORKDIR /root/
 
-# 安装skopeo
-RUN apk add --no-cache skopeo && mkdir -p temp && chmod 700 temp
+# 安装依赖
+RUN apk add --no-cache skopeo
 
 COPY --from=builder /app/hubproxy .
 COPY --from=builder /app/config.toml .
