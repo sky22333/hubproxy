@@ -305,8 +305,70 @@ func handleTagsRequest(c *gin.Context, imageRef string) {
 	c.JSON(http.StatusOK, response)
 }
 
-// ProxyDockerAuthGin Docker认证代理
+// ProxyDockerAuthGin Docker认证代理（带缓存优化）
 func ProxyDockerAuthGin(c *gin.Context) {
+	// 检查是否启用token缓存
+	if isTokenCacheEnabled() {
+		proxyDockerAuthWithCache(c)
+	} else {
+		proxyDockerAuthOriginal(c)
+	}
+}
+
+// proxyDockerAuthWithCache 带缓存的认证代理
+func proxyDockerAuthWithCache(c *gin.Context) {
+	// 1. 构建缓存key（基于完整的查询参数）
+	cacheKey := buildCacheKey(c.Request.URL.RawQuery)
+	
+	// 2. 尝试从缓存获取token
+	if cachedToken := globalTokenCache.Get(cacheKey); cachedToken != "" {
+		writeTokenResponse(c, cachedToken)
+		return
+	}
+	
+	// 3. 缓存未命中，创建响应记录器
+	recorder := &ResponseRecorder{
+		ResponseWriter: c.Writer,
+		statusCode:     200,
+	}
+	c.Writer = recorder
+	
+	// 4. 调用原有认证逻辑
+	proxyDockerAuthOriginal(c)
+	
+	// 5. 如果认证成功，缓存响应
+	if recorder.statusCode == 200 && len(recorder.body) > 0 {
+		ttl := extractTTLFromResponse(recorder.body)
+		globalTokenCache.Set(cacheKey, string(recorder.body), ttl)
+	}
+	
+	// 6. 写入实际响应（如果还没写入）
+	if !recorder.written {
+		c.Writer = recorder.ResponseWriter
+		c.Data(recorder.statusCode, "application/json", recorder.body)
+	}
+}
+
+// ResponseRecorder HTTP响应记录器
+type ResponseRecorder struct {
+	gin.ResponseWriter
+	statusCode int
+	body       []byte
+	written    bool
+}
+
+func (r *ResponseRecorder) WriteHeader(code int) {
+	r.statusCode = code
+}
+
+func (r *ResponseRecorder) Write(data []byte) (int, error) {
+	r.body = append(r.body, data...)
+	r.written = true
+	return r.ResponseWriter.Write(data)
+}
+
+// proxyDockerAuthOriginal Docker认证代理（原始逻辑，保持不变）
+func proxyDockerAuthOriginal(c *gin.Context) {
 	// 检查是否有目标Registry域名（来自Context）
 	var authURL string
 	if targetDomain, exists := c.Get("target_registry_domain"); exists {

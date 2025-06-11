@@ -47,6 +47,12 @@ type AppConfig struct {
 
 	// 新增：Registry映射配置
 	Registries map[string]RegistryMapping `toml:"registries"`
+
+	// Token缓存配置
+	TokenCache struct {
+		Enabled    bool   `toml:"enabled"`    // 是否启用token缓存
+		DefaultTTL string `toml:"defaultTTL"` // 默认缓存时间
+	} `toml:"tokenCache"`
 }
 
 var (
@@ -117,6 +123,13 @@ func DefaultConfig() *AppConfig {
 				AuthType: "anonymous",
 				Enabled:  true,
 			},
+		},
+		TokenCache: struct {
+			Enabled    bool   `toml:"enabled"`
+			DefaultTTL string `toml:"defaultTTL"`
+		}{
+			Enabled:    true, // docker认证的匿名Token缓存配置，用于提升性能
+			DefaultTTL: "20m",
 		},
 	}
 }

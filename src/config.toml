@@ -81,3 +81,10 @@ enabled = true
 # authHost = "harbor.company.com/service/token"
 # authType = "basic"
 # enabled = false
+
+# docker的匿名Token缓存配置，显著提升性能
+[tokenCache]
+# 是否启用token缓存
+enabled = true
+# 默认缓存时间（自动从响应中提取实际TTL）
+defaultTTL = "20m"
