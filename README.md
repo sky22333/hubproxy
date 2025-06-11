@@ -74,13 +74,18 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 
 主配置文件位于 `/opt/hubproxy/config.toml`：
 
-为了IP限流能够正常运行，反向代理传递IP头以caddy为例：
+为了IP限流能够正常运行，反向代理需要传递IP头用来获取访客真实IP，以caddy为例：
 ```
 example.com {
     reverse_proxy 127.0.0.1:5000 {
-        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-Proto https
+        # 始终设置基础 IP
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        
+        # 如果有 CF IP，覆盖设置
+        header_up CF-Connecting-IP {http.request.header.CF-Connecting-IP}
+        
+        header_up X-Forwarded-Proto {scheme}
         header_up X-Forwarded-Host {host}
     }
 }
