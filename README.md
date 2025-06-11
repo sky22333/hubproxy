@@ -77,12 +77,11 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 为了IP限流能够正常运行，反向代理传递IP头以caddy为例：
 ```
 example.com {
-    reverse_proxy {
-        to 127.0.0.1:5000
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
-        header_up CF-Connecting-IP {remote}
+    reverse_proxy 127.0.0.1:5000 {
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
     }
 }
 ```
