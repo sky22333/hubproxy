@@ -6,8 +6,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/spf13/viper"
+	"github.com/fsnotify/fsnotify"
 )
 
 // RegistryMapping Registry映射配置
@@ -58,6 +61,8 @@ type AppConfig struct {
 var (
 	appConfig     *AppConfig
 	appConfigLock sync.RWMutex
+	isViperEnabled bool
+	viperInstance  *viper.Viper
 )
 
 // DefaultConfig 返回默认配置
@@ -180,11 +185,114 @@ func LoadConfig() error {
 	// 设置配置
 	setConfig(cfg)
 	
+	// 🔥 首次加载后启用Viper热重载
+	if !isViperEnabled {
+		go enableViperHotReload()
+	}
+	
 	fmt.Printf("配置加载成功: 监听 %s:%d, 文件大小限制 %d MB, 限流 %d请求/%g小时, 离线镜像并发数 %d\n",
 		cfg.Server.Host, cfg.Server.Port, cfg.Server.FileSize/(1024*1024), 
 		cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours, cfg.Download.MaxImages)
 	
 	return nil
+}
+
+// 🔥 启用Viper自动热重载
+func enableViperHotReload() {
+	if isViperEnabled {
+		return
+	}
+	
+	// 创建Viper实例
+	viperInstance = viper.New()
+	
+	// 配置Viper
+	viperInstance.SetConfigName("config")
+	viperInstance.SetConfigType("toml")
+	viperInstance.AddConfigPath(".")
+	
+	// 读取配置文件
+	if err := viperInstance.ReadInConfig(); err != nil {
+		fmt.Printf("Viper读取配置失败，继续使用当前配置: %v\n", err)
+		return
+	}
+	
+	isViperEnabled = true
+	fmt.Println("🔄 Viper自动热重载已启用")
+	
+	// 🚀 启用文件监听
+	viperInstance.WatchConfig()
+	viperInstance.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Printf("📁 检测到配置文件变化: %s\n", e.Name)
+		hotReloadWithViper()
+	})
+}
+
+// 🔥 使用Viper进行热重载
+func hotReloadWithViper() {
+	start := time.Now()
+	fmt.Println("🔄 开始Viper自动热重载...")
+	
+	// 创建新配置
+	cfg := DefaultConfig()
+	
+	// 使用Viper解析配置到结构体
+	if err := viperInstance.Unmarshal(cfg); err != nil {
+		fmt.Printf("❌ Viper配置解析失败: %v\n", err)
+		return
+	}
+	
+	// 从环境变量覆盖（保持原有功能）
+	overrideFromEnv(cfg)
+	
+	// 原子性更新配置
+	setConfig(cfg)
+	
+	// 异步更新受影响的组件
+	go func() {
+		updateAffectedComponents()
+		fmt.Printf("✅ Viper配置热重载完成，耗时: %v\n", time.Since(start))
+	}()
+}
+
+// 🔧 更新受配置影响的组件
+func updateAffectedComponents() {
+	// 重新初始化限流器
+	if globalLimiter != nil {
+		fmt.Println("📡 重新初始化限流器...")
+		initLimiter()
+	}
+	
+	// 重新加载访问控制
+	fmt.Println("🔒 重新加载访问控制规则...")
+	if GlobalAccessController != nil {
+		GlobalAccessController.Reload()
+	}
+	
+	// 🔥 刷新Registry配置映射
+	fmt.Println("🌐 更新Registry配置映射...")
+	reloadRegistryConfig()
+	
+	// 其他需要重新初始化的组件可以在这里添加
+	fmt.Println("🔧 组件更新完成")
+}
+
+// 🔥 重新加载Registry配置
+func reloadRegistryConfig() {
+	cfg := GetConfig()
+	enabledCount := 0
+	
+	// 统计启用的Registry数量
+	for _, mapping := range cfg.Registries {
+		if mapping.Enabled {
+			enabledCount++
+		}
+	}
+	
+	fmt.Printf("🌐 Registry配置已更新: %d个启用\n", enabledCount)
+	
+	// Registry配置是动态读取的，每次请求都会调用GetConfig()
+	// 所以这里只需要简单通知，实际生效是自动的
 }
 
 // overrideFromEnv 从环境变量覆盖配置

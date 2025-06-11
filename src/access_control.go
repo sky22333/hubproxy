@@ -223,4 +223,17 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 		}
 	}
 	return false
+}
+
+// 🔥 Reload 热重载访问控制规则
+func (ac *AccessController) Reload() {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	
+	// 访问控制器本身不缓存配置，每次检查时都会调用GetConfig()
+	// 所以这里只需要确保锁的原子性，实际的重载在GetConfig()中完成
+	// 可以在这里添加一些初始化逻辑，比如预编译正则表达式等
+	
+	// 目前访问控制器设计为无状态的，每次检查都读取最新配置
+	// 这样设计的好处是配置更新后无需额外处理，自动生效
 } 
