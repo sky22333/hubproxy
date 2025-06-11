@@ -78,14 +78,9 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 ```
 example.com {
     reverse_proxy 127.0.0.1:5000 {
-        # 始终设置基础 IP
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        
-        # 如果有 CF IP，覆盖设置
-        header_up CF-Connecting-IP {http.request.header.CF-Connecting-IP}
-        
-        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto https
         header_up X-Forwarded-Host {host}
     }
 }
