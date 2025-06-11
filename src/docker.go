@@ -22,6 +22,43 @@ type DockerProxy struct {
 
 var dockerProxy *DockerProxy
 
+// RegistryDetector Registry检测器
+type RegistryDetector struct{}
+
+// detectRegistryDomain 检测Registry域名并返回域名和剩余路径
+func (rd *RegistryDetector) detectRegistryDomain(path string) (string, string) {
+	cfg := GetConfig()
+	
+	// 检查路径是否以已知Registry域名开头
+	for domain := range cfg.Registries {
+		if strings.HasPrefix(path, domain+"/") {
+			// 找到匹配的域名，返回域名和剩余路径
+			remainingPath := strings.TrimPrefix(path, domain+"/")
+			return domain, remainingPath
+		}
+	}
+	
+	return "", path
+}
+
+// isRegistryEnabled 检查Registry是否启用
+func (rd *RegistryDetector) isRegistryEnabled(domain string) bool {
+	cfg := GetConfig()
+	if mapping, exists := cfg.Registries[domain]; exists {
+		return mapping.Enabled
+	}
+	return false
+}
+
+// getRegistryMapping 获取Registry映射配置
+func (rd *RegistryDetector) getRegistryMapping(domain string) (RegistryMapping, bool) {
+	cfg := GetConfig()
+	mapping, exists := cfg.Registries[domain]
+	return mapping, exists && mapping.Enabled
+}
+
+var registryDetector = &RegistryDetector{}
+
 // 初始化Docker代理
 func initDockerProxy() {
 	// 创建目标registry
@@ -68,7 +105,20 @@ func handleRegistryRequest(c *gin.Context, path string) {
 	// 移除 /v2/ 前缀
 	pathWithoutV2 := strings.TrimPrefix(path, "/v2/")
 	
-	// 解析路径
+	// 🔍 新增：Registry域名检测和路由
+	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(pathWithoutV2); registryDomain != "" {
+		if registryDetector.isRegistryEnabled(registryDomain) {
+			// 设置目标Registry信息到Context
+			c.Set("target_registry_domain", registryDomain)
+			c.Set("target_path", remainingPath)
+			
+			// 处理多Registry请求
+			handleMultiRegistryRequest(c, registryDomain, remainingPath)
+			return
+		}
+	}
+	
+	// 原有逻辑完全保持（零改动）
 	imageName, apiType, reference := parseRegistryPath(pathWithoutV2)
 	if imageName == "" || apiType == "" {
 		c.String(http.StatusBadRequest, "Invalid path format")
@@ -257,8 +307,21 @@ func handleTagsRequest(c *gin.Context, imageRef string) {
 
 // ProxyDockerAuthGin Docker认证代理
 func ProxyDockerAuthGin(c *gin.Context) {
-	// 构建认证URL
-	authURL := "https://auth.docker.io" + c.Request.URL.Path
+	// 检查是否有目标Registry域名（来自Context）
+	var authURL string
+	if targetDomain, exists := c.Get("target_registry_domain"); exists {
+		if mapping, found := registryDetector.getRegistryMapping(targetDomain.(string)); found {
+			// 使用Registry特定的认证服务器
+			authURL = "https://" + mapping.AuthHost + c.Request.URL.Path
+		} else {
+			// fallback到默认Docker认证
+			authURL = "https://auth.docker.io" + c.Request.URL.Path
+		}
+	} else {
+		// 构建默认Docker认证URL
+		authURL = "https://auth.docker.io" + c.Request.URL.Path
+	}
+	
 	if c.Request.URL.RawQuery != "" {
 		authURL += "?" + c.Request.URL.RawQuery
 	}
@@ -310,8 +373,9 @@ func ProxyDockerAuthGin(c *gin.Context) {
 	for key, values := range resp.Header {
 		for _, value := range values {
 			// 重写WWW-Authenticate头中的realm URL
-			if key == "Www-Authenticate" && strings.Contains(value, "auth.docker.io") {
-				value = strings.ReplaceAll(value, "https://auth.docker.io", "http://"+proxyHost)
+			if key == "Www-Authenticate" {
+				// 支持多Registry的URL重写
+				value = rewriteAuthHeader(value, proxyHost)
 			}
 			c.Header(key, value)
 		}
@@ -320,4 +384,192 @@ func ProxyDockerAuthGin(c *gin.Context) {
 	// 返回响应
 	c.Status(resp.StatusCode)
 	io.Copy(c.Writer, resp.Body)
+}
+
+// rewriteAuthHeader 重写认证头
+func rewriteAuthHeader(authHeader, proxyHost string) string {
+	// 重写各种Registry的认证URL
+	authHeader = strings.ReplaceAll(authHeader, "https://auth.docker.io", "http://"+proxyHost)
+	authHeader = strings.ReplaceAll(authHeader, "https://ghcr.io", "http://"+proxyHost)
+	authHeader = strings.ReplaceAll(authHeader, "https://gcr.io", "http://"+proxyHost)
+	authHeader = strings.ReplaceAll(authHeader, "https://quay.io", "http://"+proxyHost)
+	
+	return authHeader
+}
+
+// handleMultiRegistryRequest 处理多Registry请求
+func handleMultiRegistryRequest(c *gin.Context, registryDomain, remainingPath string) {
+	// 获取Registry映射配置
+	mapping, exists := registryDetector.getRegistryMapping(registryDomain)
+	if !exists {
+		c.String(http.StatusBadRequest, "Registry not configured")
+		return
+	}
+	
+	// 解析剩余路径
+	imageName, apiType, reference := parseRegistryPath(remainingPath)
+	if imageName == "" || apiType == "" {
+		c.String(http.StatusBadRequest, "Invalid path format")
+		return
+	}
+
+	// 访问控制检查（使用完整的镜像路径）
+	fullImageName := registryDomain + "/" + imageName
+	if allowed, reason := GlobalAccessController.CheckDockerAccess(fullImageName); !allowed {
+		fmt.Printf("镜像 %s 访问被拒绝: %s\n", fullImageName, reason)
+		c.String(http.StatusForbidden, "镜像访问被限制")
+		return
+	}
+
+	// 构建上游Registry引用
+	upstreamImageRef := fmt.Sprintf("%s/%s", mapping.Upstream, imageName)
+
+	// 根据API类型处理请求
+	switch apiType {
+	case "manifests":
+		handleUpstreamManifestRequest(c, upstreamImageRef, reference, mapping)
+	case "blobs":
+		handleUpstreamBlobRequest(c, upstreamImageRef, reference, mapping)
+	case "tags":
+		handleUpstreamTagsRequest(c, upstreamImageRef, mapping)
+	default:
+		c.String(http.StatusNotFound, "API endpoint not found")
+	}
+}
+
+// handleUpstreamManifestRequest 处理上游Registry的manifest请求
+func handleUpstreamManifestRequest(c *gin.Context, imageRef, reference string, mapping RegistryMapping) {
+	var ref name.Reference
+	var err error
+
+	// 判断reference是digest还是tag
+	if strings.HasPrefix(reference, "sha256:") {
+		ref, err = name.NewDigest(fmt.Sprintf("%s@%s", imageRef, reference))
+	} else {
+		ref, err = name.NewTag(fmt.Sprintf("%s:%s", imageRef, reference))
+	}
+
+	if err != nil {
+		fmt.Printf("解析镜像引用失败: %v\n", err)
+		c.String(http.StatusBadRequest, "Invalid reference")
+		return
+	}
+
+	// 创建针对上游Registry的选项
+	options := createUpstreamOptions(mapping)
+
+	// 根据请求方法选择操作
+	if c.Request.Method == http.MethodHead {
+		desc, err := remote.Head(ref, options...)
+		if err != nil {
+			fmt.Printf("HEAD请求失败: %v\n", err)
+			c.String(http.StatusNotFound, "Manifest not found")
+			return
+		}
+
+		c.Header("Content-Type", string(desc.MediaType))
+		c.Header("Docker-Content-Digest", desc.Digest.String())
+		c.Header("Content-Length", fmt.Sprintf("%d", desc.Size))
+		c.Status(http.StatusOK)
+	} else {
+		desc, err := remote.Get(ref, options...)
+		if err != nil {
+			fmt.Printf("GET请求失败: %v\n", err)
+			c.String(http.StatusNotFound, "Manifest not found")
+			return
+		}
+
+		c.Header("Content-Type", string(desc.MediaType))
+		c.Header("Docker-Content-Digest", desc.Digest.String())
+		c.Header("Content-Length", fmt.Sprintf("%d", len(desc.Manifest)))
+		c.Data(http.StatusOK, string(desc.MediaType), desc.Manifest)
+	}
+}
+
+// handleUpstreamBlobRequest 处理上游Registry的blob请求
+func handleUpstreamBlobRequest(c *gin.Context, imageRef, digest string, mapping RegistryMapping) {
+	digestRef, err := name.NewDigest(fmt.Sprintf("%s@%s", imageRef, digest))
+	if err != nil {
+		fmt.Printf("解析digest引用失败: %v\n", err)
+		c.String(http.StatusBadRequest, "Invalid digest reference")
+		return
+	}
+
+	options := createUpstreamOptions(mapping)
+	layer, err := remote.Layer(digestRef, options...)
+	if err != nil {
+		fmt.Printf("获取layer失败: %v\n", err)
+		c.String(http.StatusNotFound, "Layer not found")
+		return
+	}
+
+	size, err := layer.Size()
+	if err != nil {
+		fmt.Printf("获取layer大小失败: %v\n", err)
+		c.String(http.StatusInternalServerError, "Failed to get layer size")
+		return
+	}
+
+	reader, err := layer.Compressed()
+	if err != nil {
+		fmt.Printf("获取layer内容失败: %v\n", err)
+		c.String(http.StatusInternalServerError, "Failed to get layer content")
+		return
+	}
+	defer reader.Close()
+
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Length", fmt.Sprintf("%d", size))
+	c.Header("Docker-Content-Digest", digest)
+
+	c.Status(http.StatusOK)
+	io.Copy(c.Writer, reader)
+}
+
+// handleUpstreamTagsRequest 处理上游Registry的tags请求
+func handleUpstreamTagsRequest(c *gin.Context, imageRef string, mapping RegistryMapping) {
+	repo, err := name.NewRepository(imageRef)
+	if err != nil {
+		fmt.Printf("解析repository失败: %v\n", err)
+		c.String(http.StatusBadRequest, "Invalid repository")
+		return
+	}
+
+	options := createUpstreamOptions(mapping)
+	tags, err := remote.List(repo, options...)
+	if err != nil {
+		fmt.Printf("获取tags失败: %v\n", err)
+		c.String(http.StatusNotFound, "Tags not found")
+		return
+	}
+
+	response := map[string]interface{}{
+		"name": strings.TrimPrefix(imageRef, mapping.Upstream+"/"),
+		"tags": tags,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// createUpstreamOptions 创建上游Registry选项
+func createUpstreamOptions(mapping RegistryMapping) []remote.Option {
+	options := []remote.Option{
+		remote.WithAuth(authn.Anonymous),
+		remote.WithUserAgent("ghproxy/go-containerregistry"),
+	}
+
+	// 根据Registry类型添加特定的认证选项
+	switch mapping.AuthType {
+	case "github":
+		// GitHub Container Registry 通常使用匿名访问
+		// 如需要认证，可在此处添加
+	case "google":
+		// Google Container Registry 配置
+		// 如需要认证，可在此处添加
+	case "quay":
+		// Quay.io 配置
+		// 如需要认证，可在此处添加
+	}
+
+	return options
 }

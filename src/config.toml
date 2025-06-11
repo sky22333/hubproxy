@@ -43,3 +43,34 @@ blackList = [
 [download]
 # 单次并发下载离线镜像数量限制
 maxImages = 10
+
+# Registry映射配置，支持多种Container Registry
+[registries]
+
+# GitHub Container Registry
+[registries."ghcr.io"]
+upstream = "ghcr.io"
+authHost = "ghcr.io/token" 
+authType = "github"
+enabled = true
+
+# Google Container Registry
+[registries."gcr.io"]
+upstream = "gcr.io"
+authHost = "gcr.io/v2/token"
+authType = "google"
+enabled = true
+
+# Quay.io Container Registry
+[registries."quay.io"]
+upstream = "quay.io"
+authHost = "quay.io/v2/auth"
+authType = "quay"
+enabled = true
+
+# 私有Registry示例（默认禁用）
+# [registries."harbor.company.com"]
+# upstream = "harbor.company.com"
+# authHost = "harbor.company.com/service/token"
+# authType = "basic"
+# enabled = false

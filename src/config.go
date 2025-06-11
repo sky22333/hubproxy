@@ -10,6 +10,14 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// RegistryMapping Registry映射配置
+type RegistryMapping struct {
+	Upstream string `toml:"upstream"` // 上游Registry地址
+	AuthHost string `toml:"authHost"` // 认证服务器地址
+	AuthType string `toml:"authType"` // 认证类型: docker/github/google/basic
+	Enabled  bool   `toml:"enabled"`  // 是否启用
+}
+
 // AppConfig 应用配置结构体
 type AppConfig struct {
 	Server struct {
@@ -36,6 +44,9 @@ type AppConfig struct {
 	Download struct {
 		MaxImages int `toml:"maxImages"` // 单次下载最大镜像数量限制
 	} `toml:"download"`
+
+	// 新增：Registry映射配置
+	Registries map[string]RegistryMapping `toml:"registries"`
 }
 
 var (
@@ -80,6 +91,26 @@ func DefaultConfig() *AppConfig {
 			MaxImages int `toml:"maxImages"`
 		}{
 			MaxImages: 10, // 默认值：最多同时下载10个镜像
+		},
+		Registries: map[string]RegistryMapping{
+			"ghcr.io": {
+				Upstream: "ghcr.io",
+				AuthHost: "ghcr.io/token",
+				AuthType: "github",
+				Enabled:  true,
+			},
+			"gcr.io": {
+				Upstream: "gcr.io",
+				AuthHost: "gcr.io/v2/token",
+				AuthType: "google",
+				Enabled:  true,
+			},
+			"quay.io": {
+				Upstream: "quay.io",
+				AuthHost: "quay.io/v2/auth",
+				AuthType: "quay",
+				Enabled:  true,
+			},
 		},
 	}
 }
