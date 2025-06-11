@@ -6,7 +6,8 @@
 
 ## ✨ 特性
 
-- 🐳 **Docker 镜像加速** - 支持 Docker Hub、GHCR、Quay 等多个镜像仓库，以及优化拉取速度。支持批量下载离线镜像包。
+- 🐳 **Docker 镜像加速** - 支持 Docker Hub、GHCR、Quay 等多个镜像仓库，以及优化拉取速度。
+- 🐳 **离线镜像包** - 支持批量下载离线镜像包。
 - 📁 **GitHub 文件加速** - 加速 GitHub Release、Raw 文件下载，`api.github.com`，脚本嵌套加速等等
 - 🤖 **AI 模型库支持** - 支持 Hugging Face 模型下载加速
 - 🛡️ **智能限流** - IP 限流保护，防止滥用
