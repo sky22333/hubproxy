@@ -69,11 +69,22 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 
 
 
-## ⚙️ 配置
+## ⚙️ 提示
 
 主配置文件位于 `/opt/hubproxy/config.toml`：
 
-
+为了IP限流能够正常运行，反向代理传递IP头以caddy为例：
+```
+example.com {
+    reverse_proxy {
+        to 127.0.0.1:5000
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+        header_up CF-Connecting-IP {remote}
+    }
+}
+```
 
 
 ## 🙏 致谢
