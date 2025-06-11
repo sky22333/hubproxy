@@ -409,20 +409,33 @@
             </div>
         </div>
 
-        <button class="docker-button" id="dockerButton">Docker镜像加速</button>
+        <button class="docker-button" id="dockerButton">镜像加速提示</button>
     </div>
 
     <div id="dockerModal" class="modal">
         <div class="modal-content">
             <span class="close-button" id="closeModal">&times;</span>
             <h1>Docker镜像加速</h1>
-            <h5>请根据对应的仓库使用对应的加速域名</h5>
+            <h5>支持多种Registry，在镜像名前添加本站域名即可</h5>
             <div class="domain-container">
-                <div class="domain-item">
-                    <div class="domain-text">docker.<span class="domain-base"></span></div>
-                </div>
-                <div class="domain-item">
-                    <div class="domain-text">ghcr.<span class="domain-base"></span></div>
+                <div class="domain-text">
+                    <strong>Docker Hub 官方镜像：</strong><br>
+                    docker pull <span class="domain-base"></span>/nginx<br><br>
+                    
+                    <strong>Docker Hub 第三方镜像：</strong><br>
+                    docker pull <span class="domain-base"></span>/user/image<br><br>
+                    
+                    <strong>GitHub Container Registry：</strong><br>
+                    docker pull <span class="domain-base"></span>/ghcr.io/user/image<br><br>
+                    
+                    <strong>Google Container Registry：</strong><br>
+                    docker pull <span class="domain-base"></span>/gcr.io/project/image<br><br>
+                    
+                    <strong>Quay.io Registry：</strong><br>
+                    docker pull <span class="domain-base"></span>/quay.io/org/image<br><br>
+                    
+                    <strong>Kubernetes Registry：</strong><br>
+                    docker pull <span class="domain-base"></span>/registry.k8s.io/pause:3.8
                 </div>
             </div>
         </div>
@@ -430,6 +443,7 @@
     <div id="toast" style="display:none;">
         链接已复制到剪贴板
     </div>
+
     <footer>
         <a href="https://github.com/sky22333/hubproxy" target="_blank" class="github-link">
             <svg height="32" viewBox="0 0 16 16" width="32">

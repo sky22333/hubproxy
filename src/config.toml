@@ -68,6 +68,13 @@ authHost = "quay.io/v2/auth"
 authType = "quay"
 enabled = true
 
+# Kubernetes Container Registry
+[registries."registry.k8s.io"]
+upstream = "registry.k8s.io"
+authHost = "registry.k8s.io"
+authType = "anonymous"
+enabled = true
+
 # 私有Registry示例（默认禁用）
 # [registries."harbor.company.com"]
 # upstream = "harbor.company.com"

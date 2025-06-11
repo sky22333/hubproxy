@@ -111,6 +111,12 @@ func DefaultConfig() *AppConfig {
 				AuthType: "quay",
 				Enabled:  true,
 			},
+			"registry.k8s.io": {
+				Upstream: "registry.k8s.io",
+				AuthHost: "registry.k8s.io",
+				AuthType: "anonymous",
+				Enabled:  true,
+			},
 		},
 	}
 }
