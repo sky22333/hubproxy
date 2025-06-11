@@ -1,0 +1,133 @@
+name: 发布二进制文件
+
+on:
+  workflow_dispatch:  # 手动触发
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史，用于生成变更日志
+          
+      - name: 设置Go环境
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+          
+      - name: 获取版本号
+        id: version
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "版本号: $VERSION"
+          
+      - name: 生成变更日志
+        id: changelog
+        run: |
+          # 获取上一个标签
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -n "$PREV_TAG" ]; then
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "## 更新内容" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            git log --pretty=format:"- %s" $PREV_TAG..HEAD >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "changelog=## 首次发布" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: 创建构建目录
+        run: |
+          mkdir -p build/hubproxy
+          
+      - name: 编译二进制文件
+        run: |
+          cd src
+          
+          # Linux AMD64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
+          
+          # Linux ARM64
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
+          
+      - name: 复制配置文件
+        run: |
+          # 复制配置文件
+          cp src/config.toml build/hubproxy/
+          
+          # 复制systemd服务文件
+          cp hubproxy.service build/hubproxy/
+          
+          # 复制安装脚本
+          cp install-service.sh build/hubproxy/
+          
+          # 复制Web资源文件（如果存在）
+          if [ -d "src/public" ]; then
+            cp -r src/public build/hubproxy/
+          fi
+          
+          # 创建README文件
+          cat > build/hubproxy/README.md << 'EOF'
+          # HubProxy
+          
+          项目地址：https://github.com/sky22333/hubproxy
+          EOF
+          
+      - name: 创建压缩包
+        run: |
+          cd build
+          
+          # Linux AMD64 包
+          mkdir -p linux-amd64/hubproxy
+          cp hubproxy/hubproxy-linux-amd64 linux-amd64/hubproxy/hubproxy
+          cp hubproxy/config.toml hubproxy/hubproxy.service hubproxy/install-service.sh hubproxy/README.md linux-amd64/hubproxy/
+          tar -czf hubproxy-${{ steps.version.outputs.version }}-linux-amd64.tar.gz -C linux-amd64 hubproxy
+          
+          # Linux ARM64 包
+          mkdir -p linux-arm64/hubproxy
+          cp hubproxy/hubproxy-linux-arm64 linux-arm64/hubproxy/hubproxy
+          cp hubproxy/config.toml hubproxy/hubproxy.service hubproxy/install-service.sh hubproxy/README.md linux-arm64/hubproxy/
+          tar -czf hubproxy-${{ steps.version.outputs.version }}-linux-arm64.tar.gz -C linux-arm64 hubproxy
+          
+          # 列出生成的文件
+          ls -la *.tar.gz
+          
+      - name: 计算文件校验和
+        run: |
+          cd build
+          sha256sum *.tar.gz > checksums.txt
+          cat checksums.txt
+          
+      - name: 创建或更新Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "HubProxy ${{ steps.version.outputs.version }}"
+          body: |
+            ${{ steps.changelog.outputs.changelog }}
+            
+            
+            ## 下载文件
+            
+            - **Linux AMD64**: `hubproxy-${{ steps.version.outputs.version }}-linux-amd64.tar.gz`
+            - **Linux ARM64**: `hubproxy-${{ steps.version.outputs.version }}-linux-arm64.tar.gz`
+            
+          files: |
+            build/*.tar.gz
+            build/checksums.txt
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }} 

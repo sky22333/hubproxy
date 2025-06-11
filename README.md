@@ -1,119 +1,95 @@
-### Docker和Github加速二合一
+# HubProxy
 
-- 使用`docker`一键部署多种仓库的镜像加速
-- `docker`镜像默认缓存3天
-- 支持在线下载`docker`离线镜像包
-- 支持镜像搜索
-- 具有自动清理机制
-- 支持`github`文件加速
-- 支持`api.github.com`
-- 支持shell脚本嵌套加速
-- 支持Al模型库Hugging Face
-- 支持IP限流，默认每个IP，每小时20次请求。
-- 轻量级，简单方便
-- 自动配置HTTPS，默认使用caddy反代，请确保80和443端口没被占用
+🚀 **Docker 和 GitHub 加速代理服务器**
 
----
+一个轻量级、高性能的多功能代理服务，提供 Docker 镜像加速、GitHub 文件加速等功能。
 
-### 使用Docker部署
+## ✨ 特性
 
-1：域名解析：将`hub`，`ghcr`，`docker`这个几个解析为你的二级域名。
+- 🐳 **Docker 镜像加速** - 支持 Docker Hub、GHCR、Quay 等多个镜像仓库，以及优化拉取速度。支持批量下载离线镜像包。
+- 📁 **GitHub 文件加速** - 加速 GitHub Release、Raw 文件下载，脚本嵌套加速，以及api.github。com
+- 🤖 **AI 模型库支持** - 支持 Hugging Face 模型下载加速
+- 🛡️ **智能限流** - IP 限流保护，防止滥用
+- 🔍 **镜像搜索** - 在线搜索 Docker 镜像
+- ⚡ **轻量高效** - 基于 Go 语言，单二进制文件运行，资源占用低
+- 🔧 **配置热重载** - 统一配置管理，部分配置项支持热重载，无需重启服务
 
-> 嫌麻烦也可以直接泛解析
+## 🚀 快速开始
 
-
-2：拉取本项目
-```
-git clone https://github.com/sky22333/hubproxy.git
-```
-
-
-3：其他无需修改，只需修改`docker-compose.yml`配置里的域名环境变量，修改为你的`根域名`
-
-> 这里的`根域名`只是为了动态写入配置和前端，不用解析，当然也不会影响你的根域名使用。
-
-运行：
-```
-docker compose up -d
-```
-
-4：部署完成后稍等一分钟，等待`caddy`自动配置域名证书后，即可访问`hub.example.com`查看前端
-
-> 可以使用命令`docker logs -f caddy`查看日志获取进度
-
-
-
----
----
----
-
-#### 单独部署Github文件加速（可选）
+### Docker部署（推荐）
 ```
 docker run -d \
-  --name ghproxy \
+  --name hubproxy \
   -p 5000:5000 \
   --restart always \
   ghcr.io/sky22333/hubproxy
 ```
 
----
----
 
 
-<details>
-  <summary>CF-CDN获取用户真实IP</summary>
-  
+### 一键安装
 
--   替换`Caddyfile`配置
-
-```
-hub.{$DOMAIN} {
-    reverse_proxy * ghproxy:5000 {
-        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-Proto {http.request.scheme}
-        header_up CF-IPCountry {http.request.header.CF-IPCountry}
-    }
-}
-
-docker.{$DOMAIN} {
-    @v2_manifest_blob path_regexp v2_rewrite ^/v2/([^/]+)/(manifests|blobs)/(.*)$
-    handle @v2_manifest_blob {
-        rewrite * /v2/library/{re.v2_rewrite.1}/{re.v2_rewrite.2}/{re.v2_rewrite.3}
-    }
-
-    reverse_proxy * docker:5000 {
-        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-Proto {http.request.scheme}
-        header_up CF-IPCountry {http.request.header.CF-IPCountry}
-    }
-}
-
-ghcr.{$DOMAIN} {
-    reverse_proxy * ghcr:5000 {
-        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-Proto {http.request.scheme}
-        header_up CF-IPCountry {http.request.header.CF-IPCountry}
-    }
-}
+```bash
+curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install-service.sh | sudo bash
 ```
 
-</details>
+这个命令会：
+- 🔍 自动检测系统架构（AMD64/ARM64）
+- 📥 从 GitHub Releases 下载最新版本
+- ⚙️ 自动配置系统服务
+- 🔄 保留现有配置（升级时）
 
+
+
+## 📖 使用方法
+
+### Docker 镜像加速
+
+```bash
+# 原命令
+docker pull nginx
+
+# 使用加速（替换 yourdomain.com）
+docker pull yourdomain.com/nginx
+
+# ghcr加速（替换 yourdomain.com）
+docker pull yourdomain.com/ghcr.io/user/images
+```
+
+### GitHub 文件加速
+
+```bash
+# 原链接
+https://github.com/user/repo/releases/download/v1.0.0/file.tar.gz
+
+# 加速链接
+https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/file.tar.gz
+```
+
+
+
+## ⚙️ 配置
+
+主配置文件位于 `/opt/hubproxy/config.toml`：
+
+
+
+
+## 🙏 致谢
+
+
+- UI 界面参考了[相关开源项目](https://github.com/WJQSERVER-STUDIO/GHProxy-Frontend)
+
+## ⚠️ 免责声明
+
+- 本程序仅供学习交流使用，请勿用于非法用途
+- 使用本程序需遵守当地法律法规
+- 作者不对使用者的任何行为承担责任
 
 ---
----
 
-#### 鸣谢：
+<div align="center">
 
-ghproxy基于go语言的Gin框架，镜像加速基于`registry`镜像实现
+**⭐ 如果这个项目对你有帮助，请给个 Star！⭐**
 
-前端借鉴了[此项目](https://github.com/WJQSERVER-STUDIO/ghproxy)的UI，许可证见`ghproxy/LICENSE`
-
-
-### 免责声明
-
-* 本程序完全开源并且仅供学习了解，请勿下载非法文件，使用本项目即默认接受此条款。
-* 使用本程序必循遵守部署免责声明。使用本程序必循遵守部署服务器所在地、所在国家和用户所在国家的法律法规, 程序作者不对使用者任何不当行为负责。
+</div>

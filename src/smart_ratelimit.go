@@ -23,7 +23,7 @@ var smartLimiter = &SmartRateLimit{}
 // 硬编码的智能限流参数 - 无需配置管理
 const (
 	// manifest请求后的活跃窗口时间
-	activeWindowDuration = 5 * time.Minute
+	activeWindowDuration = 3 * time.Minute
 	// 活跃窗口内最大免费blob请求数(防止滥用)
 	maxFreeBlobRequests = 100
 	// 会话清理间隔

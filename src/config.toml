@@ -7,7 +7,7 @@ port = 5000
 fileSize = 2147483648
 
 [rateLimit]
-# 每个IP每小时允许的请求数
+# 每个IP每小时允许的请求数(Docker镜像每个层为一个请求)
 requestLimit = 200
 # 限流周期（小时）
 periodHours = 1.0
@@ -35,9 +35,8 @@ whiteList = []
 # 禁止访问黑名单中的仓库/镜像
 blackList = [
     "baduser/malicious-repo",
-    "thesadboy/x-ui",
-    "vaxilu/x-ui",
-    "vaxilu/*"
+    "*/malicious-repo",
+    "baduser/*"
 ] 
 
 [download]
@@ -82,14 +81,9 @@ enabled = true
 # authType = "basic"
 # enabled = false
 
-# 缓存配置：Token和Manifest统一管理，显著提升性能
+# 缓存配置：Docker临时Token和Manifest统一管理，显著提升性能
 [tokenCache]
 # 是否启用缓存(同时控制Token和Manifest缓存)
 enabled = true
-# 默认缓存时间（适用于mutable标签，如latest等）
+# 默认缓存时间
 defaultTTL = "20m"
-# 说明：
-# - immutable digest缓存24小时
-# - latest/main等热门标签缓存5分钟
-# - 普通tag使用defaultTTL
-# - Token自动从响应中提取TTL

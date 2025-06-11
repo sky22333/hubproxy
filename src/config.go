@@ -213,17 +213,17 @@ func enableViperHotReload() {
 	
 	// 读取配置文件
 	if err := viperInstance.ReadInConfig(); err != nil {
-		fmt.Printf("Viper读取配置失败，继续使用当前配置: %v\n", err)
+		fmt.Printf("读取配置失败，继续使用当前配置: %v\n", err)
 		return
 	}
 	
 	isViperEnabled = true
-	fmt.Println("🔄 Viper自动热重载已启用")
+	fmt.Println("自动热重载已启用")
 	
 	// 🚀 启用文件监听
 	viperInstance.WatchConfig()
 	viperInstance.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Printf("📁 检测到配置文件变化: %s\n", e.Name)
+		fmt.Printf("检测到配置文件变化: %s\n", e.Name)
 		hotReloadWithViper()
 	})
 }
@@ -231,14 +231,14 @@ func enableViperHotReload() {
 // 🔥 使用Viper进行热重载
 func hotReloadWithViper() {
 	start := time.Now()
-	fmt.Println("🔄 开始Viper自动热重载...")
+	fmt.Println("🔄 自动热重载...")
 	
 	// 创建新配置
 	cfg := DefaultConfig()
 	
 	// 使用Viper解析配置到结构体
 	if err := viperInstance.Unmarshal(cfg); err != nil {
-		fmt.Printf("❌ Viper配置解析失败: %v\n", err)
+		fmt.Printf("❌ 配置解析失败: %v\n", err)
 		return
 	}
 	
