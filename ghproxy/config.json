@@ -1,8 +1,0 @@
-{
-  "whiteList": [
-  ],
-  "blackList": [
-    "example1",
-    "login"
-  ]
-}

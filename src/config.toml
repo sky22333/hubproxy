@@ -1,0 +1,45 @@
+[server]
+# 监听地址，默认监听所有接口
+host = "0.0.0.0"
+# 监听端口
+port = 5000
+# 文件大小限制（字节），默认2GB
+fileSize = 2147483648
+
+[rateLimit]
+# 每个IP每小时允许的请求数
+requestLimit = 200
+# 限流周期（小时）
+periodHours = 1.0
+
+[security]
+# IP白名单，支持单个IP或CIDR格式
+# 白名单中的IP不受限流限制
+whiteList = [
+    "127.0.0.1",
+    "192.168.1.0/24"
+]
+
+# IP黑名单，支持单个IP或CIDR格式  
+# 黑名单中的IP将被直接拒绝访问
+blackList = [
+    "192.168.100.1"
+]
+
+[proxy]
+# 代理服务白名单（支持GitHub仓库和Docker镜像，支持通配符）
+# 只允许访问白名单中的仓库/镜像，为空时不限制
+whiteList = []
+
+# 代理服务黑名单（支持GitHub仓库和Docker镜像，支持通配符）
+# 禁止访问黑名单中的仓库/镜像
+blackList = [
+    "baduser/malicious-repo",
+    "thesadboy/x-ui",
+    "vaxilu/x-ui",
+    "vaxilu/*"
+] 
+
+[download]
+# 单次并发下载离线镜像数量限制
+maxImages = 10

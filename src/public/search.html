@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Docker镜像搜索">
+    <meta name="keywords" content="Docker,镜像搜索,docker search">
+    <meta name="color-scheme" content="dark light">
+    <title>Docker镜像搜索</title>
+    <link rel="icon" href="./favicon.ico">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
+    <style>
+        :root {
+            --color: #fafafa;
+            --fontcolor: #333;
+            --inputcolor: #f5f5f5;
+            --inputcolor-font: #333;
+            --card-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color: #53535338;
+                --fontcolor: #b8b8b8;
+                --inputcolor: #012333;
+                --inputcolor-font: #969696d8;
+                --card-bg: #012333;
+                --border-color: #2d3338;
+            }
+        }
+
+        body {
+            background-color: var(--color);
+            color: var(--fontcolor);
+            font-family: 'Misans', Arial, sans-serif;
+            padding: 30px;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            padding: 20px;
+            margin-top: 60px;
+        }
+
+        h1 {
+            color: var(--fontcolor);
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+        }
+
+        .form-control {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+            border-radius: 20px;
+            padding: 10px 20px;
+            height: 46px;
+        }
+
+        .form-control:focus {
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+        }
+
+        .search-button {
+            border-radius: 20px;
+            padding: 10px 30px;
+            background-color: #39c5bc;
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+            height: 46px;
+            margin-left: 10px;
+        }
+
+        .search-button:hover {
+            transform: scale(1.05);
+            background-color: #2ea8a0;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group-append {
+            display: flex;
+            align-items: center;
+        }
+
+        .result-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #0091e2;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .result-description {
+            color: var(--fontcolor);
+            margin: 10px 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+
+        .result-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-size: 0.9rem;
+            color: var(--fontcolor);
+            opacity: 0.8;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .meta-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            font-size: 0.95rem;
+        }
+
+        .meta-pulls {
+            font-size: 0.85rem;
+            color: #666;
+            text-align: right;
+        }
+
+        .meta-pulls .pulls-count {
+            font-size: 1rem;
+            color: #333;
+            margin-top: 4px;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: normal;
+            white-space: nowrap;
+        }
+
+        .badge-official {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .badge-organization {
+            background-color: #6c757d;
+            color: white;
+            font-weight: normal;
+        }
+
+        .badge-automated {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .meta-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            color: #666;
+        }
+
+        .meta-item .icon {
+            opacity: 0.7;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 2px 8px;
+            background-color: #f5f5f5;
+            border: 0px solid #fafafa;
+            color: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .back-button:hover {
+            background-color: #39c5bc;
+            color: white;
+            transform: scale(1.05);
+            text-decoration: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #39c5bc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #toast {
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #39c5bcde;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 90%;
+            z-index: 1000;
+            display: none;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #39c5bc;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            transform: scale(1.05);
+            background-color: #2ea8a0;
+        }
+
+        .tag-list {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .tag-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            flex-direction: column;
+        }
+
+        .tag-info {
+            flex: 1;
+            width: 100%;
+        }
+
+        .tag-search-container {
+            width: 100%;
+            margin: 15px 0 20px 0;
+            position: relative;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #39c5bc;
+            box-shadow: 0 2px 8px rgba(57, 197, 188, 0.1);
+        }
+
+        .tag-search-container::before {
+            content: '🔍 标签搜索';
+            display: block;
+            margin-bottom: 10px;
+            color: #39c5bc;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .tag-search-input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--inputcolor);
+            color: var(--inputcolor-font);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .tag-search-input:focus {
+            outline: none;
+            border-color: #39c5bc;
+            box-shadow: 0 0 0 3px rgba(57, 197, 188, 0.2);
+        }
+
+        .tag-search-input::placeholder {
+            color: #888;
+            font-style: italic;
+        }
+
+        .tag-search-clear {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-5%);
+            background: none;
+            border: none;
+            color: var(--fontcolor);
+            cursor: pointer;
+            padding: 8px;
+            opacity: 0.6;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tag-search-clear:hover {
+            opacity: 1;
+            background-color: rgba(57, 197, 188, 0.1);
+            transform: translateY(-5%) scale(1.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tag-search-container {
+                border-color: #39c5bc;
+                box-shadow: 0 2px 8px rgba(57, 197, 188, 0.2);
+            }
+            
+            .tag-search-input::placeholder {
+                color: #666;
+            }
+        }
+
+        .tag-title {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tag-description {
+            color: var(--fontcolor);
+            opacity: 0.8;
+        }
+
+        .tag-pull-command {
+            background-color: var(--inputcolor);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .copy-button {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: #39c5bc;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .tag-item {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .tag-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #39c5bc;
+        }
+
+        .tag-meta {
+            font-size: 0.9rem;
+            color: var(--fontcolor);
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .tag-architectures {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .arch-item {
+            background-color: var(--inputcolor);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+
+        .vulnerability-indicator {
+            display: inline-flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .vulnerability-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .vulnerability-critical { background-color: #dc3545; }
+        .vulnerability-high { background-color: #fd7e14; }
+        .vulnerability-medium { background-color: #ffc107; }
+        .vulnerability-low { background-color: #28a745; }
+        .vulnerability-unknown { background-color: #6c757d; }
+
+        .search-results {
+            transition: all 0.3s ease;
+        }
+
+        .back-to-search {
+            margin-bottom: 20px;
+            color: #39c5bc;
+            cursor: pointer;
+            display: none;
+        }
+
+        .back-to-search:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .result-meta {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .meta-pulls {
+                text-align: left;
+                width: 100%;
+            }
+        }
+
+        .icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+            margin-top: -2px;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">返回</a>
+    <div class="container">
+        <h1>Docker镜像搜索</h1>
+        
+        <div class="search-container">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="输入镜像名称搜索...">
+                <div class="input-group-append">
+                    <button class="btn search-button" id="searchButton">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>正在加载...</p>
+        </div>
+
+        <div class="back-to-search">← 返回搜索结果</div>
+
+        <div class="search-results">
+            <div id="searchResults"></div>
+            
+            <div class="pagination">
+                <button id="prevPage" disabled>上一页</button>
+                <button id="nextPage" disabled>下一页</button>
+            </div>
+        </div>
+
+        <div class="tag-list" id="tagList"></div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        // 添加统一的格式化工具对象
+        const formatUtils = {
+            formatNumber(num) {
+                if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B+';
+                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M+';
+                if (num >= 1000) return (num / 1000).toFixed(1) + 'K+';
+                return num.toString();
+            },
+            formatTimeAgo(dateString) {
+                if (!dateString) return '未知时间';
+                try {
+                    let date;
+                    date = new Date(dateString);
+                    if (isNaN(date.getTime())) {
+                        const formats = [
+                            { regex: /^(\d{4})-(\d{2})-(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                            { regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                            { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, handler: (m) => new Date(m[3], m[1] - 1, m[2]) }
+                        ];
+                        
+                        for (const format of formats) {
+                            const match = dateString.match(format.regex);
+                            if (match) {
+                                date = format.handler(match);
+                                if (!isNaN(date.getTime())) break;
+                            }
+                        }
+                        
+                        if (isNaN(date.getTime())) {
+                            return '未知时间';
+                        }
+                    }
+                    
+                    const now = new Date();
+                    const diffTime = Math.abs(now - date);
+                    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+                    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    const diffMonths = Math.floor(diffDays / 30);
+                    const diffYears = Math.floor(diffDays / 365);
+                    
+                    if (diffMinutes < 1) return '刚刚';
+                    if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+                    if (diffHours < 24) return `${diffHours}小时前`;
+                    if (diffDays < 7) return `${diffDays}天前`;
+                    if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+                    if (diffMonths < 12) return `${diffMonths}个月前`;
+                    if (diffYears < 1) return '近1年';
+                    return `${diffYears}年前`;
+                } catch (error) {
+                    console.warn('日期处理错误:', error);
+                    return '未知时间';
+                }
+            },
+            formatSize(bytes) {
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let size = bytes;
+                let unitIndex = 0;
+                while (size >= 1024 && unitIndex < units.length - 1) {
+                    size /= 1024;
+                    unitIndex++;
+                }
+                return `${size.toFixed(2)} ${units[unitIndex]}`;
+            }
+        };
+
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentQuery = '';
+        let currentRepo = null;
+
+        document.getElementById('searchButton').addEventListener('click', () => {
+            currentPage = 1;
+            performSearch();
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentPage = 1;
+                performSearch();
+            }
+        });
+
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                performSearch();
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                performSearch();
+            }
+        });
+
+        document.querySelector('.back-to-search').addEventListener('click', () => {
+            showSearchResults();
+        });
+
+        function showLoading() {
+            document.querySelector('.loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        function updatePagination() {
+            const prevButton = document.getElementById('prevPage');
+            const nextButton = document.getElementById('nextPage');
+            
+            prevButton.disabled = currentPage <= 1;
+            nextButton.disabled = currentPage >= totalPages;
+            
+            // 添加页码显示和快速跳转
+            const paginationDiv = document.querySelector('.pagination');
+            let pageInfo = document.getElementById('pageInfo');
+            if (!pageInfo) {
+                const container = document.createElement('div');
+                container.id = 'pageInfo';
+                container.style.margin = '0 10px';
+                container.style.display = 'flex';
+                container.style.alignItems = 'center';
+                container.style.gap = '10px';
+                
+                // 页码显示
+                const pageText = document.createElement('span');
+                pageText.id = 'pageText';
+                
+                // 跳转输入框
+                const jumpInput = document.createElement('input');
+                jumpInput.type = 'number';
+                jumpInput.min = '1';
+                jumpInput.id = 'jumpPage';
+                jumpInput.style.width = '60px';
+                jumpInput.style.padding = '4px';
+                jumpInput.style.borderRadius = '4px';
+                jumpInput.style.border = '1px solid var(--border-color)';
+                jumpInput.style.backgroundColor = 'var(--inputcolor)';
+                jumpInput.style.color = 'var(--inputcolor-font)';
+                
+                // 跳转按钮
+                const jumpButton = document.createElement('button');
+                jumpButton.textContent = '跳转';
+                jumpButton.className = 'btn search-button';
+                jumpButton.style.padding = '4px 8px';
+                jumpButton.onclick = () => {
+                    const page = parseInt(jumpInput.value);
+                    if (page && page >= 1 && page <= totalPages) {
+                        currentPage = page;
+                        performSearch();
+                    } else {
+                        showToast('请输入有效的页码');
+                    }
+                };
+                
+                container.appendChild(pageText);
+                container.appendChild(jumpInput);
+                container.appendChild(jumpButton);
+                
+                // 插入到分页区域
+                paginationDiv.insertBefore(container, nextButton);
+                pageInfo = container;
+            }
+            
+            // 更新页码显示
+            const pageText = document.getElementById('pageText');
+            pageText.textContent = `第 ${currentPage} / ${totalPages || 1} 页 共 ${totalPages || 1} 页`;
+            
+            // 更新跳转输入框
+            const jumpInput = document.getElementById('jumpPage');
+            if (jumpInput) {
+                jumpInput.max = totalPages;
+                jumpInput.value = currentPage;
+            }
+            
+            // 显示或隐藏分页区域
+            paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
+        }
+
+        function showSearchResults() {
+            document.querySelector('.search-results').style.display = 'block';
+            document.querySelector('.tag-list').style.display = 'none';
+            document.querySelector('.back-to-search').style.display = 'none';
+            document.querySelector('.search-container').style.display = 'block';
+        }
+
+        function showTagList() {
+            document.querySelector('.search-results').style.display = 'none';
+            document.querySelector('.tag-list').style.display = 'block';
+            document.querySelector('.back-to-search').style.display = 'block';
+            document.querySelector('.search-container').style.display = 'none';
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                showToast('请输入搜索关键词');
+                return;
+            }
+
+            currentQuery = query;
+            showLoading();
+
+            try {
+                // 处理搜索查询
+                let searchQuery = query;
+                let targetRepo = '';
+                if (query.includes('/')) {
+                    const [namespace, repo] = query.split('/');
+                    searchQuery = namespace; // 只使用斜杠前面的用户空间
+                    targetRepo = repo.toLowerCase(); // 保存目标仓库名用于排序
+                }
+
+                const response = await fetch(`/search?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=25`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '搜索请求失败');
+                }
+                
+                // 更新总页数和分页状态
+                totalPages = Math.ceil(data.count / 25);
+                updatePagination();
+                
+                // 传入目标仓库名进行排序
+                displayResults(data.results, targetRepo);
+            } catch (error) {
+                console.error('搜索错误:', error);
+                showToast(error.message || '搜索失败，请稍后重试');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayResults(results, targetRepo = '') {
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsContainer.innerHTML = '<div class="text-center">未找到相关镜像</div>';
+                return;
+            }
+
+            // 对结果进行排序
+            results.sort((a, b) => {
+                // 如果有目标仓库名，将匹配的排在最前面
+                if (targetRepo) {
+                    const aName = (a.name || a.repo_name || '').toLowerCase();
+                    const bName = (b.name || b.repo_name || '').toLowerCase();
+                    const aMatch = aName === targetRepo || aName.endsWith('/' + targetRepo);
+                    const bMatch = bName === targetRepo || bName.endsWith('/' + targetRepo);
+                    
+                    if (aMatch && !bMatch) return -1;
+                    if (!aMatch && bMatch) return 1;
+                }
+                
+                // 其次按照官方镜像排序
+                if (a.is_official !== b.is_official) {
+                    return b.is_official - a.is_official;
+                }
+                
+                // 最后按照拉取次数排序
+                return b.pull_count - a.pull_count;
+            });
+
+            results.forEach(result => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                // 构建显示名称
+                let displayName = '';
+                if (result.is_official) {
+                    // 对于官方镜像，去掉 library/ 前缀
+                    displayName = (result.name || result.repo_name || '').replace('library/', '');
+                } else {
+                    // 对于非官方镜像，显示完整路径
+                    const name = result.name || result.repo_name || '';
+                    displayName = result.namespace ? `${result.namespace}/${name}` : name;
+                }
+
+                const description = result.short_description || '暂无描述';
+                const starCount = result.star_count || 0;
+                const pullCount = result.pull_count || 0;
+                const pullsLastWeek = result.pulls_last_week || 0;
+                const lastUpdated = result.last_updated || '';
+                const organization = result.affiliation || '';
+
+                const badges = [];
+                if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
+                if (organization) badges.push(`<span class="badge badge-organization">By ${organization}</span>`);
+
+                const stats = [];
+                if (starCount > 0) stats.push(`<span class="meta-item">⭐ ${formatUtils.formatNumber(starCount)}</span>`);
+                if (pullCount > 0) stats.push(`<span class="meta-item">⬇️ ${formatUtils.formatNumber(pullCount)}+</span>`);
+
+                card.innerHTML = `
+                    <div class="result-title">
+                        ${displayName}
+                        ${badges.join(' ')}
+                    </div>
+                    <div class="result-description">${description}</div>
+                    <div class="result-meta">
+                        <div class="meta-stats">
+                            ${stats.join(' ')}
+                            ${lastUpdated ? `<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(lastUpdated)}</span>` : ''}
+                        </div>
+                        ${pullsLastWeek > 0 ? `
+                        <div class="meta-pulls">
+                            <div>本周拉取次数</div>
+                            <div class="pulls-count">${formatUtils.formatNumber(pullsLastWeek)}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    currentRepo = result;
+                    const namespace = result.namespace || (result.is_official ? 'library' : '');
+                    const name = result.name || result.repo_name || '';
+                    const repoName = name.replace('library/', '');
+                    if (!namespace || !repoName) {
+                        showToast('无效的仓库信息');
+                        return;
+                    }
+                    loadTags(namespace, repoName);
+                });
+
+                resultsContainer.appendChild(card);
+            });
+        }
+
+        async function loadTags(namespace, name) {
+            showLoading();
+            try {
+                if (!namespace || !name) {
+                    showToast('命名空间和镜像名称不能为空');
+                    return;
+                }
+
+                const response = await fetch(`/tags/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || '获取标签信息失败');
+                }
+
+                const data = await response.json();
+                displayTags(data);
+                showTagList();
+            } catch (error) {
+                console.error('加载标签错误:', error);
+                showToast(error.message || '获取标签信息失败，请稍后重试');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayTags(tags) {
+            const tagList = document.getElementById('tagList');
+            const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
+            const name = currentRepo.name || currentRepo.repo_name || '';
+            // 移除可能重复的 library/ 前缀
+            const cleanName = name.replace(/^library\//, '');
+            const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
+            
+            let header = `
+                <div class="tag-header">
+                    <div class="tag-info">
+                        <div class="tag-title">
+                            ${fullRepoName}
+                            ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
+                            ${currentRepo.affiliation ? `<span class="badge badge-organization">By ${currentRepo.affiliation}</span>` : ''}
+                        </div>
+                        <div class="tag-description">${currentRepo.short_description || '暂无描述'}</div>
+                        <div class="tag-meta">
+                            ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatUtils.formatNumber(currentRepo.star_count)}</span>` : ''}
+                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatUtils.formatNumber(currentRepo.pull_count)}+</span>` : ''}
+                            ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(currentRepo.last_updated)}</span>` : ''}
+                        </div>
+                        <div class="tag-pull-command">
+                            docker pull ${fullRepoName}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}')">复制</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="tag-search-container">
+                    <input type="text" class="tag-search-input" placeholder="输入关键词搜索标签，支持模糊匹配..." oninput="filterTags(this.value)">
+                    <button class="tag-search-clear" onclick="clearTagSearch()">×</button>
+                </div>
+                <div id="tagsContainer"></div>
+            `;
+
+            tagList.innerHTML = header;
+            
+            // 存储所有标签数据供搜索使用
+            window.allTags = tags;
+            // 初始显示所有标签
+            renderFilteredTags(tags);
+        }
+
+        function renderFilteredTags(filteredTags) {
+            const tagsContainer = document.getElementById('tagsContainer');
+            const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
+            const name = currentRepo.name || currentRepo.repo_name || '';
+            const cleanName = name.replace(/^library\//, '');
+            const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
+
+            let tagsHtml = filteredTags.map(tag => {
+                const vulnIndicators = Object.entries(tag.vulnerabilities || {})
+                    .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
+                    .join('');
+
+                const images = tag.images || [];
+                const architectures = images.map(img => {
+                    const arch = `${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}`;
+                    const size = formatUtils.formatSize(img.size);
+                    return `<div class="arch-item" title="大小: ${size}">${arch}</div>`;
+                }).join('');
+
+                return `
+                    <div class="tag-item">
+                        <div class="tag-name">
+                            ${tag.name}
+                            ${vulnIndicators ? `<div class="vulnerability-indicator">${vulnIndicators}</div>` : ''}
+                        </div>
+                        <div class="tag-meta">
+                            <span>最后更新: ${formatUtils.formatTimeAgo(tag.last_updated)}</span>
+                            ${tag.last_pusher ? `<span>由 ${tag.last_pusher} 推送</span>` : ''}
+                            ${tag.full_size ? `<span>大小: ${formatUtils.formatSize(tag.full_size)}</span>` : ''}
+                        </div>
+                        <div class="tag-pull-command">
+                            docker pull ${fullRepoName}:${tag.name}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}:${tag.name}')">复制</button>
+                        </div>
+                        ${architectures ? `<div class="tag-architectures">${architectures}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            if (filteredTags.length === 0) {
+                tagsHtml = '<div class="text-center" style="padding: 20px;">未找到匹配的标签</div>';
+            }
+
+            tagsContainer.innerHTML = tagsHtml;
+        }
+
+        function filterTags(searchText) {
+            if (!window.allTags) return;
+
+            const searchLower = searchText.toLowerCase();
+            let filteredTags;
+
+            if (!searchText) {
+                filteredTags = window.allTags;
+            } else {
+                // 对标签进行评分和排序
+                const scoredTags = window.allTags.map(tag => {
+                    const name = tag.name.toLowerCase();
+                    let score = 0;
+
+                    // 完全匹配
+                    if (name === searchLower) {
+                        score += 100;
+                    }
+                    // 前缀匹配
+                    else if (name.startsWith(searchLower)) {
+                        score += 50;
+                    }
+                    // 包含匹配
+                    else if (name.includes(searchLower)) {
+                        score += 30;
+                    }
+                    // 部分匹配（按单词）
+                    else if (searchLower.split(/\s+/).some(word => name.includes(word))) {
+                        score += 10;
+                    }
+
+                    return { tag, score };
+                }).filter(item => item.score > 0);
+
+                // 按分数排序
+                scoredTags.sort((a, b) => b.score - a.score);
+                filteredTags = scoredTags.map(item => item.tag);
+            }
+
+            renderFilteredTags(filteredTags);
+        }
+
+        function clearTagSearch() {
+            const searchInput = document.querySelector('.tag-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+                filterTags('');
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败');
+            });
+        }
+
+        // 初始加载
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialQuery = urlParams.get('q');
+        if (initialQuery) {
+            document.getElementById('searchInput').value = initialQuery;
+            performSearch();
+        }
+    </script>
+</body>
+</html> 
