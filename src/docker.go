@@ -71,7 +71,7 @@ func initDockerProxy() {
 	// 配置代理选项
 	options := []remote.Option{
 		remote.WithAuth(authn.Anonymous),
-		remote.WithUserAgent("ghproxy/go-containerregistry"),
+		remote.WithUserAgent("hubproxy/go-containerregistry"),
 	}
 
 	dockerProxy = &DockerProxy{
