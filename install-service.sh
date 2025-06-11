@@ -176,8 +176,6 @@ else
     echo -e "${YELLOW}配置文件不存在，将使用默认配置${NC}"
 fi
 
-# 4. 前端文件已嵌入二进制程序，无需复制
-
 # 5. 安装systemd服务文件
 echo -e "${BLUE}安装systemd服务文件${NC}"
 cp "${SERVICE_NAME}.service" "/etc/systemd/system/"
