@@ -198,9 +198,28 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
 	
-	// 对于需要处理的shell文件，使用chunked传输
-	isShellFile := strings.HasSuffix(strings.ToLower(u), ".sh")
-	if isShellFile {
+	// 智能处理系统 - 自动识别需要加速的内容
+	// 获取真实域名
+	realHost := c.Request.Header.Get("X-Forwarded-Host")
+	if realHost == "" {
+		realHost = c.Request.Host
+	}
+	// 如果域名中没有协议前缀，添加https://
+	if !strings.HasPrefix(realHost, "http://") && !strings.HasPrefix(realHost, "https://") {
+		realHost = "https://" + realHost
+	}
+
+	// 使用智能处理器自动处理所有内容
+	processedBody, processedSize, err := ProcessSmart(resp.Body, resp.Header.Get("Content-Encoding") == "gzip", realHost)
+	if err != nil {
+		// 优雅降级 - 处理失败时直接返回原内容
+		c.String(http.StatusInternalServerError, fmt.Sprintf("内容处理错误: %v", err))
+		return
+	}
+
+	// 智能设置响应头
+	if processedSize > 0 {
+		// 内容被处理过，使用chunked传输以获得最佳性能
 		resp.Header.Del("Content-Length")
 		resp.Header.Set("Transfer-Encoding", "chunked")
 	}
@@ -224,32 +243,9 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 
 	c.Status(resp.StatusCode)
 
-	// 处理响应体
-	if isShellFile {
-		// 获取真实域名
-		realHost := c.Request.Header.Get("X-Forwarded-Host")
-		if realHost == "" {
-			realHost = c.Request.Host
-		}
-		// 如果域名中没有协议前缀，添加https://
-		if !strings.HasPrefix(realHost, "http://") && !strings.HasPrefix(realHost, "https://") {
-			realHost = "https://" + realHost
-		}
-		// 使用ProcessGitHubURLs处理.sh文件
-		processedBody, _, err := ProcessGitHubURLs(resp.Body, resp.Header.Get("Content-Encoding") == "gzip", realHost, true)
-		if err != nil {
-			c.String(http.StatusInternalServerError, fmt.Sprintf("处理shell文件时发生错误: %v", err))
-			return
-		}
-		if _, err := io.Copy(c.Writer, processedBody); err != nil {
-			c.String(http.StatusInternalServerError, fmt.Sprintf("写入响应时发生错误: %v", err))
-			return
-		}
-	} else {
-		// 对于非.sh文件，直接复制响应体
-		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-			return
-		}
+	// 输出处理后的内容
+	if _, err := io.Copy(c.Writer, processedBody); err != nil {
+		return
 	}
 }
 
@@ -261,5 +257,3 @@ func checkURL(u string) []string {
 	}
 	return nil
 }
-
-
