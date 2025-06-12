@@ -451,12 +451,37 @@
             transform: translateY(0);
         }
 
-        .tag-search-container {
+        /* 标签头部 */
+        .tag-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding: 20px;
             background-color: var(--card);
-            border: 1px solid var(--border);
             border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
+            flex-direction: column;
+        }
+
+        .tag-search-container {
+            width: 100%;
+            margin: 15px 0 20px 0;
+            position: relative;
+            background: var(--card);
+            padding: 15px;
+            border-radius: 0.75rem;
+            border: 2px solid var(--primary);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+        }
+
+        .tag-search-container::before {
+            content: '🔍 标签搜索';
+            display: block;
+            margin-bottom: 10px;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 0.9rem;
         }
 
         .tag-search-header {
@@ -470,19 +495,51 @@
 
         .tag-search-input {
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 12px 40px 12px 15px;
+            border-radius: 8px;
             border: 1px solid var(--border);
-            border-radius: var(--radius);
             background-color: var(--input);
             color: var(--foreground);
             font-size: 1rem;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
         }
 
         .tag-search-input:focus {
             outline: none;
-            border-color: var(--ring);
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .tag-search-input::placeholder {
+            color: #888;
+            font-style: italic;
+        }
+
+        .tag-search-clear {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-5%);
+            background: none;
+            border: none;
+            color: var(--foreground);
+            cursor: pointer;
+            padding: 8px;
+            opacity: 0.6;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tag-search-clear:hover {
+            opacity: 1;
+            background-color: rgba(37, 99, 235, 0.1);
+            transform: translateY(-5%) scale(1.1);
         }
 
         .tag-info {
@@ -573,9 +630,36 @@
         .arch-item {
             background-color: var(--muted);
             color: var(--muted-foreground);
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+
+        /* 漏洞指示器 */
+        .vulnerability-indicator {
+            display: inline-flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .vulnerability-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .vulnerability-critical { background-color: #dc3545; }
+        .vulnerability-high { background-color: #fd7e14; }
+        .vulnerability-medium { background-color: #ffc107; }
+        .vulnerability-low { background-color: #28a745; }
+        .vulnerability-unknown { background-color: #6c757d; }
+
+        /* 组织标签 */
+        .badge-organization {
+            background-color: #6c757d;
+            color: white;
+            font-weight: normal;
         }
 
         /* 返回按钮 */
@@ -740,24 +824,7 @@
 
             <!-- 标签列表 -->
             <div class="tag-list" id="tagList">
-                <!-- 标签搜索 -->
-                <div class="tag-search-container">
-                    <div class="tag-search-header">
-                        🔍 标签搜索
-                    </div>
-                    <input 
-                        type="text" 
-                        class="tag-search-input" 
-                        id="tagSearchInput" 
-                        placeholder="过滤标签..."
-                    >
-                </div>
-
-                <!-- 镜像信息 -->
-                <div class="tag-info" id="tagInfo"></div>
-
-                <!-- 标签项 -->
-                <div id="tagItems"></div>
+                <!-- 标签页面内容将通过JavaScript动态生成 -->
             </div>
         </div>
     </main>
@@ -804,29 +871,73 @@
             prevPage: document.getElementById('prevPage'),
             nextPage: document.getElementById('nextPage'),
             tagList: document.getElementById('tagList'),
-            tagInfo: document.getElementById('tagInfo'),
-            tagItems: document.getElementById('tagItems'),
-            tagSearchInput: document.getElementById('tagSearchInput'),
             backToSearch: document.getElementById('backToSearch'),
             toast: document.getElementById('toast')
         };
 
-        // 格式化工具
+        // 格式化工具（按照原版逻辑）
         const formatUtils = {
             formatNumber(num) {
-                if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
-                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-                if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+                if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B+';
+                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M+';
+                if (num >= 1000) return (num / 1000).toFixed(1) + 'K+';
                 return num.toString();
             },
-            formatSize(bytes) {
-                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-                if (bytes === 0) return '0 B';
-                const i = Math.floor(Math.log(bytes) / Math.log(1024));
-                return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+            formatTimeAgo(dateString) {
+                if (!dateString) return '未知时间';
+                try {
+                    let date;
+                    date = new Date(dateString);
+                    if (isNaN(date.getTime())) {
+                        const formats = [
+                            { regex: /^(\d{4})-(\d{2})-(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                            { regex: /^(\d{4})\/(\d{2})\/(\d{2})$/, handler: (m) => new Date(m[1], m[2] - 1, m[3]) },
+                            { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, handler: (m) => new Date(m[3], m[1] - 1, m[2]) }
+                        ];
+                        
+                        for (const format of formats) {
+                            const match = dateString.match(format.regex);
+                            if (match) {
+                                date = format.handler(match);
+                                if (!isNaN(date.getTime())) break;
+                            }
+                        }
+                        
+                        if (isNaN(date.getTime())) {
+                            return '未知时间';
+                        }
+                    }
+                    
+                    const now = new Date();
+                    const diffTime = Math.abs(now - date);
+                    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+                    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    const diffMonths = Math.floor(diffDays / 30);
+                    const diffYears = Math.floor(diffDays / 365);
+                    
+                    if (diffMinutes < 1) return '刚刚';
+                    if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+                    if (diffHours < 24) return `${diffHours}小时前`;
+                    if (diffDays < 7) return `${diffDays}天前`;
+                    if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`;
+                    if (diffMonths < 12) return `${diffMonths}个月前`;
+                    if (diffYears < 1) return '近1年';
+                    return `${diffYears}年前`;
+                } catch (error) {
+                    console.warn('日期处理错误:', error);
+                    return '未知时间';
+                }
             },
-            formatDate(dateString) {
-                return new Date(dateString).toLocaleDateString('zh-CN');
+            formatSize(bytes) {
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let size = bytes;
+                let unitIndex = 0;
+                while (size >= 1024 && unitIndex < units.length - 1) {
+                    size /= 1024;
+                    unitIndex++;
+                }
+                return `${size.toFixed(2)} ${units[unitIndex]}`;
             }
         };
 
@@ -895,25 +1006,18 @@
             const card = document.createElement('div');
             card.className = 'result-card';
             
-            // 获取原始镜像名称
-            const originalName = result.repo_name || result.name;
-            
-            // 确保只有真正的官方镜像才处理显示名称
-            // 使用更严格的条件：必须同时满足 is_official 为 true 且名称以 library/ 开头
-            const isActuallyOfficial = result.is_official === true && originalName.startsWith('library/');
-            const displayName = isActuallyOfficial ? originalName.substring(8) : originalName;
-            
-            // 调试日志（可在开发时启用）
-            if (originalName.toLowerCase().includes('caddy')) {
-                console.log('Debug caddy:', {
-                    originalName: originalName,
-                    is_official: result.is_official,
-                    isActuallyOfficial: isActuallyOfficial,
-                    displayName: displayName
-                });
+            // 按照原版逻辑构建显示名称
+            let displayName = '';
+            if (result.is_official) {
+                // 对于官方镜像，去掉 library/ 前缀
+                displayName = (result.name || result.repo_name || '').replace('library/', '');
+            } else {
+                // 对于非官方镜像，显示完整路径
+                const name = result.name || result.repo_name || '';
+                displayName = result.namespace ? `${result.namespace}/${name}` : name;
             }
             
-            card.onclick = () => viewImageTags(originalName, isActuallyOfficial);
+            card.onclick = () => viewImageTags(result, displayName);
 
             const badges = [];
             if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
@@ -945,7 +1049,7 @@
         }
 
         // 查看镜像标签
-        async function viewImageTags(imageName, isOfficial = false) {
+        async function viewImageTags(result, displayName) {
             if (isLoading) return;
 
             isLoading = true;
@@ -953,17 +1057,14 @@
             elements.searchResults.classList.remove('show');
 
             try {
-                // 解析镜像名称
-                let namespace = 'library';
-                let repoName = imageName;
+                // 获取命名空间和仓库名
+                const namespace = result.namespace || (result.is_official ? 'library' : '');
+                const name = result.name || result.repo_name || '';
+                const repoName = name.replace('library/', '');
                 
-                if (imageName.includes('/')) {
-                    const parts = imageName.split('/');
-                    namespace = parts[0];
-                    repoName = parts[1];
-                } else {
-                    // 官方镜像
-                    namespace = 'library';
+                if (!namespace || !repoName) {
+                    showToast('无效的仓库信息', 'error');
+                    return;
                 }
 
                 const response = await fetch(`/tags/${namespace}/${repoName}`);
@@ -971,7 +1072,7 @@
 
                 if (Array.isArray(data)) {
                     allTags = data;
-                    displayImageTags(imageName, data, isOfficial);
+                    displayImageTags(result, displayName, data);
                     elements.backToSearch.classList.add('show');
                 } else {
                     showToast('获取标签失败：' + (data.error || '未知错误'), 'error');
@@ -985,96 +1086,162 @@
             }
         }
 
-        // 显示镜像标签
-        function displayImageTags(imageName, tags, isOfficial = false) {
+        // 显示镜像标签  
+        function displayImageTags(result, displayName, tags) {
             const fullDomain = window.location.host;
+            const pullImageName = displayName;
             
-            // 确保只有真正的官方镜像才处理显示名称和拉取命令
-            // 使用更严格的条件：必须同时满足 isOfficial 为 true 且名称以 library/ 开头
-            const isActuallyOfficial = isOfficial === true && imageName.startsWith('library/');
-            const displayName = isActuallyOfficial ? imageName.substring(8) : imageName;
-            const pullImageName = isActuallyOfficial ? imageName.substring(8) : imageName;
+            // 按照原版结构构建标签页面
+            const badges = [];
+            if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
+            if (result.affiliation) badges.push(`<span class="badge badge-organization">By ${result.affiliation}</span>`);
             
-            elements.tagInfo.innerHTML = `
-                <div class="tag-title">
-                    🐳 ${displayName}
+            const stats = [];
+            if (result.star_count > 0) stats.push(`<span class="meta-item">⭐ ${formatUtils.formatNumber(result.star_count)}</span>`);
+            if (result.pull_count > 0) stats.push(`<span class="meta-item">⬇️ ${formatUtils.formatNumber(result.pull_count)}+</span>`);
+            if (result.last_updated) stats.push(`<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(result.last_updated)}</span>`);
+            
+            elements.tagList.innerHTML = `
+                <div class="tag-header">
+                    <div class="tag-info">
+                        <div class="tag-title">
+                            ${displayName}
+                            ${badges.join(' ')}
+                        </div>
+                        <div class="tag-description">${result.short_description || result.description || '暂无描述'}</div>
+                        <div class="tag-meta">
+                            ${stats.join(' ')}
+                        </div>
+                        <div class="tag-pull-command">
+                            docker pull ${fullDomain}/${pullImageName}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullDomain}/${pullImageName}')">复制</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="tag-description">
-                    共 ${tags.length} 个标签版本
+                <div class="tag-search-container">
+                    <input type="text" class="tag-search-input" placeholder="输入关键词搜索标签，支持模糊匹配..." oninput="filterTags(this.value)">
+                    <button class="tag-search-clear" onclick="clearTagSearch()">×</button>
                 </div>
-                <div class="tag-pull-command">
-                    docker pull ${fullDomain}/${pullImageName}
-                    <button class="copy-button" onclick="copyCommand('docker pull ${fullDomain}/${pullImageName}')">
-                        复制
-                    </button>
-                </div>
+                <div id="tagsContainer"></div>
             `;
-
-            displayFilteredTags(tags);
+            
+            // 存储所有标签数据供搜索使用
+            window.allTags = tags;
+            window.currentRepo = result;
+            window.currentDisplayName = displayName;
+            
+            // 初始显示所有标签
+            renderFilteredTags(tags);
             
             // 确保显示tag列表并滚动到顶部
             elements.tagList.classList.add('show');
             elements.tagList.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // 显示过滤后的标签
-        function displayFilteredTags(tags) {
-            elements.tagItems.innerHTML = '';
+        // 渲染过滤后的标签（按照原版逻辑）
+        function renderFilteredTags(filteredTags) {
+            const tagsContainer = document.getElementById('tagsContainer');
+            const fullDomain = window.location.host;
+            const pullImageName = window.currentDisplayName;
 
-            tags.forEach(tag => {
-                const tagItem = createTagItem(tag);
-                elements.tagItems.appendChild(tagItem);
+            let tagsHtml = filteredTags.map(tag => {
+                const vulnIndicators = Object.entries(tag.vulnerabilities || {})
+                    .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
+                    .join('');
+
+                const images = tag.images || [];
+                const architectures = images.map(img => {
+                    const arch = `${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}`;
+                    const size = formatUtils.formatSize(img.size);
+                    return `<div class="arch-item" title="大小: ${size}">${arch}</div>`;
+                }).join('');
+
+                return `
+                    <div class="tag-item">
+                        <div class="tag-name">
+                            ${tag.name}
+                            ${vulnIndicators ? `<div class="vulnerability-indicator">${vulnIndicators}</div>` : ''}
+                        </div>
+                        <div class="tag-meta">
+                            <span>最后更新: ${formatUtils.formatTimeAgo(tag.last_updated)}</span>
+                            ${tag.last_pusher ? `<span>由 ${tag.last_pusher} 推送</span>` : ''}
+                            ${tag.full_size ? `<span>大小: ${formatUtils.formatSize(tag.full_size)}</span>` : ''}
+                        </div>
+                        <div class="tag-pull-command">
+                            docker pull ${fullDomain}/${pullImageName}:${tag.name}
+                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullDomain}/${pullImageName}:${tag.name}')">复制</button>
+                        </div>
+                        ${architectures ? `<div class="tag-architectures">${architectures}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            if (filteredTags.length === 0) {
+                tagsHtml = '<div class="text-center" style="padding: 20px;">未找到匹配的标签</div>';
+            }
+
+            tagsContainer.innerHTML = tagsHtml;
+        }
+
+        // 复制到剪贴板（按照原版命名）
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败');
             });
         }
 
-        // 创建标签项
-        function createTagItem(tag) {
-            const item = document.createElement('div');
-            item.className = 'tag-item';
+        // 标签搜索过滤（按照原版逻辑）
+        function filterTags(searchText) {
+            if (!window.allTags) return;
 
-            const architectures = tag.images?.map(img => img.architecture).join(', ') || '未知';
-            const size = tag.images?.[0]?.size ? formatUtils.formatSize(tag.images[0].size) : '未知';
-            const lastUpdated = tag.last_updated ? formatUtils.formatDate(tag.last_updated) : '未知';
+            const searchLower = searchText.toLowerCase();
+            let filteredTags;
 
-            item.innerHTML = `
-                <div class="tag-name">${tag.name}</div>
-                <div class="tag-meta">
-                    📅 更新时间: ${lastUpdated} | 📦 大小: ${size}
-                </div>
-                <div class="tag-architectures">
-                    ${architectures.split(', ').map(arch => 
-                        `<span class="arch-item">${arch}</span>`
-                    ).join('')}
-                </div>
-            `;
-
-            return item;
-        }
-
-        // 复制命令
-        function copyCommand(command) {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(command).then(() => {
-                    showToast('命令已复制到剪贴板');
-                });
+            if (!searchText) {
+                filteredTags = window.allTags;
             } else {
-                // 降级方案
-                const textarea = document.createElement('textarea');
-                textarea.value = command;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                showToast('命令已复制到剪贴板');
+                // 对标签进行评分和排序
+                const scoredTags = window.allTags.map(tag => {
+                    const name = tag.name.toLowerCase();
+                    let score = 0;
+
+                    // 完全匹配
+                    if (name === searchLower) {
+                        score += 100;
+                    }
+                    // 前缀匹配
+                    else if (name.startsWith(searchLower)) {
+                        score += 50;
+                    }
+                    // 包含匹配
+                    else if (name.includes(searchLower)) {
+                        score += 30;
+                    }
+                    // 部分匹配（按单词）
+                    else if (searchLower.split(/\s+/).some(word => name.includes(word))) {
+                        score += 10;
+                    }
+
+                    return { tag, score };
+                }).filter(item => item.score > 0);
+
+                // 按分数排序
+                scoredTags.sort((a, b) => b.score - a.score);
+                filteredTags = scoredTags.map(item => item.tag);
             }
+
+            renderFilteredTags(filteredTags);
         }
 
-        // 标签搜索过滤
-        function filterTags(searchTerm) {
-            const filtered = allTags.filter(tag => 
-                tag.name.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            displayFilteredTags(filtered);
+        // 清除标签搜索
+        function clearTagSearch() {
+            const searchInput = document.querySelector('.tag-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+                filterTags('');
+            }
         }
 
         // 事件监听
@@ -1104,9 +1271,7 @@
             searchImages(currentSearchTerm, currentPage + 1);
         });
 
-        elements.tagSearchInput.addEventListener('input', (event) => {
-            filterTags(event.target.value);
-        });
+        // 移除了tagSearchInput的事件监听器，现在使用内联事件
 
         elements.backToSearch.addEventListener('click', () => {
             elements.tagList.classList.remove('show');
