@@ -894,17 +894,30 @@
         function createResultCard(result) {
             const card = document.createElement('div');
             card.className = 'result-card';
-            card.onclick = () => viewImageTags(result.repo_name || result.name, result.is_official);
+            
+            // 获取原始镜像名称
+            const originalName = result.repo_name || result.name;
+            
+            // 确保只有真正的官方镜像才处理显示名称
+            // 使用更严格的条件：必须同时满足 is_official 为 true 且名称以 library/ 开头
+            const isActuallyOfficial = result.is_official === true && originalName.startsWith('library/');
+            const displayName = isActuallyOfficial ? originalName.substring(8) : originalName;
+            
+            // 调试日志（可在开发时启用）
+            if (originalName.toLowerCase().includes('caddy')) {
+                console.log('Debug caddy:', {
+                    originalName: originalName,
+                    is_official: result.is_official,
+                    isActuallyOfficial: isActuallyOfficial,
+                    displayName: displayName
+                });
+            }
+            
+            card.onclick = () => viewImageTags(originalName, isActuallyOfficial);
 
             const badges = [];
             if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
             if (result.is_automated) badges.push('<span class="badge badge-automated">自动构建</span>');
-
-            // 只有真正的官方镜像才去掉 library/ 前缀
-            const originalName = result.repo_name || result.name;
-            const displayName = (result.is_official && originalName.startsWith('library/')) 
-                ? originalName.substring(8) 
-                : originalName;
 
             card.innerHTML = `
                 <div class="result-title">
@@ -976,10 +989,11 @@
         function displayImageTags(imageName, tags, isOfficial = false) {
             const fullDomain = window.location.host;
             
-            // 只有真正的官方镜像才去掉 library/ 前缀
-            const displayName = (isOfficial && imageName.startsWith('library/')) 
-                ? imageName.substring(8) 
-                : imageName;
+            // 确保只有真正的官方镜像才处理显示名称和拉取命令
+            // 使用更严格的条件：必须同时满足 isOfficial 为 true 且名称以 library/ 开头
+            const isActuallyOfficial = isOfficial === true && imageName.startsWith('library/');
+            const displayName = isActuallyOfficial ? imageName.substring(8) : imageName;
+            const pullImageName = isActuallyOfficial ? imageName.substring(8) : imageName;
             
             elements.tagInfo.innerHTML = `
                 <div class="tag-title">
@@ -989,8 +1003,8 @@
                     共 ${tags.length} 个标签版本
                 </div>
                 <div class="tag-pull-command">
-                    docker pull ${fullDomain}/${imageName}
-                    <button class="copy-button" onclick="copyCommand('docker pull ${fullDomain}/${imageName}')">
+                    docker pull ${fullDomain}/${pullImageName}
+                    <button class="copy-button" onclick="copyCommand('docker pull ${fullDomain}/${pullImageName}')">
                         复制
                     </button>
                 </div>
