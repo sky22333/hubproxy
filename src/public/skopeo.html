@@ -11,49 +11,89 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
     <style>
+        /* 使用首页完全相同的颜色系统 */
         :root {
-            --color: #fafafa;
-            --fontcolor: #333;
-            --inputcolor: #f5f5f5;
-            --inputcolor-font: #333;
-            --card-bg: #f8f9fa;
-            --border-color: #dee2e6;
-            /* 导航栏变量 */
-            --nav-background: #ffffff;
-            --nav-foreground: #0f172a;
-            --nav-border: #e2e8f0;
-            --nav-primary: #2563eb;
-            --nav-muted: #f1f5f9;
-            --nav-muted-foreground: #64748b;
-            --nav-radius: 0.5rem;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --card-foreground: #0f172a;
+            --primary: #2563eb;
+            --primary-foreground: #f8fafc;
+            --secondary: #f1f5f9;
+            --secondary-foreground: #0f172a;
+            --muted: #f1f5f9;
+            --muted-foreground: #64748b;
+            --accent: #f1f5f9;
+            --accent-foreground: #0f172a;
+            --border: #e2e8f0;
+            --input: #ffffff;
+            --ring: #2563eb;
+            --radius: 0.5rem;
+        }
+
+        .dark {
+            --background: #0f172a;
+            --foreground: #f8fafc;
+            --card: #1e293b;
+            --card-foreground: #f8fafc;
+            --primary: #3b82f6;
+            --primary-foreground: #f8fafc;
+            --secondary: #1e293b;
+            --secondary-foreground: #f8fafc;
+            --muted: #1e293b;
+            --muted-foreground: #94a3b8;
+            --accent: #1e293b;
+            --accent-foreground: #f8fafc;
+            --border: #334155;
+            --input: #1e293b;
+            --ring: #3b82f6;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --color: #53535338;
-                --fontcolor: #b8b8b8;
-                --inputcolor: #012333;
-                --inputcolor-font: #969696d8;
-                --card-bg: #012333;
-                --border-color: #2d3338;
-                /* 暗色主题导航栏变量 */
-                --nav-background: #0f172a;
-                --nav-foreground: #f8fafc;
-                --nav-border: #334155;
-                --nav-primary: #3b82f6;
-                --nav-muted: #1e293b;
-                --nav-muted-foreground: #94a3b8;
+                --background: #0f172a;
+                --foreground: #f8fafc;
+                --card: #1e293b;
+                --card-foreground: #f8fafc;
+                --primary: #3b82f6;
+                --primary-foreground: #f8fafc;
+                --secondary: #1e293b;
+                --secondary-foreground: #f8fafc;
+                --muted: #1e293b;
+                --muted-foreground: #94a3b8;
+                --accent: #1e293b;
+                --accent-foreground: #f8fafc;
+                --border: #334155;
+                --input: #1e293b;
+                --ring: #3b82f6;
             }
         }
 
-        /* 导航栏样式 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Misans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 导航栏样式 - 与首页完全一致 */
         .navbar {
             position: sticky;
             top: 0;
             z-index: 50;
             width: 100%;
-            border-bottom: 1px solid var(--nav-border);
-            background-color: var(--nav-background);
+            border-bottom: 1px solid var(--border);
+            background-color: var(--background);
             backdrop-filter: blur(8px);
             background-color: rgba(255, 255, 255, 0.95);
         }
@@ -77,7 +117,7 @@
             align-items: center;
             gap: 0.5rem;
             text-decoration: none;
-            color: var(--nav-foreground);
+            color: var(--foreground);
             font-weight: 600;
             font-size: 1.125rem;
         }
@@ -86,7 +126,7 @@
             width: 2rem;
             height: 2rem;
             border-radius: 0.5rem;
-            background: linear-gradient(135deg, var(--nav-primary), #3b82f6);
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -101,61 +141,37 @@
 
         .nav-link {
             padding: 0.5rem 1rem;
-            border-radius: var(--nav-radius);
+            border-radius: var(--radius);
             text-decoration: none;
-            color: var(--nav-muted-foreground);
+            color: var(--muted-foreground);
             transition: all 0.2s;
             font-weight: 500;
         }
 
         .nav-link:hover,
         .nav-link.active {
-            color: var(--nav-foreground);
-            background-color: var(--nav-muted);
-            text-decoration: none;
+            color: var(--foreground);
+            background-color: var(--muted);
         }
 
         .theme-toggle {
             padding: 0.5rem;
             border: none;
-            border-radius: var(--nav-radius);
+            border-radius: var(--radius);
             background-color: transparent;
-            color: var(--nav-muted-foreground);
+            color: var(--muted-foreground);
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .theme-toggle:hover {
-            background-color: var(--nav-muted);
-            color: var(--nav-foreground);
+            background-color: var(--muted);
+            color: var(--foreground);
         }
 
-        /* 暗色主题类 */
-        .dark {
-            --color: #53535338;
-            --fontcolor: #b8b8b8;
-            --inputcolor: #012333;
-            --inputcolor-font: #969696d8;
-            --card-bg: #012333;
-            --border-color: #2d3338;
-            --nav-background: #0f172a;
-            --nav-foreground: #f8fafc;
-            --nav-border: #334155;
-            --nav-primary: #3b82f6;
-            --nav-muted: #1e293b;
-            --nav-muted-foreground: #94a3b8;
-        }
-
-        body {
-            background-color: var(--color);
-            color: var(--fontcolor);
-            font-family: 'Misans', Arial, sans-serif;
-            padding: 0;
-            min-height: 100vh;
-            margin: 0;
-        }
-
+        /* 主要内容区域 */
         .main-content {
+            flex: 1;
             padding: 30px;
         }
 
@@ -182,7 +198,7 @@
         }
 
         h1 {
-            color: var(--fontcolor);
+            color: var(--foreground);
             font-weight: bold;
             margin-bottom: 30px;
         }
@@ -191,14 +207,14 @@
             border-radius: 6px;
             transition: background-color 0.3s, transform 0.2s;
             padding: 10px 30px;
-            background-color: #555c5c;
-            color: rgb(255, 255, 255);
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             border: none;
             margin-bottom: 3%;
         }
 
         .rounded-button:hover {
-            background-color: #39c5bcda;
+            background-color: #1d4ed8;
             transform: scale(1.05);
         }
 
@@ -214,13 +230,14 @@
         }
 
         pre {
-            background: #012333;
-            color: #39c5bc;
+            background: var(--muted);
+            color: var(--primary);
             padding: 15px 20px 15px 20px;
             margin: 0px 0;
             border-radius: 0.5rem;
             overflow-x: auto;
             position: relative;
+            border: 1px solid var(--border);
         }
 
         pre::before {
@@ -231,9 +248,9 @@
             left: 6px;
             width: 10px;
             height: 10px;
-            background: #bd3c35;
+            background: #dc3545;
             border-radius: 50%;
-            box-shadow: 20px 0 0 #d69f27, 40px 0 0 #39c5bb;
+            box-shadow: 20px 0 0 #ffc107, 40px 0 0 #28a745;
         }
 
         code {
@@ -269,13 +286,13 @@
         }
 
         .form-control {
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
+            background-color: var(--input);
+            color: var(--foreground);
         }
 
         .form-control:focus {
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
+            background-color: var(--input);
+            color: var(--foreground);
         }
 
         #toast {
@@ -283,8 +300,8 @@
             top: 10%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #39c5bcde;
-            color: white;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             padding: 15px 20px;
             border-radius: 10px;
             font-size: 90%;
@@ -296,9 +313,9 @@
             top: 20px;
             left: 20px;
             padding: 2px 8px;
-            background-color: #f5f5f5;
-            border: 0px solid #fafafa;
-            color: #333;
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+            color: var(--foreground);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -307,8 +324,8 @@
         }
 
         .back-button:hover {
-            background-color: #39c5bc;
-            color: white;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             transform: scale(1.05);
             text-decoration: none;
         }
@@ -323,7 +340,7 @@
             font-weight: bold;
             margin-bottom: 20px;
             padding: 10px;
-            background-color: var(--inputcolor);
+            background-color: var(--input);
             border-radius: 10px;
             display: inline-block;
         }
@@ -371,8 +388,8 @@
             display: none;
             margin-top: 20px;
             padding: 10px 20px;
-            background-color: #39c5bb;
-            color: white;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -381,7 +398,7 @@
         }
         
         .download-button:hover {
-            background-color: #2ea89e;
+            background-color: #1d4ed8;
             transform: scale(1.05);
         }
 
@@ -392,7 +409,7 @@
 
         .info-text {
             font-size: 0.9rem;
-            color: var(--fontcolor);
+            color: var(--foreground);
             opacity: 0.8;
             margin-bottom: 15px;
             text-align: left;

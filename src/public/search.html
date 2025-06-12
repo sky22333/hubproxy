@@ -11,49 +11,89 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
     <style>
+        /* 使用首页完全相同的颜色系统 */
         :root {
-            --color: #fafafa;
-            --fontcolor: #333;
-            --inputcolor: #f5f5f5;
-            --inputcolor-font: #333;
-            --card-bg: #f8f9fa;
-            --border-color: #dee2e6;
-            /* 导航栏变量 */
-            --nav-background: #ffffff;
-            --nav-foreground: #0f172a;
-            --nav-border: #e2e8f0;
-            --nav-primary: #2563eb;
-            --nav-muted: #f1f5f9;
-            --nav-muted-foreground: #64748b;
-            --nav-radius: 0.5rem;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --card-foreground: #0f172a;
+            --primary: #2563eb;
+            --primary-foreground: #f8fafc;
+            --secondary: #f1f5f9;
+            --secondary-foreground: #0f172a;
+            --muted: #f1f5f9;
+            --muted-foreground: #64748b;
+            --accent: #f1f5f9;
+            --accent-foreground: #0f172a;
+            --border: #e2e8f0;
+            --input: #ffffff;
+            --ring: #2563eb;
+            --radius: 0.5rem;
+        }
+
+        .dark {
+            --background: #0f172a;
+            --foreground: #f8fafc;
+            --card: #1e293b;
+            --card-foreground: #f8fafc;
+            --primary: #3b82f6;
+            --primary-foreground: #f8fafc;
+            --secondary: #1e293b;
+            --secondary-foreground: #f8fafc;
+            --muted: #1e293b;
+            --muted-foreground: #94a3b8;
+            --accent: #1e293b;
+            --accent-foreground: #f8fafc;
+            --border: #334155;
+            --input: #1e293b;
+            --ring: #3b82f6;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --color: #53535338;
-                --fontcolor: #b8b8b8;
-                --inputcolor: #012333;
-                --inputcolor-font: #969696d8;
-                --card-bg: #012333;
-                --border-color: #2d3338;
-                /* 暗色主题导航栏变量 */
-                --nav-background: #0f172a;
-                --nav-foreground: #f8fafc;
-                --nav-border: #334155;
-                --nav-primary: #3b82f6;
-                --nav-muted: #1e293b;
-                --nav-muted-foreground: #94a3b8;
+                --background: #0f172a;
+                --foreground: #f8fafc;
+                --card: #1e293b;
+                --card-foreground: #f8fafc;
+                --primary: #3b82f6;
+                --primary-foreground: #f8fafc;
+                --secondary: #1e293b;
+                --secondary-foreground: #f8fafc;
+                --muted: #1e293b;
+                --muted-foreground: #94a3b8;
+                --accent: #1e293b;
+                --accent-foreground: #f8fafc;
+                --border: #334155;
+                --input: #1e293b;
+                --ring: #3b82f6;
             }
         }
 
-        /* 导航栏样式 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Misans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 导航栏样式 - 与首页完全一致 */
         .navbar {
             position: sticky;
             top: 0;
             z-index: 50;
             width: 100%;
-            border-bottom: 1px solid var(--nav-border);
-            background-color: var(--nav-background);
+            border-bottom: 1px solid var(--border);
+            background-color: var(--background);
             backdrop-filter: blur(8px);
             background-color: rgba(255, 255, 255, 0.95);
         }
@@ -77,7 +117,7 @@
             align-items: center;
             gap: 0.5rem;
             text-decoration: none;
-            color: var(--nav-foreground);
+            color: var(--foreground);
             font-weight: 600;
             font-size: 1.125rem;
         }
@@ -86,7 +126,7 @@
             width: 2rem;
             height: 2rem;
             border-radius: 0.5rem;
-            background: linear-gradient(135deg, var(--nav-primary), #3b82f6);
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -101,72 +141,47 @@
 
         .nav-link {
             padding: 0.5rem 1rem;
-            border-radius: var(--nav-radius);
+            border-radius: var(--radius);
             text-decoration: none;
-            color: var(--nav-muted-foreground);
+            color: var(--muted-foreground);
             transition: all 0.2s;
             font-weight: 500;
         }
 
         .nav-link:hover,
         .nav-link.active {
-            color: var(--nav-foreground);
-            background-color: var(--nav-muted);
-            text-decoration: none;
+            color: var(--foreground);
+            background-color: var(--muted);
         }
 
         .theme-toggle {
             padding: 0.5rem;
             border: none;
-            border-radius: var(--nav-radius);
+            border-radius: var(--radius);
             background-color: transparent;
-            color: var(--nav-muted-foreground);
+            color: var(--muted-foreground);
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .theme-toggle:hover {
-            background-color: var(--nav-muted);
-            color: var(--nav-foreground);
+            background-color: var(--muted);
+            color: var(--foreground);
         }
 
-        /* 暗色主题类 */
-        .dark {
-            --color: #53535338;
-            --fontcolor: #b8b8b8;
-            --inputcolor: #012333;
-            --inputcolor-font: #969696d8;
-            --card-bg: #012333;
-            --border-color: #2d3338;
-            --nav-background: #0f172a;
-            --nav-foreground: #f8fafc;
-            --nav-border: #334155;
-            --nav-primary: #3b82f6;
-            --nav-muted: #1e293b;
-            --nav-muted-foreground: #94a3b8;
-        }
-
-        body {
-            background-color: var(--color);
-            color: var(--fontcolor);
-            font-family: 'Misans', Arial, sans-serif;
-            padding: 0;
-            min-height: 100vh;
-            margin: 0;
-        }
-
+        /* 主要内容区域 */
         .main-content {
-            padding: 30px;
+            flex: 1;
+            padding: 2rem 1rem;
         }
 
         .container {
             max-width: 1200px;
-            padding: 20px;
-            margin-top: 20px;
+            margin: 0 auto;
         }
 
         h1 {
-            color: var(--fontcolor);
+            color: var(--foreground);
             font-weight: bold;
             margin-bottom: 30px;
             text-align: center;
@@ -177,23 +192,27 @@
         }
 
         .form-control {
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
+            background-color: var(--input);
+            color: var(--foreground);
+            border: 1px solid var(--border);
             border-radius: 20px;
             padding: 10px 20px;
             height: 46px;
+            transition: all 0.2s;
         }
 
         .form-control:focus {
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
+            background-color: var(--input);
+            color: var(--foreground);
+            border-color: var(--ring);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
         }
 
         .search-button {
             border-radius: 20px;
             padding: 10px 30px;
-            background-color: #39c5bc;
-            color: white;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             border: none;
             transition: all 0.3s ease;
             height: 46px;
@@ -202,27 +221,17 @@
 
         .search-button:hover {
             transform: scale(1.05);
-            background-color: #2ea8a0;
-        }
-
-        .input-group {
-            display: flex;
-            align-items: center;
-        }
-
-        .input-group-append {
-            display: flex;
-            align-items: center;
+            background-color: #1d4ed8;
         }
 
         .result-card {
-            background-color: var(--card-bg);
+            background-color: var(--card);
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
             transition: all 0.3s ease;
             cursor: pointer;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
         }
 
         .result-card:hover {
@@ -234,7 +243,7 @@
             font-size: 1.2rem;
             font-weight: 500;
             margin-bottom: 10px;
-            color: #0091e2;
+            color: var(--primary);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -242,7 +251,7 @@
         }
 
         .result-description {
-            color: var(--fontcolor);
+            color: var(--muted-foreground);
             margin: 10px 0;
             font-size: 0.95rem;
             line-height: 1.5;
@@ -254,8 +263,7 @@
             justify-content: space-between;
             align-items: flex-start;
             font-size: 0.9rem;
-            color: var(--fontcolor);
-            opacity: 0.8;
+            color: var(--muted-foreground);
             margin-top: 15px;
             flex-wrap: wrap;
             gap: 10px;
@@ -271,13 +279,13 @@
 
         .meta-pulls {
             font-size: 0.85rem;
-            color: #666;
+            color: var(--muted-foreground);
             text-align: right;
         }
 
         .meta-pulls .pulls-count {
             font-size: 1rem;
-            color: #333;
+            color: var(--foreground);
             margin-top: 4px;
         }
 
@@ -309,7 +317,7 @@
             display: inline-flex;
             align-items: center;
             white-space: nowrap;
-            color: #666;
+            color: var(--muted-foreground);
         }
 
         .meta-item .icon {
@@ -347,8 +355,8 @@
         .loading-spinner {
             width: 40px;
             height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #39c5bc;
+            border: 4px solid var(--muted);
+            border-top: 4px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto;
@@ -364,8 +372,8 @@
             top: 10%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #39c5bcde;
-            color: white;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             padding: 15px 20px;
             border-radius: 10px;
             font-size: 90%;
@@ -384,20 +392,21 @@
             padding: 5px 15px;
             border: none;
             border-radius: 5px;
-            background-color: #39c5bc;
-            color: white;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .pagination button:disabled {
-            background-color: #cccccc;
+            background-color: var(--muted);
+            color: var(--muted-foreground);
             cursor: not-allowed;
         }
 
         .pagination button:hover:not(:disabled) {
             transform: scale(1.05);
-            background-color: #2ea8a0;
+            background-color: #1d4ed8;
         }
 
         .tag-list {
@@ -411,9 +420,9 @@
             align-items: flex-start;
             margin-bottom: 15px;
             padding: 20px;
-            background-color: var(--card-bg);
+            background-color: var(--card);
             border-radius: 10px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border);
             flex-direction: column;
         }
 
@@ -426,18 +435,18 @@
             width: 100%;
             margin: 15px 0 20px 0;
             position: relative;
-            background: var(--card-bg);
+            background: var(--card);
             padding: 15px;
             border-radius: 10px;
-            border: 2px solid #39c5bc;
-            box-shadow: 0 2px 8px rgba(57, 197, 188, 0.1);
+            border: 2px solid var(--primary);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
         }
 
         .tag-search-container::before {
             content: '🔍 标签搜索';
             display: block;
             margin-bottom: 10px;
-            color: #39c5bc;
+            color: var(--primary);
             font-weight: bold;
             font-size: 0.9rem;
         }
@@ -446,17 +455,17 @@
             width: 100%;
             padding: 12px 40px 12px 15px;
             border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
+            border: 1px solid var(--border);
+            background-color: var(--input);
+            color: var(--foreground);
             font-size: 1rem;
             transition: all 0.3s ease;
         }
 
         .tag-search-input:focus {
             outline: none;
-            border-color: #39c5bc;
-            box-shadow: 0 0 0 3px rgba(57, 197, 188, 0.2);
+            border-color: var(--ring);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
         .tag-search-input::placeholder {
@@ -471,7 +480,7 @@
             transform: translateY(-5%);
             background: none;
             border: none;
-            color: var(--fontcolor);
+            color: var(--foreground);
             cursor: pointer;
             padding: 8px;
             opacity: 0.6;
@@ -487,19 +496,12 @@
 
         .tag-search-clear:hover {
             opacity: 1;
-            background-color: rgba(57, 197, 188, 0.1);
+            background-color: rgba(37, 99, 235, 0.1);
             transform: translateY(-5%) scale(1.1);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .tag-search-container {
-                border-color: #39c5bc;
-                box-shadow: 0 2px 8px rgba(57, 197, 188, 0.2);
-            }
-            
-            .tag-search-input::placeholder {
-                color: #666;
-            }
+        .tag-search-input::placeholder {
+            color: var(--muted-foreground);
         }
 
         .tag-title {
@@ -511,12 +513,12 @@
         }
 
         .tag-description {
-            color: var(--fontcolor);
+            color: var(--foreground);
             opacity: 0.8;
         }
 
         .tag-pull-command {
-            background-color: var(--inputcolor);
+            background-color: var(--input);
             padding: 10px 15px;
             border-radius: 5px;
             font-family: monospace;
@@ -528,8 +530,8 @@
             position: absolute;
             right: 5px;
             top: 5px;
-            background: #39c5bc;
-            color: white;
+            background: var(--primary);
+            color: var(--primary-foreground);
             border: none;
             padding: 2px 8px;
             border-radius: 3px;
@@ -538,8 +540,8 @@
         }
 
         .tag-item {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
+            background-color: var(--card);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 15px;
@@ -549,12 +551,12 @@
             font-size: 1.1rem;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #39c5bc;
+            color: var(--primary);
         }
 
         .tag-meta {
             font-size: 0.9rem;
-            color: var(--fontcolor);
+            color: var(--foreground);
             opacity: 0.8;
             margin-bottom: 10px;
         }
@@ -567,7 +569,7 @@
         }
 
         .arch-item {
-            background-color: var(--inputcolor);
+            background-color: var(--input);
             padding: 5px 10px;
             border-radius: 5px;
             font-size: 0.8rem;
@@ -598,7 +600,7 @@
 
         .back-to-search {
             margin-bottom: 20px;
-            color: #39c5bc;
+            color: var(--primary);
             cursor: pointer;
             display: none;
         }
@@ -834,9 +836,9 @@
                 jumpInput.style.width = '60px';
                 jumpInput.style.padding = '4px';
                 jumpInput.style.borderRadius = '4px';
-                jumpInput.style.border = '1px solid var(--border-color)';
-                jumpInput.style.backgroundColor = 'var(--inputcolor)';
-                jumpInput.style.color = 'var(--inputcolor-font)';
+                jumpInput.style.border = '1px solid var(--border)';
+                jumpInput.style.backgroundColor = 'var(--input)';
+                jumpInput.style.color = 'var(--foreground)';
                 
                 // 跳转按钮
                 const jumpButton = document.createElement('button');
