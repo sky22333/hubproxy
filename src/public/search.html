@@ -8,8 +8,6 @@
     <meta name="color-scheme" content="dark light">
     <title>Docker镜像搜索</title>
     <link rel="icon" href="./favicon.ico">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
     <style>
         /* 使用首页完全相同的颜色系统 */
         :root {
@@ -86,87 +84,89 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* 导航栏样式 - 与首页完全一致 */
+        /* 导航栏样式 - 与首页完全一致，使用!important确保优先级 */
         .navbar {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            width: 100%;
-            border-bottom: 1px solid var(--border);
-            background-color: var(--background);
-            backdrop-filter: blur(8px);
-            background-color: rgba(255, 255, 255, 0.95);
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 50 !important;
+            width: 100% !important;
+            border-bottom: 1px solid var(--border) !important;
+            background-color: var(--background) !important;
+            backdrop-filter: blur(8px) !important;
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
         .dark .navbar {
-            background-color: rgba(15, 23, 42, 0.95);
+            background-color: rgba(15, 23, 42, 0.95) !important;
         }
 
         .navbar-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 4rem;
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 0 1rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            height: 4rem !important;
         }
 
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-            color: var(--foreground);
-            font-weight: 600;
-            font-size: 1.125rem;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+            text-decoration: none !important;
+            color: var(--foreground) !important;
+            font-weight: 600 !important;
+            font-size: 1.125rem !important;
         }
 
         .logo-icon {
-            width: 2rem;
-            height: 2rem;
-            border-radius: 0.5rem;
-            background: linear-gradient(135deg, var(--primary), #3b82f6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
+            width: 2rem !important;
+            height: 2rem !important;
+            border-radius: 0.5rem !important;
+            background: linear-gradient(135deg, var(--primary), #3b82f6) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: white !important;
         }
 
         .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
         }
 
         .nav-link {
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius);
-            text-decoration: none;
-            color: var(--muted-foreground);
-            transition: all 0.2s;
-            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            border-radius: var(--radius) !important;
+            text-decoration: none !important;
+            color: var(--muted-foreground) !important;
+            transition: all 0.2s !important;
+            font-weight: 500 !important;
         }
 
         .nav-link:hover,
         .nav-link.active {
-            color: var(--foreground);
-            background-color: var(--muted);
+            color: var(--foreground) !important;
+            background-color: var(--muted) !important;
         }
 
         .theme-toggle {
-            padding: 0.5rem;
-            border: none;
-            border-radius: var(--radius);
-            background-color: transparent;
-            color: var(--muted-foreground);
-            cursor: pointer;
-            transition: all 0.2s;
+            padding: 0.5rem !important;
+            border: none !important;
+            border-radius: var(--radius) !important;
+            background-color: transparent !important;
+            color: var(--muted-foreground) !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
         }
 
         .theme-toggle:hover {
-            background-color: var(--muted);
-            color: var(--foreground);
+            background-color: var(--muted) !important;
+            color: var(--foreground) !important;
         }
 
         /* 主要内容区域 */
@@ -191,7 +191,40 @@
             margin-bottom: 30px;
         }
 
+        /* 重新定义基础按钮和输入框样式 */
+        .btn {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            margin-bottom: 0;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 0.375rem;
+            text-decoration: none;
+            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .input-group-append {
+            margin-left: -1px;
+            display: flex;
+        }
+
         .form-control {
+            display: block;
+            width: 100%;
             background-color: var(--input);
             color: var(--foreground);
             border: 1px solid var(--border);
@@ -206,6 +239,7 @@
             color: var(--foreground);
             border-color: var(--ring);
             box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+            outline: 0;
         }
 
         .search-button {
