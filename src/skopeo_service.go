@@ -110,6 +110,9 @@ func initSkopeoRoutes(router *gin.Engine) {
 
 	// 下载文件
 	router.GET("/api/files/:filename", serveFile)
+	
+	// 通过任务ID下载文件
+	router.GET("/api/download/:taskId/file", serveFileByTaskId)
 
 	// 启动清理过期文件的goroutine
 	go cleanupTempFiles()
@@ -1057,6 +1060,55 @@ func sendTaskUpdate(task *DownloadTask) {
 			// 通道已满或关闭，忽略
 		}
 	}
+}
+
+// 通过任务ID提供文件下载
+func serveFileByTaskId(c *gin.Context) {
+	taskID := c.Param("taskId")
+	
+	tasksLock.Lock()
+	task, exists := tasks[taskID]
+	tasksLock.Unlock()
+	
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "任务不存在"})
+		return
+	}
+	
+	// 确保任务状态为已完成
+	task.StatusLock.RLock()
+	isCompleted := task.Status == StatusCompleted
+	task.StatusLock.RUnlock()
+	
+	if !isCompleted {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "任务尚未完成"})
+		return
+	}
+	
+	// 确保所有进度都是100%
+	ensureTaskCompletion(task)
+	
+	// 检查文件是否存在
+	filePath := task.OutputFile
+	if filePath == "" || !fileExists(filePath) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "文件不存在"})
+		return
+	}
+	
+	// 获取文件信息
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法获取文件信息"})
+		return
+	}
+	
+	// 设置文件名
+	downloadName := filepath.Base(filePath)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", downloadName))
+	c.Header("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+	
+	// 返回文件
+	c.File(filePath)
 }
 
 // 提供文件下载

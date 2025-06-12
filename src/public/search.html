@@ -894,15 +894,21 @@
         function createResultCard(result) {
             const card = document.createElement('div');
             card.className = 'result-card';
-            card.onclick = () => viewImageTags(result.repo_name || result.name);
+            card.onclick = () => viewImageTags(result.repo_name || result.name, result.is_official);
 
             const badges = [];
             if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
             if (result.is_automated) badges.push('<span class="badge badge-automated">自动构建</span>');
 
+            // 只有真正的官方镜像才去掉 library/ 前缀
+            const originalName = result.repo_name || result.name;
+            const displayName = (result.is_official && originalName.startsWith('library/')) 
+                ? originalName.substring(8) 
+                : originalName;
+
             card.innerHTML = `
                 <div class="result-title">
-                    🐳 ${result.repo_name || result.name}
+                    🐳 ${displayName}
                     ${badges.join('')}
                 </div>
                 <div class="result-description">
@@ -926,7 +932,7 @@
         }
 
         // 查看镜像标签
-        async function viewImageTags(imageName) {
+        async function viewImageTags(imageName, isOfficial = false) {
             if (isLoading) return;
 
             isLoading = true;
@@ -952,7 +958,7 @@
 
                 if (Array.isArray(data)) {
                     allTags = data;
-                    displayImageTags(imageName, data);
+                    displayImageTags(imageName, data, isOfficial);
                     elements.backToSearch.classList.add('show');
                 } else {
                     showToast('获取标签失败：' + (data.error || '未知错误'), 'error');
@@ -967,12 +973,17 @@
         }
 
         // 显示镜像标签
-        function displayImageTags(imageName, tags) {
+        function displayImageTags(imageName, tags, isOfficial = false) {
             const fullDomain = window.location.host;
+            
+            // 只有真正的官方镜像才去掉 library/ 前缀
+            const displayName = (isOfficial && imageName.startsWith('library/')) 
+                ? imageName.substring(8) 
+                : imageName;
             
             elements.tagInfo.innerHTML = `
                 <div class="tag-title">
-                    🐳 ${imageName}
+                    🐳 ${displayName}
                 </div>
                 <div class="tag-description">
                     共 ${tags.length} 个标签版本
