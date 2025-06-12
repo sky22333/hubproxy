@@ -218,7 +218,7 @@ func enableViperHotReload() {
 	}
 	
 	isViperEnabled = true
-	fmt.Println("自动热重载已启用")
+	fmt.Println("热重载已启用")
 	
 	// 🚀 启用文件监听
 	viperInstance.WatchConfig()

@@ -87,11 +87,6 @@ example.com {
 ```
 
 
-## 🙏 致谢
-
-
-- UI 界面参考了[相关开源项目](https://github.com/WJQSERVER-STUDIO/GHProxy-Frontend)
-
 ## ⚠️ 免责声明
 
 - 本程序仅供学习交流使用，请勿用于非法用途
