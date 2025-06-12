@@ -364,6 +364,18 @@
             transform: none;
         }
 
+        .input-info {
+            padding: 0.75rem 1rem;
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
         /* 架构选择区域 */
         .arch-buttons {
             display: flex;
@@ -679,11 +691,9 @@
 
                 <div class="form-group">
                     <label class="form-label">输出格式</label>
-                    <select class="select" id="formatSelect">
-                        <option value="docker-archive">Docker Archive (.tar)</option>
-                        <option value="oci-archive">OCI Archive (.tar)</option>
-                        <option value="dir">目录格式</option>
-                    </select>
+                    <div class="input-info">
+                        📦 系统自动使用 Docker Archive (.tar) 格式
+                    </div>
                 </div>
 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
@@ -767,7 +777,6 @@
         const elements = {
             imageListInput: document.getElementById('imageListInput'),
             architectureInput: document.getElementById('architectureInput'),
-            formatSelect: document.getElementById('formatSelect'),
             startDownload: document.getElementById('startDownload'),
             pauseDownload: document.getElementById('pauseDownload'),
             stopDownload: document.getElementById('stopDownload'),
@@ -898,7 +907,6 @@
         async function startDownload() {
             const imageList = parseImageList(elements.imageListInput.value);
             const architecture = elements.architectureInput.value.trim();
-            const format = elements.formatSelect.value;
 
             if (imageList.length === 0) {
                 showToast('请输入要下载的镜像列表', 'error');
@@ -915,7 +923,6 @@
                 id: index,
                 image: image,
                 architecture: architecture,
-                format: format,
                 status: 'pending'
             }));
 
@@ -959,26 +966,26 @@
 
             try {
                 // 调用后端API开始下载
-                const response = await fetch('/api/skopeo/download', {
+                const response = await fetch('/api/download', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        image: task.image,
-                        architecture: task.architecture,
-                        format: task.format
+                        images: [task.image],
+                        platform: task.architecture
                     })
                 });
 
                 const result = await response.json();
 
-                if (result.success) {
-                    task.status = 'completed';
-                    updateTaskStatus(currentTaskIndex, 'completed', '下载完成');
+                if (result.taskId) {
+                    // 下载任务已创建，等待完成
+                    task.taskId = result.taskId;
+                    await waitForTaskCompletion(task);
                 } else {
                     task.status = 'failed';
-                    updateTaskStatus(currentTaskIndex, 'failed', result.message || '下载失败');
+                    updateTaskStatus(currentTaskIndex, 'failed', result.error || '下载失败');
                 }
             } catch (error) {
                 console.error('下载错误:', error);
@@ -993,6 +1000,37 @@
             if (isDownloading && currentTaskIndex < downloadTasks.length) {
                 setTimeout(() => processNextTask(), 1000); // 延迟1秒继续下一个
             }
+        }
+
+        // 等待任务完成
+        async function waitForTaskCompletion(task) {
+            return new Promise((resolve) => {
+                const checkStatus = async () => {
+                    try {
+                        const response = await fetch(`/api/task/${task.taskId}`);
+                        const data = await response.json();
+                        
+                        if (data.status === 'completed') {
+                            task.status = 'completed';
+                            updateTaskStatus(currentTaskIndex, 'completed', '下载完成');
+                            resolve();
+                        } else if (data.status === 'failed') {
+                            task.status = 'failed';
+                            updateTaskStatus(currentTaskIndex, 'failed', '下载失败');
+                            resolve();
+                        } else {
+                            // 继续检查
+                            setTimeout(checkStatus, 2000);
+                        }
+                    } catch (error) {
+                        task.status = 'failed';
+                        updateTaskStatus(currentTaskIndex, 'failed', '状态查询失败');
+                        resolve();
+                    }
+                };
+                
+                checkStatus();
+            });
         }
 
         // 暂停下载

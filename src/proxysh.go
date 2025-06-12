@@ -95,8 +95,12 @@ func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reade
 	
 	// 快速读取内容
 	content, err := processor.readContent(input, isCompressed)
-	if err != nil || len(content) == 0 {
-		// 优雅降级：返回空读取器而不是已消费的input
+	if err != nil {
+		// 优雅降级：读取错误时返回错误，让上层处理
+		return nil, 0, fmt.Errorf("内容读取失败: %v", err)
+	}
+	if len(content) == 0 {
+		// 空内容，返回空读取器
 		return strings.NewReader(""), 0, nil
 	}
 	
@@ -209,18 +213,6 @@ func (sp *SmartProcessor) isBinaryContent(content string) bool {
 func (sp *SmartProcessor) readContent(input io.ReadCloser, isCompressed bool) (string, error) {
 	defer input.Close()
 	
-	var reader io.Reader = input
-	
-	// 压缩处理
-	if isCompressed {
-		gzReader, err := gzip.NewReader(input)
-		if err != nil {
-			return "", err
-		}
-		defer gzReader.Close()
-		reader = gzReader
-	}
-	
 	// 使用缓冲池
 	buffer := sp.bufferPool.Get().([]byte)
 	defer sp.bufferPool.Put(buffer)
@@ -228,6 +220,36 @@ func (sp *SmartProcessor) readContent(input io.ReadCloser, isCompressed bool) (s
 	var result strings.Builder
 	result.Grow(SMART_BUFFER_SIZE) // 预分配
 	
+	var reader io.Reader = input
+	var gzReader *gzip.Reader
+	
+	// 智能压缩处理 - 防止双重解压
+	if isCompressed {
+		// 先读取一小部分数据来检测是否真的是gzip格式
+		peek := make([]byte, 2)
+		n, err := input.Read(peek)
+		if err != nil && err != io.EOF {
+			return "", fmt.Errorf("读取数据失败: %v", err)
+		}
+		
+		// 检查gzip魔数 (0x1f, 0x8b)
+		if n >= 2 && peek[0] == 0x1f && peek[1] == 0x8b {
+			// 确认是gzip格式，创建MultiReader组合peek数据和剩余数据
+			combinedReader := io.MultiReader(bytes.NewReader(peek[:n]), input)
+			gzReader, err = gzip.NewReader(combinedReader)
+			if err != nil {
+				return "", fmt.Errorf("gzip解压失败: %v", err)
+			}
+			defer gzReader.Close()
+			reader = gzReader
+		} else {
+			// 不是gzip格式或者HTTP客户端已经解压，使用原始数据
+			combinedReader := io.MultiReader(bytes.NewReader(peek[:n]), input)
+			reader = combinedReader
+		}
+	}
+	
+	// 读取内容
 	for {
 		n, err := reader.Read(buffer)
 		if n > 0 {
@@ -237,7 +259,7 @@ func (sp *SmartProcessor) readContent(input io.ReadCloser, isCompressed bool) (s
 			break
 		}
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("读取内容失败: %v", err)
 		}
 		
 		// 大文件保护

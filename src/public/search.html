@@ -855,14 +855,14 @@
             elements.backToSearch.classList.remove('show');
 
             try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(term)}&page=${page}`);
+                const response = await fetch(`/search?q=${encodeURIComponent(term)}&page=${page}`);
                 const data = await response.json();
 
-                if (data.success) {
+                if (data && data.results) {
                     searchResults = data.results;
-                    displaySearchResults(data.results, data.total, page);
+                    displaySearchResults(data.results, data.count, page);
                 } else {
-                    showToast('搜索失败：' + (data.message || '未知错误'), 'error');
+                    showToast('搜索失败：' + (data.error || '未知错误'), 'error');
                 }
             } catch (error) {
                 console.error('搜索错误:', error);
@@ -894,7 +894,7 @@
         function createResultCard(result) {
             const card = document.createElement('div');
             card.className = 'result-card';
-            card.onclick = () => viewImageTags(result.name);
+            card.onclick = () => viewImageTags(result.repo_name || result.name);
 
             const badges = [];
             if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
@@ -902,21 +902,21 @@
 
             card.innerHTML = `
                 <div class="result-title">
-                    🐳 ${result.name}
+                    🐳 ${result.repo_name || result.name}
                     ${badges.join('')}
                 </div>
                 <div class="result-description">
-                    ${result.description || '暂无描述'}
+                    ${result.short_description || result.description || '暂无描述'}
                 </div>
                 <div class="result-meta">
                     <div class="meta-stats">
                         <div class="meta-item">
                             <span>📈</span>
-                            ${formatUtils.formatNumber(result.star_count)} Stars
+                            ${formatUtils.formatNumber(result.star_count || 0)} Stars
                         </div>
                         <div class="meta-item">
                             <span>📥</span>
-                            ${formatUtils.formatNumber(result.pull_count)} Pulls
+                            ${formatUtils.formatNumber(result.pull_count || 0)} Pulls
                         </div>
                     </div>
                 </div>
@@ -934,15 +934,28 @@
             elements.searchResults.classList.remove('show');
 
             try {
-                const response = await fetch(`/api/tags?image=${encodeURIComponent(imageName)}`);
+                // 解析镜像名称
+                let namespace = 'library';
+                let repoName = imageName;
+                
+                if (imageName.includes('/')) {
+                    const parts = imageName.split('/');
+                    namespace = parts[0];
+                    repoName = parts[1];
+                } else {
+                    // 官方镜像
+                    namespace = 'library';
+                }
+
+                const response = await fetch(`/tags/${namespace}/${repoName}`);
                 const data = await response.json();
 
-                if (data.success) {
-                    allTags = data.tags;
-                    displayImageTags(imageName, data.tags);
+                if (Array.isArray(data)) {
+                    allTags = data;
+                    displayImageTags(imageName, data);
                     elements.backToSearch.classList.add('show');
                 } else {
-                    showToast('获取标签失败：' + (data.message || '未知错误'), 'error');
+                    showToast('获取标签失败：' + (data.error || '未知错误'), 'error');
                 }
             } catch (error) {
                 console.error('获取标签错误:', error);

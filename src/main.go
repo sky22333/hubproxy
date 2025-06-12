@@ -209,18 +209,36 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 		realHost = "https://" + realHost
 	}
 
+	// 检查是否为gzip压缩内容
+	isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
+	
 	// 使用智能处理器自动处理所有内容
-	processedBody, processedSize, err := ProcessSmart(resp.Body, resp.Header.Get("Content-Encoding") == "gzip", realHost)
+	processedBody, processedSize, err := ProcessSmart(resp.Body, isGzipCompressed, realHost)
 	if err != nil {
-		// 优雅降级 - 处理失败时直接返回原内容
-		c.String(http.StatusInternalServerError, fmt.Sprintf("内容处理错误: %v", err))
+		// 优雅降级 - 处理失败时使用直接代理模式
+		fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
+		
+		// 复制原始响应头
+		for key, values := range resp.Header {
+			for _, value := range values {
+				c.Header(key, value)
+			}
+		}
+		
+		c.Status(resp.StatusCode)
+		
+		// 直接转发原始内容
+		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+			fmt.Printf("直接代理模式复制内容失败: %v\n", err)
+		}
 		return
 	}
 
 	// 智能设置响应头
 	if processedSize > 0 {
-		// 内容被处理过，使用chunked传输以获得最佳性能
+		// 内容被处理过，清理压缩相关头，使用chunked传输
 		resp.Header.Del("Content-Length")
+		resp.Header.Del("Content-Encoding") // 重要：清理压缩头，防止浏览器重复解压
 		resp.Header.Set("Transfer-Encoding", "chunked")
 	}
 
