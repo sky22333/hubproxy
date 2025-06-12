@@ -986,7 +986,10 @@
             `;
 
             displayFilteredTags(tags);
+            
+            // 确保显示tag列表并滚动到顶部
             elements.tagList.classList.add('show');
+            elements.tagList.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // 显示过滤后的标签

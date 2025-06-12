@@ -677,34 +677,26 @@
                             type="text" 
                             class="input" 
                             id="architectureInput" 
-                            placeholder="输入架构，例如：linux/amd64"
-                            value="linux/amd64"
+                            placeholder="输入架构，例如：amd64"
+                            value="amd64"
                         >
                     </div>
                     <div class="arch-buttons">
-                        <button class="arch-button" data-arch="linux/amd64">linux/amd64</button>
-                        <button class="arch-button" data-arch="linux/arm64">linux/arm64</button>
-                        <button class="arch-button" data-arch="linux/arm/v7">linux/arm/v7</button>
-                        <button class="arch-button" data-arch="linux/386">linux/386</button>
+                        <button class="arch-button" data-arch="amd64">amd64</button>
+                        <button class="arch-button" data-arch="arm64">arm64</button>
+                        <button class="arch-button" data-arch="arm">arm</button>
+                        <button class="arch-button" data-arch="386">386</button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">输出格式</label>
-                    <div class="input-info">
-                        📦 系统自动使用 Docker Archive (.tar) 格式
-                    </div>
-                </div>
+
 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button class="button button-primary" id="startDownload">
-                        🚀 开始下载
+                    <button class="button button-primary" id="downloadButton">
+                        📥 下载
                     </button>
-                    <button class="button button-warning" id="pauseDownload" disabled>
-                        ⏸️ 暂停下载
-                    </button>
-                    <button class="button button-error" id="stopDownload" disabled>
-                        ⏹️ 停止下载
+                    <button class="button button-success" id="downloadFileButton" style="display: none;">
+                        📦 下载压缩包
                     </button>
                 </div>
             </div>
@@ -770,16 +762,14 @@
         // 全局变量
         let downloadTasks = [];
         let isDownloading = false;
-        let currentTaskIndex = 0;
-        let downloadInterval = null;
+        let currentTaskId = null;
 
         // DOM 元素
         const elements = {
             imageListInput: document.getElementById('imageListInput'),
             architectureInput: document.getElementById('architectureInput'),
-            startDownload: document.getElementById('startDownload'),
-            pauseDownload: document.getElementById('pauseDownload'),
-            stopDownload: document.getElementById('stopDownload'),
+            downloadButton: document.getElementById('downloadButton'),
+            downloadFileButton: document.getElementById('downloadFileButton'),
             progressContainer: document.getElementById('progressContainer'),
             progressTitle: document.getElementById('progressTitle'),
             progressStats: document.getElementById('progressStats'),
@@ -814,7 +804,7 @@
         });
 
         // 默认选中第一个架构
-        document.querySelector('.arch-button[data-arch="linux/amd64"]').classList.add('selected');
+        document.querySelector('.arch-button[data-arch="amd64"]').classList.add('selected');
 
         // 解析镜像列表
         function parseImageList(input) {
@@ -918,51 +908,14 @@
                 return;
             }
 
-            // 初始化任务
-            downloadTasks = imageList.map((image, index) => ({
-                id: index,
-                image: image,
-                architecture: architecture,
-                status: 'pending'
-            }));
-
-            // 清空任务列表并重新创建
-            elements.taskList.innerHTML = '';
-            downloadTasks.forEach((task, index) => {
-                const taskItem = createTaskItem(task.image, index);
-                elements.taskList.appendChild(taskItem);
-            });
+            isDownloading = true;
+            elements.downloadButton.disabled = true;
+            elements.downloadButton.textContent = '下载中...';
+            elements.downloadFileButton.style.display = 'none';
 
             // 显示进度容器
             elements.progressContainer.classList.add('show');
-            
-            // 更新按钮状态
-            elements.startDownload.disabled = true;
-            elements.pauseDownload.disabled = false;
-            elements.stopDownload.disabled = false;
-
-            isDownloading = true;
-            currentTaskIndex = 0;
-
-            elements.progressTitle.textContent = '开始下载...';
-            showToast('开始批量下载镜像', 'success');
-
-            // 开始处理任务
-            processNextTask();
-        }
-
-        // 处理下一个任务
-        async function processNextTask() {
-            if (!isDownloading || currentTaskIndex >= downloadTasks.length) {
-                return;
-            }
-
-            const task = downloadTasks[currentTaskIndex];
-            
-            // 更新任务状态为运行中
-            task.status = 'running';
-            updateTaskStatus(currentTaskIndex, 'running', '正在下载...');
-            updateProgress();
+            elements.progressTitle.textContent = '正在下载镜像...';
 
             try {
                 // 调用后端API开始下载
@@ -972,119 +925,84 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        images: [task.image],
-                        platform: task.architecture
+                        images: imageList,
+                        platform: architecture
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.taskId) {
-                    // 下载任务已创建，等待完成
-                    task.taskId = result.taskId;
-                    await waitForTaskCompletion(task);
+                    currentTaskId = result.taskId;
+                    showToast('下载任务已创建', 'success');
+                    await waitForDownloadCompletion();
                 } else {
-                    task.status = 'failed';
-                    updateTaskStatus(currentTaskIndex, 'failed', result.error || '下载失败');
+                    throw new Error(result.error || '创建下载任务失败');
                 }
             } catch (error) {
                 console.error('下载错误:', error);
-                task.status = 'failed';
-                updateTaskStatus(currentTaskIndex, 'failed', '网络错误');
-            }
-
-            updateProgress();
-            currentTaskIndex++;
-
-            // 继续下一个任务
-            if (isDownloading && currentTaskIndex < downloadTasks.length) {
-                setTimeout(() => processNextTask(), 1000); // 延迟1秒继续下一个
+                showToast('下载失败: ' + error.message, 'error');
+                resetDownloadState();
             }
         }
 
-        // 等待任务完成
-        async function waitForTaskCompletion(task) {
-            return new Promise((resolve) => {
-                const checkStatus = async () => {
-                    try {
-                        const response = await fetch(`/api/task/${task.taskId}`);
-                        const data = await response.json();
+        // 等待下载完成
+        async function waitForDownloadCompletion() {
+            const checkStatus = async () => {
+                try {
+                    const response = await fetch(`/api/task/${currentTaskId}`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'completed') {
+                        elements.progressTitle.textContent = '下载完成';
+                        elements.progressBar.style.width = '100%';
+                        showToast('镜像下载完成', 'success');
                         
-                        if (data.status === 'completed') {
-                            task.status = 'completed';
-                            updateTaskStatus(currentTaskIndex, 'completed', '下载完成');
-                            resolve();
-                        } else if (data.status === 'failed') {
-                            task.status = 'failed';
-                            updateTaskStatus(currentTaskIndex, 'failed', '下载失败');
-                            resolve();
-                        } else {
-                            // 继续检查
-                            setTimeout(checkStatus, 2000);
+                        // 显示下载压缩包按钮
+                        elements.downloadFileButton.style.display = 'inline-flex';
+                        elements.downloadFileButton.onclick = () => downloadFile();
+                        
+                        resetDownloadState();
+                    } else if (data.status === 'failed') {
+                        elements.progressTitle.textContent = '下载失败';
+                        showToast('下载失败', 'error');
+                        resetDownloadState();
+                    } else {
+                        // 更新进度
+                        if (data.images && data.images.length > 0) {
+                            const totalProgress = data.images.reduce((sum, img) => sum + (img.progress || 0), 0) / data.images.length;
+                            elements.progressBar.style.width = `${totalProgress}%`;
                         }
-                    } catch (error) {
-                        task.status = 'failed';
-                        updateTaskStatus(currentTaskIndex, 'failed', '状态查询失败');
-                        resolve();
+                        
+                        // 继续检查
+                        setTimeout(checkStatus, 2000);
                     }
-                };
-                
-                checkStatus();
-            });
-        }
-
-        // 暂停下载
-        function pauseDownload() {
-            isDownloading = false;
-            elements.startDownload.disabled = false;
-            elements.pauseDownload.disabled = true;
-            elements.progressTitle.textContent = '下载已暂停';
-            showToast('下载已暂停', 'warning');
-        }
-
-        // 停止下载
-        function stopDownload() {
-            isDownloading = false;
-            currentTaskIndex = 0;
+                } catch (error) {
+                    elements.progressTitle.textContent = '状态查询失败';
+                    showToast('状态查询失败', 'error');
+                    resetDownloadState();
+                }
+            };
             
-            elements.startDownload.disabled = false;
-            elements.pauseDownload.disabled = true;
-            elements.stopDownload.disabled = true;
-            
-            if (downloadTasks.length > 0) {
-                elements.progressTitle.textContent = '下载已停止';
-            }
+            checkStatus();
         }
 
-        // 恢复下载
-        function resumeDownload() {
-            if (downloadTasks.length === 0) {
-                showToast('没有可恢复的任务', 'error');
-                return;
+        // 重置下载状态
+        function resetDownloadState() {
+            isDownloading = false;
+            elements.downloadButton.disabled = false;
+            elements.downloadButton.textContent = '📥 下载';
+        }
+
+        // 下载文件
+        function downloadFile() {
+            if (currentTaskId) {
+                window.open(`/api/download/${currentTaskId}/file`, '_blank');
             }
-
-            isDownloading = true;
-            elements.startDownload.disabled = true;
-            elements.pauseDownload.disabled = false;
-            elements.stopDownload.disabled = false;
-
-            elements.progressTitle.textContent = '恢复下载...';
-            showToast('恢复下载', 'success');
-
-            processNextTask();
         }
 
         // 事件监听
-        elements.startDownload.addEventListener('click', () => {
-            if (downloadTasks.length > 0 && currentTaskIndex < downloadTasks.length) {
-                resumeDownload();
-            } else {
-                startDownload();
-            }
-        });
-
-        elements.pauseDownload.addEventListener('click', pauseDownload);
-        elements.stopDownload.addEventListener('click', stopDownload);
+        elements.downloadButton.addEventListener('click', startDownload);
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', () => {
