@@ -542,6 +542,27 @@
             .modal-content {
                 padding: 1.5rem;
             }
+            
+            /* 移动端快速生成加速链接区域优化 */
+            .input-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .input {
+                font-size: 16px; /* 防止iOS缩放 */
+            }
+            
+            .button {
+                width: 100%;
+                justify-content: center;
+                padding: 0.875rem 1.5rem;
+            }
+            
+            .output-actions {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
         }
         
         .mobile-menu-toggle {
@@ -596,7 +617,7 @@
                         ⚡ 快速生成加速链接
                     </h2>
                     <p class="card-description">
-                        输入GitHub文件或仓库链接，自动生成加速下载链接
+                        输入GitHub文件或仓库链接，自动转换加速链接，可以直接在Github域名前面加上本站域名使用。
                     </p>
                 </div>
 
@@ -639,7 +660,7 @@
                         🐳 Docker 镜像加速
                     </h3>
                     <p class="card-description">
-                        支持多种Registry，在镜像名前添加本站域名即可加速下载
+                        支持多种Registry，在镜像名前添加本站域名即可加速下载。
                     </p>
                 </div>
                 
@@ -656,7 +677,7 @@
             <button class="close-button" id="closeModal">&times;</button>
             <div class="modal-header">
                 <h2 class="modal-title">Docker 镜像加速</h2>
-                <p>支持多种Registry，在镜像名前添加本站域名即可</p>
+                <p>支持多种Registry，在镜像名前添加本站域名即可加速下载。</p>
             </div>
             
             <div class="domain-examples">

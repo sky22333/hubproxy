@@ -527,12 +527,12 @@
         <h1>Docker离线镜像包下载</h1>
         
         <div class="form-group">
-            <div class="info-text">每行输入一个镜像，跟docker pull的格式一样，多个镜像会自动打包到一起为zip包，单个镜像为tar包。导入镜像后需要手动为镜像添加名称和标签，例如：docker tag 1856948a5aa7 镜像名称:标签</div>
+            <div class="info-text">每行输入一个镜像，跟docker pull的格式一样，多个镜像会自动打包到一起为zip包，单个镜像为tar包。导入镜像后需要手动为镜像添加名称和标签，例如：docker tag 1856948a5aa7 stilleshan/frpc</div>
             <textarea class="form-control" id="imageInput" placeholder="例如：&#10;nginx&#10;stilleshan/frpc&#10;stilleshan/frpc:0.62.1"></textarea>
         </div>
         
         <div class="form-group">
-            <div class="info-text">镜像架构，默认为 amd64</div>
+            <div class="info-text">镜像架构，默认 amd64</div>
             <input type="text" class="form-control" id="platformInput" placeholder="输入架构，例如：amd64, arm64等" value="amd64">
         </div>
         
