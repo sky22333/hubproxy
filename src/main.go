@@ -209,61 +209,75 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 		realHost = "https://" + realHost
 	}
 
-	// 检查是否为gzip压缩内容
-	isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
-	
-	// 使用智能处理器自动处理所有内容
-	processedBody, processedSize, err := ProcessSmart(resp.Body, isGzipCompressed, realHost)
-	if err != nil {
-		// 优雅降级 - 处理失败时使用直接代理模式
-		fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
+	// 🚀 高性能预筛选：仅对.sh文件进行智能处理
+	if strings.HasSuffix(strings.ToLower(u), ".sh") {
+		// 检查是否为gzip压缩内容
+		isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
 		
-		// 复制原始响应头
+		// 仅对shell脚本使用智能处理器
+		processedBody, processedSize, err := ProcessSmart(resp.Body, isGzipCompressed, realHost)
+		if err != nil {
+			// 优雅降级 - 处理失败时使用直接代理模式
+			fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
+			processedBody = resp.Body
+			processedSize = 0
+		}
+
+		// 智能设置响应头
+		if processedSize > 0 {
+			// 内容被处理过，清理压缩相关头，使用chunked传输
+			resp.Header.Del("Content-Length")
+			resp.Header.Del("Content-Encoding")
+			resp.Header.Set("Transfer-Encoding", "chunked")
+		}
+
+		// 复制其他响应头
 		for key, values := range resp.Header {
 			for _, value := range values {
 				c.Header(key, value)
 			}
 		}
-		
+
+		if location := resp.Header.Get("Location"); location != "" {
+			if checkURL(location) != nil {
+				c.Header("Location", "/"+location)
+			} else {
+				proxyWithRedirect(c, location, redirectCount+1)
+				return
+			}
+		}
+
 		c.Status(resp.StatusCode)
-		
-		// 直接转发原始内容
-		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-			fmt.Printf("直接代理模式复制内容失败: %v\n", err)
-		}
-		return
-	}
 
-	// 智能设置响应头
-	if processedSize > 0 {
-		// 内容被处理过，清理压缩相关头，使用chunked传输
-		resp.Header.Del("Content-Length")
-		resp.Header.Del("Content-Encoding") // 重要：清理压缩头，防止浏览器重复解压
-		resp.Header.Set("Transfer-Encoding", "chunked")
-	}
-
-	// 复制其他响应头
-	for key, values := range resp.Header {
-		for _, value := range values {
-			c.Header(key, value)
-		}
-	}
-
-	if location := resp.Header.Get("Location"); location != "" {
-		if checkURL(location) != nil {
-			c.Header("Location", "/"+location)
-		} else {
-			// 递归处理重定向，增加计数防止无限循环
-			proxyWithRedirect(c, location, redirectCount+1)
+		// 输出处理后的内容
+		if _, err := io.Copy(c.Writer, processedBody); err != nil {
 			return
 		}
-	}
+	} else {
+		// 🔥 非.sh文件：直接高性能流式代理，零内存消耗
+		// 复制所有响应头
+		for key, values := range resp.Header {
+			for _, value := range values {
+				c.Header(key, value)
+			}
+		}
 
-	c.Status(resp.StatusCode)
+		// 处理重定向
+		if location := resp.Header.Get("Location"); location != "" {
+			if checkURL(location) != nil {
+				c.Header("Location", "/"+location)
+			} else {
+				proxyWithRedirect(c, location, redirectCount+1)
+				return
+			}
+		}
 
-	// 输出处理后的内容
-	if _, err := io.Copy(c.Writer, processedBody); err != nil {
-		return
+		c.Status(resp.StatusCode)
+
+		// 直接流式转发，零内存拷贝
+		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+			fmt.Printf("直接代理失败: %v\n", err)
+		}
 	}
 }
 
