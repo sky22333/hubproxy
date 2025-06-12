@@ -152,6 +152,9 @@ func proxy(c *gin.Context, u string) {
 }
 
 
+// proxyWithRedirect forwards an HTTP request to the specified URL, handling redirects, file size limits, and intelligent content processing.
+//
+// If the response is a redirect, the function recursively follows it up to a maximum of 20 times. It enforces a file size limit based on configuration and processes the response body using a smart processor. If processing fails, it gracefully falls back to direct proxying of the original response. Security-related headers are removed from the proxied response. The function rewrites redirect locations for known URL patterns to relative paths when appropriate. Processed content is streamed to the client with appropriate headers.
 func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	// 限制最大重定向次数，防止无限递归
 	const maxRedirects = 20
@@ -267,6 +270,7 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	}
 }
 
+// checkURL returns the first set of submatches for the input URL against known regex patterns, or nil if no pattern matches.
 func checkURL(u string) []string {
 	for _, exp := range exps {
 		if matches := exp.FindStringSubmatch(u); matches != nil {

@@ -197,7 +197,9 @@ func LoadConfig() error {
 	return nil
 }
 
-// 🔥 启用Viper自动热重载
+// enableViperHotReload enables hot reloading of the configuration file using Viper.
+// If hot reload is already enabled, the function returns immediately.
+// On detecting changes to the configuration file, it triggers a reload of the application configuration.
 func enableViperHotReload() {
 	if isViperEnabled {
 		return

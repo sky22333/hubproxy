@@ -125,7 +125,8 @@ func initSkopeoRoutes(router *gin.Engine) {
 	go cleanupExpiredTasks()
 }
 
-// 处理WebSocket连接
+// handleWebSocket upgrades an HTTP connection to a WebSocket for real-time task progress updates.
+// It registers the client, starts heartbeat and message handling goroutines, sends the current task status if available, and manages connection liveness with ping/pong and timeout handlers.
 func handleWebSocket(c *gin.Context) {
 	taskID := c.Param("taskId")
 	
@@ -350,7 +351,7 @@ func generateTaskID() string {
 	return hex.EncodeToString(b)
 }
 
-// 初始化任务并启动进度处理器
+// initTask initializes a DownloadTask by setting up its progress update channels, starting a periodic status updater to keep WebSocket connections alive, and launching a goroutine to process progress updates and maintain task and image status.
 func initTask(task *DownloadTask) {
 	// 创建进度更新通道和控制通道
 	task.updateChan = make(chan *ProgressUpdate, 100)
@@ -1127,7 +1128,8 @@ func createZipArchive(task *DownloadTask) (string, error) {
 	return zipFilePath, nil
 }
 
-// 发送任务更新到WebSocket
+// sendTaskUpdate sends the current status and progress of a download task to the associated WebSocket client, if the client is active.
+// It serializes a snapshot of the task state and attempts to deliver it within a timeout, logging if the send fails.
 func sendTaskUpdate(task *DownloadTask) {
 	// 复制任务状态避免序列化时锁定
 	taskCopy := &DownloadTask{
@@ -1397,7 +1399,7 @@ func checkForCompletionMarkers(output string) bool {
 	return false
 }
 
-// cleanupWebSocketConnections 定期清理无效的WebSocket连接
+// cleanupWebSocketConnections periodically removes inactive or unresponsive WebSocket clients from the global clients map.
 func cleanupWebSocketConnections() {
 	ticker := time.NewTicker(2 * time.Minute) // 增加清理频率
 	defer ticker.Stop()

@@ -57,7 +57,7 @@ var (
 	cleanupOnce    sync.Once
 )
 
-// GetSmartProcessor 获取智能处理器实例
+// GetSmartProcessor returns the singleton instance of SmartProcessor, initializing it with GitHub URL detection, script pattern recognition, buffer pooling, and background cache cleanup if not already created.
 func GetSmartProcessor() *SmartProcessor {
 	smartOnce.Do(func() {
 		smartProcessor = &SmartProcessor{
@@ -82,7 +82,9 @@ func GetSmartProcessor() *SmartProcessor {
 	return smartProcessor
 }
 
-// ProcessSmart 智能处理函数
+// ProcessSmart reads content from the input, detects and rewrites GitHub URLs in script-like text using a proxy host, and returns the processed content as an io.Reader along with its length.
+// If the processor is disabled, the input is returned unmodified. Large files and non-script content are bypassed. Results are cached for performance.
+// Returns an error if reading the input fails.
 func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reader, int64, error) {
 	processor := GetSmartProcessor()
 	
