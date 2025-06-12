@@ -76,7 +76,7 @@
         }
 
         body {
-            font-family: 'Misans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background-color: var(--background);
             color: var(--foreground);
             line-height: 1.5;
@@ -170,9 +170,9 @@
         }
 
         /* 主要内容区域 */
-        .main-content {
+        .main {
             flex: 1;
-            padding: 30px;
+            padding: 2rem 1rem;
         }
 
         *::-webkit-scrollbar {
@@ -181,11 +181,11 @@
         }
 
         *::-webkit-scrollbar-track {
-            background-color: black;
+            background-color: var(--muted);
         }
 
         *::-webkit-scrollbar-thumb {
-            background: #39c5bb;
+            background: var(--primary);
             border-radius: 10px;
         }
 
@@ -194,7 +194,7 @@
             text-align: center;
             min-height: 65%;
             line-height: 1.25;
-            margin-top: 20px;
+            margin: 2rem auto 0;  /* 保持原有布局但使用更标准的边距 */
         }
 
         h1 {
@@ -441,7 +441,7 @@
         </div>
     </nav>
 
-    <div class="main-content">
+    <main class="main">
         <div class="container">
         <h1>Docker离线镜像包下载</h1>
         
@@ -683,6 +683,6 @@
             });
         });
     </script>
-    </div> <!-- 关闭 main-content -->
+    </main> <!-- 关闭 main -->
 </body>
 </html>
