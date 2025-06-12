@@ -9,483 +9,695 @@
     <meta name="color-scheme" content="dark light">
     <title>Github文件加速</title>
     <link rel="icon" href="./favicon.ico">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.3/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans">
     <style>
+        /* 现代化设计系统 */
         :root {
-            --color: #fafafa;
-            --fontcolor: #333;
-            --inputcolor: #f5f5f5;
-            --inputcolor-font: #333;
-            --card-bg: #f8f9fa;
-            --border-color: #dee2e6;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --card-foreground: #0f172a;
+            --primary: #2563eb;
+            --primary-foreground: #f8fafc;
+            --secondary: #f1f5f9;
+            --secondary-foreground: #0f172a;
+            --muted: #f1f5f9;
+            --muted-foreground: #64748b;
+            --accent: #f1f5f9;
+            --accent-foreground: #0f172a;
+            --border: #e2e8f0;
+            --input: #ffffff;
+            --ring: #2563eb;
+            --radius: 0.5rem;
+        }
+
+        .dark {
+            --background: #0f172a;
+            --foreground: #f8fafc;
+            --card: #1e293b;
+            --card-foreground: #f8fafc;
+            --primary: #3b82f6;
+            --primary-foreground: #f8fafc;
+            --secondary: #1e293b;
+            --secondary-foreground: #f8fafc;
+            --muted: #1e293b;
+            --muted-foreground: #94a3b8;
+            --accent: #1e293b;
+            --accent-foreground: #f8fafc;
+            --border: #334155;
+            --input: #1e293b;
+            --ring: #3b82f6;
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --color: #53535338;
-                --fontcolor: #b8b8b8;
-                --inputcolor: #012333;
-                --inputcolor-font: #969696d8;
-                --card-bg: #012333;
-                --border-color: #2d3338;
+                --background: #0f172a;
+                --foreground: #f8fafc;
+                --card: #1e293b;
+                --card-foreground: #f8fafc;
+                --primary: #3b82f6;
+                --primary-foreground: #f8fafc;
+                --secondary: #1e293b;
+                --secondary-foreground: #f8fafc;
+                --muted: #1e293b;
+                --muted-foreground: #94a3b8;
+                --accent: #1e293b;
+                --accent-foreground: #f8fafc;
+                --border: #334155;
+                --input: #1e293b;
+                --ring: #3b82f6;
             }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background-color: var(--color);
-            color: var(--fontcolor);
-            font-family: 'Misans', Arial, sans-serif;
-            padding: 30px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.5;
             min-height: 100vh;
-            margin: 0;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
         }
 
-        *::-webkit-scrollbar {
-            height: 10px;
-            margin-top: 0px;
+        /* 现代化导航栏 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            width: 100%;
+            border-bottom: 1px solid var(--border);
+            background-color: var(--background);
+            backdrop-filter: blur(8px);
+            background-color: rgba(255, 255, 255, 0.95);
         }
 
-        *::-webkit-scrollbar-track {
-            background-color: black;
+        .dark .navbar {
+            background-color: rgba(15, 23, 42, 0.95);
         }
 
-        *::-webkit-scrollbar-thumb {
-            background: #39c5bb;
-            border-radius: 10px;
+        .navbar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 4rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--foreground);
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .logo-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            text-decoration: none;
+            color: var(--muted-foreground);
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--foreground);
+            background-color: var(--muted);
+        }
+
+        .theme-toggle {
+            padding: 0.5rem;
+            border: none;
+            border-radius: var(--radius);
+            background-color: transparent;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--muted);
+            color: var(--foreground);
+        }
+
+        /* 主要内容区域 */
+        .main {
+            flex: 1;
+            padding: 2rem 1rem;
         }
 
         .container {
-            max-width: 80%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .hero {
             text-align: center;
-            min-height: 65%;
-            line-height: 1.25;
-            margin-top: 60px;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease-out forwards;
         }
 
-        h1 {
-            color: var(--fontcolor);
-            font-weight: bold;
-            margin-bottom: 20%;
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .rounded-button {
-            border-radius: 6px;
-            transition: background-color 0.3s, transform 0.2s;
-            padding: 10px 30px;
-            background-color: #555c5c;
-            color: rgb(255, 255, 255);
-            border: none;
-            margin-bottom: 3%;
+        .hero-subtitle {
+            font-size: 1.125rem;
+            color: var(--muted-foreground);
+            max-width: 600px;
+            margin: 0 auto;
         }
 
-        .rounded-button:hover {
-            background-color: #39c5bcda;
-            transform: scale(1.05);
+        /* 现代化卡片设计 */
+        .card {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease-out 0.2s forwards;
         }
 
-        .tips>p:first-child::before {
-            position: sticky;
-            color: #7b7b7b;
-            margin-bottom: 1%;
-            font-size: 60%;
+        .card-header {
+            margin-bottom: 1.5rem;
         }
 
-        footer {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            padding: 10px;
-            line-height: 1.25;
-            margin-top: 20px;
-        }
-
-        pre {
-            background: #012333;
-            color: #39c5bc;
-            padding: 15px 20px 15px 20px;
-            margin: 0px 0;
-            border-radius: 0.5rem;
-            overflow-x: auto;
-            position: relative;
-        }
-
-        pre::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 6px;
-            left: 6px;
-            width: 10px;
-            height: 10px;
-            background: #bd3c35;
-            border-radius: 50%;
-            box-shadow: 20px 0 0 #d69f27, 40px 0 0 #39c5bb;
-        }
-
-        code {
-            font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
-            font-size: 0.9em;
-            margin-bottom: 0px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                max-width: 100%;
-                font-size: 0.8rem;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .container {
-                max-width: 65%;
-                font-size: 1rem;
-            }
-
-            h1 {
-                margin-bottom: 10%;
-            }
-        }
-
-        .form-group {
-            margin-bottom: 3%;
-        }
-
-        .form-control {
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
-        }
-
-        .form-control:focus {
-            background-color: var(--inputcolor);
-            color: var(--inputcolor-font);
-        }
-
-        .tips-content {
-            margin-bottom: 0px;
-            margin-top: 20px;
-            font-size: clamp(0.8rem, 2vw, 1.1rem);
-        }
-
-        .status-container {
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
             display: flex;
-            justify-content: center;
             align-items: center;
-            margin-bottom: 1px;
-            margin-top: -2%;
-            font-size: clamp(0.8rem, 2vw, 1.05rem);
+            gap: 0.5rem;
         }
 
-        .code {
+        .card-description {
+            color: var(--muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        /* 现代化表单设计 */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-container {
             position: relative;
-            padding-right: 0px;
+            display: flex;
+            gap: 0.75rem;
         }
 
-        .copy-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 217, 224, 0.822);
-            color: white;
+        .input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background-color: var(--input);
+            color: var(--foreground);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--ring);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        .input::placeholder {
+            color: var(--muted-foreground);
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
             border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
+            border-radius: var(--radius);
+            font-weight: 500;
             cursor: pointer;
-            transition: opacity 0.3s;
-            z-index: 1;
-            font-size: 0.85rem;
-            display: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .redir-button {
-            position: absolute;
-            top: 10px;
-            right: 65px;
-            background: rgba(0, 217, 224, 0.822);
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: opacity 0.3s;
-            z-index: 1;
-            font-size: 0.85rem;
-            display: none;
+        .button-primary {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
         }
 
-        pre:hover .copy-button {
+        .button-primary:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .button-secondary {
+            background-color: var(--secondary);
+            color: var(--secondary-foreground);
+        }
+
+        .button-secondary:hover {
+            background-color: var(--muted);
+        }
+
+        /* 输出区域 */
+        .output-container {
+            margin-top: 1.5rem;
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s;
+        }
+
+        .output-container.show {
+            display: block;
             opacity: 1;
+            transform: translateY(0);
         }
 
-        #visitor-info {
-            margin-top: 10px;
-            text-align: center;
-            line-height: 0;
+        .success-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: #059669;
         }
 
-        #toast {
-            position: fixed;
-            top: 10%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #39c5bcde;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            font-size: 90%;
-            z-index: 1000;
+        .output-box {
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.875rem;
+            word-break: break-all;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .output-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Docker 信息卡片 */
+        .docker-info {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease-out 0.4s forwards;
         }
 
         .docker-button {
-            width: 200px;
-            height: 50px;
-            border-radius: 10px;
-            background-color: #f6f6f6;
-            border: 2px solid #ececec;
-            color: #333;
-            font-size: 16px;
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 20px;
+            transition: all 0.3s;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--foreground);
         }
 
         .docker-button:hover {
-            background-color: #39c5bc;
-            color: white;
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
+        /* 模态框设计 */
         .modal {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
             z-index: 1000;
+            backdrop-filter: blur(4px);
         }
 
         .modal-content {
-            position: relative;
-            background-color: #fff;
-            margin: 10% auto;
-            padding: 30px;
-            width: 80%;
+            background-color: var(--card);
+            border-radius: 0.75rem;
+            padding: 2rem;
             max-width: 600px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
             text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
         }
 
         .close-button {
             position: absolute;
-            right: 20px;
-            top: 15px;
-            font-size: 24px;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
             cursor: pointer;
-            color: #666;
+            color: var(--muted-foreground);
+            padding: 0.25rem;
+            border-radius: var(--radius);
         }
 
-        .domain-container {
-            margin-top: 30px;
-            text-align: center;
+        .close-button:hover {
+            background-color: var(--muted);
         }
 
-        .domain-item {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            align-items: center;
-            padding: 15px;
-            margin: 10px 0;
-            background-color: #f5f5f5;
-            border-radius: 8px;
-            transition: all 0.3s ease;
+        .domain-examples {
+            background-color: var(--muted);
+            border-radius: var(--radius);
+            padding: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
         }
 
-        .domain-item:hover {
-            background-color: #e9e9e9;
+        .domain-examples strong {
+            color: var(--foreground);
+            display: block;
+            margin: 1rem 0 0.5rem 0;
         }
 
-        .domain-text {
-            font-family: 'Consolas', monospace;
-            color: #333;
-            font-size: 16px;
-            text-align: center;
+        .domain-examples strong:first-child {
+            margin-top: 0;
         }
 
-        .modal h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .hosts-button {
+        /* Toast 通知 */
+        .toast {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 2px 8px;
-            background-color: #f5f5f5;
-            border: 0px solid #fafafa;
-            color: #333;
-            border-radius: 10px;
-            cursor: pointer;
+            top: 1rem;
+            right: 1rem;
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: none;
+            opacity: 0;
+            transform: translateX(100%);
             transition: all 0.3s ease;
-            font-size: 14px;
-            text-decoration: none;
         }
 
-        .hosts-button:hover {
-            background-color: #39c5bc;
-            color: white;
-            transform: scale(1.05);
-            text-decoration: none;
+        .toast.show {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
         }
 
-        .download-button {
-            position: fixed;
-            top: 20px;
-            right: 80px;
-            padding: 2px 8px;
-            background-color: #f5f5f5;
-            border: 0px solid #fafafa;
-            color: #333;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-            text-decoration: none;
-        }
-        
-        .download-button:hover {
-            background-color: #39c5bc;
-            color: white;
-            transform: scale(1.05);
-            text-decoration: none;
+        /* 页脚 */
+        .footer {
+            padding: 2rem 1rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
         }
 
         .github-link {
-            display: inline-block;
-            position: static;
-            color: var(--fontcolor);
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--muted-foreground);
+            text-decoration: none;
+            transition: color 0.2s;
         }
 
         .github-link:hover {
-            opacity: 1;
+            color: var(--foreground);
         }
 
-        .github-link svg {
-            width: 20px;
-            height: 20px;
+        /* 动画 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .modal-content {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
 
 <body>
-    <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="hosts-button">hosts</a>
-    <a href="/skopeo.html" class="download-button">镜像包下载</a>
-    <a href="/search.html" style="right: 180px;" class="download-button">镜像搜索</a>
-    <div class="container">
-        <h1>Github文件加速</h1>
-        <div class="form-group">
-            <input type="text" class="form-control" id="githubLinkInput" placeholder="输入需要加速的Github链接">
-        </div>
-        <button class="btn rounded-button" id="formatButton">获取加速链接</button>
-
-        <div class="code" id="outputBlock">
-            <button class="copy-button" id="copyButton">复制</button>
-            <button class="redir-button" id="redirButton">打开</button>
-            <pre id="formattedLinkOutput"></pre>
-        </div>
-        <div class="tips">
-            <div class="tips-content">
-                <p>支持release、archive文件，支持git clone、wget、curl等等操作<br>支持Al模型库Hugging Face</p><br>
+    <!-- 现代化导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    ⚡
+                </div>
+                加速服务
+            </a>
+            
+            <div class="nav-links">
+                <a href="/" class="nav-link active">🚀 GitHub加速</a>
+                <a href="/skopeo.html" class="nav-link">🐳 镜像下载</a>
+                <a href="/search.html" class="nav-link">🔍 镜像搜索</a>
+                <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="nav-link">📄 Hosts</a>
+                
+                <button class="theme-toggle" id="themeToggle">
+                    🌙
+                </button>
             </div>
         </div>
+    </nav>
 
-        <button class="docker-button" id="dockerButton">镜像加速提示</button>
-    </div>
+    <!-- 主要内容 -->
+    <main class="main">
+        <div class="container">
+            <!-- Hero 区域 -->
+            <div class="hero">
+                <h1 class="hero-title">GitHub 文件加速</h1>
+                <p class="hero-subtitle">
+                    快速下载GitHub上的文件和仓库，解决国内访问GitHub速度慢的问题，支持AI模型库Hugging Face
+                </p>
+            </div>
 
-    <div id="dockerModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="closeModal">&times;</span>
-            <h1>Docker镜像加速</h1>
-            <h5>支持多种Registry，在镜像名前添加本站域名即可</h5>
-            <div class="domain-container">
-                <div class="domain-text">
-                    <strong>Docker Hub 官方镜像：</strong><br>
-                    docker pull <span class="domain-base"></span>/nginx<br><br>
-                    
-                    <strong>Docker Hub 第三方镜像：</strong><br>
-                    docker pull <span class="domain-base"></span>/user/image<br><br>
-                    
-                    <strong>GitHub Container Registry：</strong><br>
-                    docker pull <span class="domain-base"></span>/ghcr.io/user/image<br><br>
-                    
-                    
-                    <strong>Quay.io Registry：</strong><br>
-                    docker pull <span class="domain-base"></span>/quay.io/org/image<br><br>
-                    
-                    <strong>Kubernetes Registry：</strong><br>
-                    docker pull <span class="domain-base"></span>/registry.k8s.io/pause:3.8
+            <!-- 主功能卡片 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        ⚡ 快速生成加速链接
+                    </h2>
+                    <p class="card-description">
+                        输入GitHub文件或仓库链接，自动生成加速下载链接
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <div class="input-container">
+                        <input 
+                            type="text" 
+                            class="input" 
+                            id="githubLinkInput" 
+                            placeholder="请输入GitHub链接，例如：https://github.com/user/repo/releases/download/..."
+                        >
+                        <button class="button button-primary" id="formatButton">
+                            获取加速链接
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 输出区域 -->
+                <div class="output-container" id="outputBlock">
+                    <div class="success-header">
+                        <span>✅</span>
+                        <strong>加速链接已生成</strong>
+                    </div>
+                    <div class="output-box" id="formattedLinkOutput"></div>
+                    <div class="output-actions">
+                        <button class="button button-secondary" id="copyButton">
+                            📋 复制链接
+                        </button>
+                        <button class="button button-secondary" id="redirButton">
+                            🔗 打开链接
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <!-- Docker 信息卡片 -->
+            <div class="card docker-info">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        🐳 Docker 镜像加速
+                    </h3>
+                    <p class="card-description">
+                        支持多种Registry，在镜像名前添加本站域名即可加速下载
+                    </p>
+                </div>
+                
+                <button class="docker-button" id="dockerButton">
+                    查看 Docker 镜像加速配置
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Docker 模态框 -->
+    <div id="dockerModal" class="modal">
+        <div class="modal-content">
+            <button class="close-button" id="closeModal">&times;</button>
+            <div class="modal-header">
+                <h2 class="modal-title">Docker 镜像加速</h2>
+                <p>支持多种Registry，在镜像名前添加本站域名即可</p>
+            </div>
+            
+            <div class="domain-examples">
+                <strong>Docker Hub 官方镜像：</strong>
+                docker pull <span class="domain-base"></span>/nginx
+
+                <strong>Docker Hub 第三方镜像：</strong>
+                docker pull <span class="domain-base"></span>/user/image
+
+                <strong>GitHub Container Registry：</strong>
+                docker pull <span class="domain-base"></span>/ghcr.io/user/image
+
+                <strong>Quay.io Registry：</strong>
+                docker pull <span class="domain-base"></span>/quay.io/org/image
+
+                <strong>Kubernetes Registry：</strong>
+                docker pull <span class="domain-base"></span>/registry.k8s.io/pause:3.8
+            </div>
         </div>
     </div>
-    <div id="toast" style="display:none;">
+
+    <!-- Toast 通知 -->
+    <div id="toast" class="toast">
         链接已复制到剪贴板
     </div>
 
-    <footer>
+    <!-- 页脚 -->
+    <footer class="footer">
         <a href="https://github.com/sky22333/hubproxy" target="_blank" class="github-link">
-            <svg height="32" viewBox="0 0 16 16" width="32">
-                <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
             </svg>
+            GitHub
         </a>
     </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            function getFullDomain() {
-                // 获取完整的域名（包括端口号）
-                return window.location.host;
-            }
+        // 主题管理
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        
+        // 初始化主题
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            html.classList.add('dark');
+            themeToggle.textContent = '☀️';
+        }
+        
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            const isDark = html.classList.contains('dark');
+            themeToggle.textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
 
-            let fullDomain = getFullDomain();
+        // 域名设置
+        document.addEventListener('DOMContentLoaded', function() {
+            const fullDomain = window.location.host;
             document.querySelectorAll('.domain-base').forEach(span => {
                 span.textContent = fullDomain;
             });
 
+            // 模态框管理
             const modal = document.getElementById('dockerModal');
             const dockerButton = document.getElementById('dockerButton');
             const closeButton = document.getElementById('closeModal');
 
-            dockerButton.onclick = function() {
-                modal.style.display = "block";
-            }
-
-            closeButton.onclick = function() {
-                modal.style.display = "none";
-            }
-
-            window.onclick = function(event) {
-                if (event.target == modal) {
-                    modal.style.display = "none";
-                }
-            }
+            dockerButton.onclick = () => modal.style.display = "flex";
+            closeButton.onclick = () => modal.style.display = "none";
+            window.onclick = (event) => {
+                if (event.target == modal) modal.style.display = "none";
+            };
         });
 
+        // GitHub链接格式化功能
         function formatGithubLink() {
-            var githubLinkInput = document.getElementById('githubLinkInput');
-            var currentHost = window.location.host;
-            var formattedLink = "";
-            var link = githubLinkInput.value.trim();
+            const githubLinkInput = document.getElementById('githubLinkInput');
+            const currentHost = window.location.host;
+            let formattedLink = "";
+            const link = githubLinkInput.value.trim();
         
             if (link.startsWith("https://") || link.startsWith("http://")) {
                 formattedLink = "https://" + currentHost + "/" + link;
@@ -503,47 +715,62 @@
                 return;
             }
         
-            var formattedLinkOutput = document.getElementById('formattedLinkOutput');
+            const formattedLinkOutput = document.getElementById('formattedLinkOutput');
             formattedLinkOutput.textContent = formattedLink;
-            displayButton();
+            
+            const outputBlock = document.getElementById('outputBlock');
+            outputBlock.classList.add('show');
         }
 
-
-        function displayButton() {
-            var copyButton = document.getElementById('copyButton');
-            var redirButton = document.getElementById('redirButton');
-            copyButton.style.display = 'block';
-            redirButton.style.display = 'block';
+        // 复制功能
+        function copyToClipboard() {
+            const output = document.getElementById('formattedLinkOutput');
+            const text = output.textContent;
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('链接已复制到剪贴板');
+                });
+            } else {
+                // 降级方案
+                const range = document.createRange();
+                range.selectNode(output);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand('copy');
+                window.getSelection().removeAllRanges();
+                showToast('链接已复制到剪贴板');
+            }
         }
 
-        function redirToFormattedLink() {
-            var formattedLinkOutput = document.getElementById('formattedLinkOutput');
-            console.log(formattedLinkOutput.textContent);
+        // 打开链接
+        function openLink() {
+            const formattedLinkOutput = document.getElementById('formattedLinkOutput');
             window.open(formattedLinkOutput.textContent);
         }
 
-        document.getElementById('formatButton').addEventListener('click', formatGithubLink);
-        document.getElementById('copyButton').addEventListener('click', function () {
-            const output = document.getElementById('formattedLinkOutput');
-            const range = document.createRange();
-            range.selectNode(output);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            document.execCommand('copy');
-            window.getSelection().removeAllRanges();
-            showToast('链接已复制到剪贴板');
-        });
-        document.getElementById('redirButton').addEventListener('click', redirToFormattedLink);
-
+        // Toast 通知
         function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
-            toast.style.display = 'block';
+            toast.classList.add('show');
 
             setTimeout(() => {
-                toast.style.display = 'none';
-            }, 2000);
+                toast.classList.remove('show');
+            }, 3000);
         }
+
+        // 事件监听
+        document.getElementById('formatButton').addEventListener('click', formatGithubLink);
+        document.getElementById('copyButton').addEventListener('click', copyToClipboard);
+        document.getElementById('redirButton').addEventListener('click', openLink);
+        
+        // 回车键支持
+        document.getElementById('githubLinkInput').addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                formatGithubLink();
+            }
+        });
     </script>
 </body>
 
