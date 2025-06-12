@@ -10,7 +10,6 @@
     <title>Github文件加速</title>
     <link rel="icon" href="./favicon.ico">
     <style>
-        /* 现代化设计系统 */
         :root {
             --background: #ffffff;
             --foreground: #0f172a;
@@ -85,7 +84,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* 现代化导航栏 */
         .navbar {
             position: sticky;
             top: 0;
@@ -168,7 +166,6 @@
             color: var(--foreground);
         }
 
-        /* 主要内容区域 */
         .main {
             flex: 1;
             padding: 2rem 1rem;
@@ -204,7 +201,6 @@
             margin: 0 auto;
         }
 
-        /* 现代化卡片设计 */
         .card {
             background-color: var(--card);
             border: 1px solid var(--border);
@@ -235,7 +231,6 @@
             font-size: 0.875rem;
         }
 
-        /* 现代化表单设计 */
         .form-group {
             margin-bottom: 1rem;
         }
@@ -298,7 +293,6 @@
             background-color: var(--muted);
         }
 
-        /* 输出区域 */
         .output-container {
             margin-top: 1.5rem;
             display: none;
@@ -338,7 +332,6 @@
             gap: 0.5rem;
         }
 
-        /* Docker 信息卡片 */
         .docker-info {
             opacity: 0;
             transform: translateY(20px);
@@ -363,7 +356,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        /* 黑夜模式下的Docker按钮样式 */
         .dark .docker-button {
             background: linear-gradient(135deg, #374151, #4b5563);
         }
@@ -372,7 +364,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
-        /* 模态框设计 */
         .modal {
             position: fixed;
             top: 0;
@@ -446,7 +437,6 @@
             margin-top: 0;
         }
 
-        /* Toast 通知 */
         .toast {
             position: fixed;
             top: 1rem;
@@ -469,7 +459,6 @@
             transform: translateX(0);
         }
 
-        /* 页脚 */
         .footer {
             padding: 2rem 1rem;
             text-align: center;
@@ -489,7 +478,6 @@
             color: var(--foreground);
         }
 
-        /* 动画 */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -501,7 +489,6 @@
             }
         }
 
-        /* 响应式设计 */
         @media (max-width: 768px) {
             .hero-title {
                 font-size: 2rem;
@@ -662,12 +649,10 @@
     </footer>
 
     <script>
-        // 主题管理
-        const themeToggle = document.getElementById('themeToggle');
+                 const themeToggle = document.getElementById('themeToggle');
         const html = document.documentElement;
-        
-        // 初始化主题
-        const savedTheme = localStorage.getItem('theme');
+                 
+         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
         if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
@@ -682,15 +667,13 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
         });
 
-        // 域名设置
-        document.addEventListener('DOMContentLoaded', function() {
+                 document.addEventListener('DOMContentLoaded', function() {
             const fullDomain = window.location.host;
             document.querySelectorAll('.domain-base').forEach(span => {
                 span.textContent = fullDomain;
             });
 
-            // 模态框管理
-            const modal = document.getElementById('dockerModal');
+                         const modal = document.getElementById('dockerModal');
             const dockerButton = document.getElementById('dockerButton');
             const closeButton = document.getElementById('closeModal');
 
@@ -701,8 +684,7 @@
             };
         });
 
-        // GitHub链接格式化功能
-        function formatGithubLink() {
+                 function formatGithubLink() {
             const githubLinkInput = document.getElementById('githubLinkInput');
             const currentHost = window.location.host;
             let formattedLink = "";
@@ -731,8 +713,7 @@
             outputBlock.classList.add('show');
         }
 
-        // 复制功能
-        function copyToClipboard() {
+                 function copyToClipboard() {
             const output = document.getElementById('formattedLinkOutput');
             const text = output.textContent;
             
@@ -740,9 +721,8 @@
                 navigator.clipboard.writeText(text).then(() => {
                     showToast('链接已复制到剪贴板');
                 });
-            } else {
-                // 降级方案
-                const range = document.createRange();
+                         } else {
+                 const range = document.createRange();
                 range.selectNode(output);
                 window.getSelection().removeAllRanges();
                 window.getSelection().addRange(range);
@@ -752,14 +732,12 @@
             }
         }
 
-        // 打开链接
-        function openLink() {
+                 function openLink() {
             const formattedLinkOutput = document.getElementById('formattedLinkOutput');
             window.open(formattedLinkOutput.textContent);
         }
 
-        // Toast 通知
-        function showToast(message) {
+                 function showToast(message) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.classList.add('show');
@@ -769,13 +747,11 @@
             }, 3000);
         }
 
-        // 事件监听
-        document.getElementById('formatButton').addEventListener('click', formatGithubLink);
+                 document.getElementById('formatButton').addEventListener('click', formatGithubLink);
         document.getElementById('copyButton').addEventListener('click', copyToClipboard);
         document.getElementById('redirButton').addEventListener('click', openLink);
         
-        // 回车键支持
-        document.getElementById('githubLinkInput').addEventListener('keyup', function(event) {
+                 document.getElementById('githubLinkInput').addEventListener('keyup', function(event) {
             if (event.key === 'Enter') {
                 formatGithubLink();
             }
