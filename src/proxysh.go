@@ -11,11 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 )
-
-
-// 自动识别、零配置、高性能、优雅降级
 
 const (
 	// 性能优化常量
@@ -24,7 +20,7 @@ const (
 	MAX_CACHE_ITEMS  = 500              // 最大缓存条目
 	
 	// 处理限制
-	MAX_CONTENT_SIZE = 50 * 1024 * 1024 // 50MB文件大小限制
+	MAX_CONTENT_SIZE = 30 * 1024 * 1024 // 30MB文件大小限制
 	PROCESS_TIMEOUT  = 5 * time.Second   // 5秒处理超时
 )
 
@@ -58,6 +54,7 @@ type CacheItem struct {
 var (
 	smartProcessor *SmartProcessor
 	smartOnce      sync.Once
+	cleanupOnce    sync.Once
 )
 
 // GetSmartProcessor 获取智能处理器实例
@@ -67,8 +64,7 @@ func GetSmartProcessor() *SmartProcessor {
 			githubRegex: regexp.MustCompile(`https?://(?:github\.com|raw\.githubusercontent\.com|raw\.github\.com|gist\.githubusercontent\.com|gist\.github\.com|api\.github\.com)[^\s'"]+`),
 			shellPatterns: []string{
 				"#!/bin/bash", "#!/bin/sh", "#!/usr/bin/env bash",
-				"curl ", "wget ", "git clone", "docker ", "kubectl ",
-				"npm install", "pip install", "go get", "export ",
+				"curl ", "wget ", "git clone", "docker ", "export ",
 			},
 			enabled: 1, // 默认启用
 		}
@@ -79,12 +75,14 @@ func GetSmartProcessor() *SmartProcessor {
 		}
 		
 		// 启动后台清理
-		go smartProcessor.backgroundCleanup()
+		cleanupOnce.Do(func() {
+			go smartProcessor.backgroundCleanup()
+		})
 	})
 	return smartProcessor
 }
 
-// ProcessSmart 智能处理函数 - 替换所有其他处理函数
+// ProcessSmart 智能处理函数
 func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reader, int64, error) {
 	processor := GetSmartProcessor()
 	
@@ -98,7 +96,8 @@ func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reade
 	// 快速读取内容
 	content, err := processor.readContent(input, isCompressed)
 	if err != nil || len(content) == 0 {
-		return input, 0, nil // 优雅降级
+		// 优雅降级：返回空读取器而不是已消费的input
+		return strings.NewReader(""), 0, nil
 	}
 	
 	contentSize := int64(len(content))
@@ -133,16 +132,14 @@ func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reade
 
 // needsProcessing 智能判断是否需要处理
 func (sp *SmartProcessor) needsProcessing(content string) bool {
-	contentStr := string(content)
-	
 	// 快速检查：是否包含GitHub URL
-	if !strings.Contains(contentStr, "github.com") && 
-	   !strings.Contains(contentStr, "githubusercontent.com") {
+	if !strings.Contains(content, "github.com") && 
+	   !strings.Contains(content, "githubusercontent.com") {
 		return false
 	}
 	
 	// 智能检查：是否为脚本类内容
-	return sp.isScriptContent(contentStr)
+	return sp.isScriptContent(content)
 }
 
 // isScriptContent 智能脚本内容识别
@@ -175,10 +172,7 @@ func (sp *SmartProcessor) isScriptContent(content string) bool {
 		return true
 	}
 	
-	// GitHub Actions特征  
-	if strings.Contains(preview, "uses: ") || strings.Contains(preview, "github.com/") {
-		return true
-	}
+
 	
 	// 其他脚本特征
 	scriptIndicators := []string{
@@ -261,7 +255,7 @@ func (sp *SmartProcessor) processContent(content, host string) string {
 	var result bytes.Buffer
 	result.Grow(len(content) + len(content)/5) // 预留20%空间
 	
-	// 高效URL替换
+	// 高效替换
 	matches := sp.githubRegex.FindAllStringIndex(content, -1)
 	if len(matches) == 0 {
 		return content // 无需处理
@@ -313,10 +307,10 @@ func (sp *SmartProcessor) transformURL(url, host string) string {
 
 // getCacheKey 生成缓存键
 func (sp *SmartProcessor) getCacheKey(content, host string) string {
-	// 使用MD5快速哈希
+	// 使用MD5快速哈希 - 安全的字符串转换
 	hasher := md5.New()
-	hasher.Write(*(*[]byte)(unsafe.Pointer(&content)))
-	hasher.Write(*(*[]byte)(unsafe.Pointer(&host)))
+	hasher.Write([]byte(content))
+	hasher.Write([]byte(host))
 	return fmt.Sprintf("%x", hasher.Sum(nil))[:16]
 }
 
@@ -383,11 +377,11 @@ func (sp *SmartProcessor) cleanExpiredCache() {
 }
 
 // 调试日志开关
-var smartDebugLog = true
+var smartDebugLog int32 = 1 // 1=开启, 0=关闭
 
 // logStats 统计日志
 func (sp *SmartProcessor) logStats() {
-	if !smartDebugLog {
+	if atomic.LoadInt32(&smartDebugLog) == 0 {
 		return
 	}
 	
