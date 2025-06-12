@@ -714,9 +714,8 @@
                 });
                 
                 if (data.status === 'completed') {
-                    // 任务完成时，将所有"等待打包"状态更新为"完成"
                     document.querySelectorAll('.image-progress-text').forEach(function(textEl) {
-                        if (textEl.textContent === '等待打包') {
+                        if (textEl.textContent === '打包中') {
                             textEl.textContent = '完成';
                         }
                     });
