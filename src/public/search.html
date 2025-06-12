@@ -212,14 +212,18 @@
         .input-group {
             position: relative;
             display: flex;
-            flex-wrap: wrap;
-            align-items: stretch;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
             width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .input-group-append {
-            margin-left: -1px;
             display: flex;
+            width: 100%;
+            justify-content: center;
         }
 
         .form-control {
@@ -229,9 +233,10 @@
             color: var(--foreground);
             border: 1px solid var(--border);
             border-radius: 20px;
-            padding: 10px 20px;
+            padding: 12px 20px;
             height: 46px;
             transition: all 0.2s;
+            font-size: 1rem;
         }
 
         .form-control:focus {
@@ -244,13 +249,16 @@
 
         .search-button {
             border-radius: 20px;
-            padding: 10px 30px;
+            padding: 12px 40px;
             background-color: var(--primary);
             color: var(--primary-foreground);
             border: none;
             transition: all 0.3s ease;
             height: 46px;
-            margin-left: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 120px;
         }
 
         .search-button:hover {
@@ -653,6 +661,61 @@
                 text-align: left;
                 width: 100%;
             }
+            
+            .nav-links {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background: var(--background);
+                border: 1px solid var(--border);
+                border-top: none;
+                border-radius: 0 0 12px 12px;
+                padding: 1rem;
+                flex-direction: column;
+                gap: 0.5rem;
+                z-index: 1000;
+                transform: translateY(-100vh);
+                transition: transform 0.3s ease;
+            }
+            
+            .nav-links.active {
+                transform: translateY(0);
+            }
+            
+            .mobile-menu-toggle {
+                display: block !important;
+                background: none;
+                border: none;
+                color: var(--foreground);
+                font-size: 1.5rem;
+                cursor: pointer;
+                padding: 0.5rem;
+                border-radius: var(--radius);
+                transition: background-color 0.2s;
+            }
+            
+            .mobile-menu-toggle:hover {
+                background-color: var(--muted);
+            }
+            
+            .navbar-container {
+                justify-content: space-between !important;
+            }
+            
+            .input-group {
+                max-width: 100%;
+                padding: 0 10px;
+            }
+            
+            .search-button {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+        
+        .mobile-menu-toggle {
+            display: none;
         }
 
         .icon {
@@ -674,7 +737,11 @@
                 加速服务
             </a>
             
-            <div class="nav-links">
+            <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                ☰
+            </button>
+            
+            <div class="nav-links" id="navLinks">
                 <a href="/" class="nav-link">🚀 GitHub加速</a>
                 <a href="/skopeo.html" class="nav-link">🐳 镜像下载</a>
                 <a href="/search.html" class="nav-link active">🔍 镜像搜索</a>
@@ -1262,6 +1329,23 @@
             const isDark = html.classList.contains('dark');
             themeToggle.textContent = isDark ? '☀️' : '🌙';
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+        
+        // 移动端菜单切换
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const navLinks = document.getElementById('navLinks');
+        
+        mobileMenuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            mobileMenuToggle.textContent = navLinks.classList.contains('active') ? '✕' : '☰';
+        });
+        
+        // 点击页面其他地方关闭菜单
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.navbar') && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+                mobileMenuToggle.textContent = '☰';
+            }
         });
     </script>
     </main> <!-- 关闭 main -->
