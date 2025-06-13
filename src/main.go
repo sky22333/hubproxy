@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -44,6 +45,9 @@ var (
 		regexp.MustCompile(`^(?:https?://)?(github|opengraph)\.githubassets\.com/([^/]+)/.+?$`),
 	}
 	globalLimiter *IPRateLimiter
+	
+	// ✅ 服务启动时间追踪
+	serviceStartTime = time.Now()
 )
 
 func main() {
@@ -77,6 +81,9 @@ func main() {
 		})
 	}))
 
+	// ✅ 初始化监控端点 (优先级最高，避免中间件影响)
+	initHealthRoutes(router)
+	
 	// 初始化镜像tar下载路由
 	initImageTarRoutes(router)
 	
@@ -306,4 +313,75 @@ func checkURL(u string) []string {
 		}
 	}
 	return nil
+}
+
+// ✅ 初始化健康监控路由
+func initHealthRoutes(router *gin.Engine) {
+	// 健康检查端点 - 最轻量级，无依赖检查
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"timestamp": time.Now().Unix(),
+			"uptime":    time.Since(serviceStartTime).Seconds(),
+			"service":   "hubproxy",
+		})
+	})
+	
+	// 就绪检查端点 - 检查关键组件状态
+	router.GET("/ready", func(c *gin.Context) {
+		checks := make(map[string]string)
+		allReady := true
+		
+		// 检查配置状态
+		if GetConfig() != nil {
+			checks["config"] = "ok"
+		} else {
+			checks["config"] = "failed"
+			allReady = false
+		}
+		
+		// 检查全局缓存状态
+		if globalCache != nil {
+			checks["cache"] = "ok"
+		} else {
+			checks["cache"] = "failed"
+			allReady = false
+		}
+		
+		// 检查限流器状态
+		if globalLimiter != nil {
+			checks["ratelimiter"] = "ok"
+		} else {
+			checks["ratelimiter"] = "failed"
+			allReady = false
+		}
+		
+		// 检查镜像下载器状态
+		if globalImageStreamer != nil {
+			checks["imagestreamer"] = "ok"
+		} else {
+			checks["imagestreamer"] = "failed"
+			allReady = false
+		}
+		
+		// 检查HTTP客户端状态
+		if GetGlobalHTTPClient() != nil {
+			checks["httpclient"] = "ok"
+		} else {
+			checks["httpclient"] = "failed"
+			allReady = false
+		}
+		
+		status := http.StatusOK
+		if !allReady {
+			status = http.StatusServiceUnavailable
+		}
+		
+		c.JSON(status, gin.H{
+			"ready":     allReady,
+			"checks":    checks,
+			"timestamp": time.Now().Unix(),
+			"uptime":    time.Since(serviceStartTime).Seconds(),
+		})
+	})
 }
