@@ -295,9 +295,7 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 		c.Status(resp.StatusCode)
 
 		// 直接流式转发
-		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-			fmt.Printf("直接代理失败: %v\n", err)
-		}
+		io.Copy(c.Writer, resp.Body)
 	}
 }
 
