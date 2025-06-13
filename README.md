@@ -78,7 +78,7 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 
 容器内的配置文件位于 `/root/config.toml`
 
-脚本部署配置文件位于 `/opt/hubproxy/config.toml`：
+脚本部署配置文件位于 `/opt/hubproxy/config.toml`
 
 为了IP限流能够正常运行，反向代理需要传递IP头用来获取访客真实IP，以caddy为例：
 ```
