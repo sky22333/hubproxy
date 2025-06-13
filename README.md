@@ -6,7 +6,7 @@
 
 ## ✨ 特性
 
-- 🐳 **Docker 镜像加速** - 单域名实现 Docker Hub、GHCR、Quay 等多个镜像仓库加速，以及优化拉取速度。
+- 🐳 **Docker 镜像加速** - 单域名实现 Docker Hub、GHCR、Quay 等多个镜像仓库加速，流式传输优化拉取速度。
 - 🐳 **离线镜像包** - 支持下载离线镜像包，流式传输加防抖设计。
 - 📁 **GitHub 文件加速** - 加速 GitHub Release、Raw 文件下载，支持`api.github.com`，脚本嵌套加速等等
 - 🤖 **AI 模型库支持** - 支持 Hugging Face 模型下载加速
