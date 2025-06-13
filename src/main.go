@@ -69,6 +69,9 @@ func main() {
 	// 初始化镜像流式下载器
 	initImageStreamer()
 
+	// 初始化防抖器
+	initDebouncer()
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 

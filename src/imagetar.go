@@ -4,12 +4,16 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +24,113 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
+
+// DebounceEntry 防抖条目
+type DebounceEntry struct {
+	LastRequest time.Time
+	UserID      string
+}
+
+// DownloadDebouncer 下载防抖器
+type DownloadDebouncer struct {
+	mu      sync.RWMutex
+	entries map[string]*DebounceEntry
+	window  time.Duration
+}
+
+// NewDownloadDebouncer 创建下载防抖器
+func NewDownloadDebouncer(window time.Duration) *DownloadDebouncer {
+	return &DownloadDebouncer{
+		entries: make(map[string]*DebounceEntry),
+		window:  window,
+	}
+}
+
+// ShouldAllow 检查是否应该允许请求
+func (d *DownloadDebouncer) ShouldAllow(userID, contentKey string) bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	
+	key := userID + ":" + contentKey
+	now := time.Now()
+	
+	if entry, exists := d.entries[key]; exists {
+		if now.Sub(entry.LastRequest) < d.window {
+			return false // 在防抖窗口内，拒绝请求
+		}
+	}
+	
+	// 更新或创建条目
+	d.entries[key] = &DebounceEntry{
+		LastRequest: now,
+		UserID:      userID,
+	}
+	
+	// 清理过期条目（简单策略：每100次请求清理一次）
+	if len(d.entries)%100 == 0 {
+		d.cleanup(now)
+	}
+	
+	return true
+}
+
+// cleanup 清理过期条目
+func (d *DownloadDebouncer) cleanup(now time.Time) {
+	for key, entry := range d.entries {
+		if now.Sub(entry.LastRequest) > d.window*2 {
+			delete(d.entries, key)
+		}
+	}
+}
+
+// generateContentFingerprint 生成内容指纹
+func generateContentFingerprint(images []string, platform string) string {
+	// 对镜像列表排序确保顺序无关
+	sortedImages := make([]string, len(images))
+	copy(sortedImages, images)
+	sort.Strings(sortedImages)
+	
+	// 组合内容：镜像列表 + 平台信息
+	content := strings.Join(sortedImages, "|") + ":" + platform
+	
+	// 生成MD5哈希
+	hash := md5.Sum([]byte(content))
+	return hex.EncodeToString(hash[:])
+}
+
+// getUserID 获取用户标识
+func getUserID(c *gin.Context) string {
+	// 优先使用会话Cookie
+	if sessionID, err := c.Cookie("session_id"); err == nil && sessionID != "" {
+		return "session:" + sessionID
+	}
+	
+	// 备用方案：IP + User-Agent组合
+	ip := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	if userAgent == "" {
+		userAgent = "unknown"
+	}
+	
+	// 生成简短标识
+	combined := ip + ":" + userAgent
+	hash := md5.Sum([]byte(combined))
+	return "ip:" + hex.EncodeToString(hash[:8]) // 只取前8字节
+}
+
+// 全局防抖器实例
+var (
+	singleImageDebouncer *DownloadDebouncer
+	batchImageDebouncer  *DownloadDebouncer
+)
+
+// initDebouncer 初始化防抖器
+func initDebouncer() {
+	// 单个镜像：5秒防抖窗口
+	singleImageDebouncer = NewDownloadDebouncer(5 * time.Second)
+	// 批量镜像：30秒防抖窗口（影响更大，需要更长保护）
+	batchImageDebouncer = NewDownloadDebouncer(30 * time.Second)
+}
 
 // ImageStreamer 镜像流式下载器
 type ImageStreamer struct {
@@ -570,6 +681,18 @@ func handleDirectImageDownload(c *gin.Context) {
 		return
 	}
 
+	// 防抖检查
+	userID := getUserID(c)
+	contentKey := generateContentFingerprint([]string{imageRef}, platform)
+	
+	if !singleImageDebouncer.ShouldAllow(userID, contentKey) {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "请求过于频繁，请稍后再试",
+			"retry_after": 5,
+		})
+		return
+	}
+
 	options := &StreamOptions{
 		Platform:    platform,
 		Compression: false,
@@ -612,6 +735,18 @@ func handleSimpleBatchDownload(c *gin.Context) {
 	if len(req.Images) > cfg.Download.MaxImages {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("镜像数量超过限制，最大允许: %d", cfg.Download.MaxImages),
+		})
+		return
+	}
+
+	// 批量下载防抖检查
+	userID := getUserID(c)
+	contentKey := generateContentFingerprint(req.Images, req.Platform)
+	
+	if !batchImageDebouncer.ShouldAllow(userID, contentKey) {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "批量下载请求过于频繁，请稍后再试",
+			"retry_after": 30,
 		})
 		return
 	}
