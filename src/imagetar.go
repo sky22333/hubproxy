@@ -478,11 +478,20 @@ func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *S
 		
 		if options.Platform != "" {
 			platformParts := strings.Split(options.Platform, "/")
-			if len(platformParts) == 2 && 
-				m.Platform.OS == platformParts[0] && 
-				m.Platform.Architecture == platformParts[1] {
-				selectedDesc = &m
-				break
+			if len(platformParts) >= 2 {
+				targetOS := platformParts[0]
+				targetArch := platformParts[1]
+				targetVariant := ""
+				if len(platformParts) >= 3 {
+					targetVariant = platformParts[2]
+				}
+				
+				if m.Platform.OS == targetOS && 
+				   m.Platform.Architecture == targetArch &&
+				   m.Platform.Variant == targetVariant {
+					selectedDesc = &m
+					break
+				}
 			}
 		} else if m.Platform.OS == "linux" && m.Platform.Architecture == "amd64" {
 			selectedDesc = &m
