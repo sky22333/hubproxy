@@ -92,8 +92,7 @@ func initGlobalLimiter() *IPRateLimiter {
 	// 启动定期清理goroutine
 	go limiter.cleanupRoutine()
 	
-	fmt.Printf("限流器初始化: %d请求/%g小时, 白名单 %d个, 黑名单 %d个\n",
-		cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours, len(whitelist), len(blacklist))
+	// 限流器初始化完成，详细信息在启动时统一显示
 	
 	return limiter
 }
@@ -189,28 +188,39 @@ func (i *IPRateLimiter) GetLimiter(ip string) (*rate.Limiter, bool) {
 		return rate.NewLimiter(rate.Inf, i.b), true // 白名单中的IP不受限制
 	}
 	
-	// 使用纯IP作为缓存键
+	now := time.Now()
+	
+	// ✅ 双重检查锁定，解决竞态条件
 	i.mu.RLock()
 	entry, exists := i.ips[cleanIP]
 	i.mu.RUnlock()
 	
-	now := time.Now()
-	
-	if !exists {
-		// 创建新的限流器
+	if exists {
+		// 安全更新访问时间
 		i.mu.Lock()
-		entry = &rateLimiterEntry{
-			limiter:    rate.NewLimiter(i.r, i.b),
-			lastAccess: now,
+		if entry, stillExists := i.ips[cleanIP]; stillExists {
+			entry.lastAccess = now
+			i.mu.Unlock()
+			return entry.limiter, true
 		}
-		i.ips[cleanIP] = entry
-		i.mu.Unlock()
-	} else {
-		// 更新最后访问时间
-		i.mu.Lock()
-		entry.lastAccess = now
 		i.mu.Unlock()
 	}
+	
+	// 创建新条目时的双重检查
+	i.mu.Lock()
+	if entry, exists := i.ips[cleanIP]; exists {
+		entry.lastAccess = now
+		i.mu.Unlock()
+		return entry.limiter, true
+	}
+	
+	// 创建新条目
+	entry = &rateLimiterEntry{
+		limiter:    rate.NewLimiter(i.r, i.b),
+		lastAccess: now,
+	}
+	i.ips[cleanIP] = entry
+	i.mu.Unlock()
 	
 	return entry.limiter, true
 }

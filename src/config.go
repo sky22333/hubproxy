@@ -63,6 +63,12 @@ var (
 	appConfigLock sync.RWMutex
 	isViperEnabled bool
 	viperInstance  *viper.Viper
+	
+	// ✅ 配置缓存变量
+	cachedConfig     *AppConfig
+	configCacheTime  time.Time
+	configCacheTTL   = 5 * time.Second
+	configCacheMutex sync.RWMutex
 )
 
 // DefaultConfig 返回默认配置
@@ -141,21 +147,45 @@ func DefaultConfig() *AppConfig {
 
 // GetConfig 安全地获取配置副本
 func GetConfig() *AppConfig {
-	appConfigLock.RLock()
-	defer appConfigLock.RUnlock()
+	// ✅ 快速缓存检查，减少深拷贝开销
+	configCacheMutex.RLock()
+	if cachedConfig != nil && time.Since(configCacheTime) < configCacheTTL {
+		config := cachedConfig
+		configCacheMutex.RUnlock()
+		return config
+	}
+	configCacheMutex.RUnlock()
 	
-	if appConfig == nil {
-		return DefaultConfig()
+	// 缓存过期，重新生成配置
+	configCacheMutex.Lock()
+	defer configCacheMutex.Unlock()
+	
+	// 双重检查，防止重复生成
+	if cachedConfig != nil && time.Since(configCacheTime) < configCacheTTL {
+		return cachedConfig
 	}
 	
-	// 返回配置的深拷贝
+	appConfigLock.RLock()
+	if appConfig == nil {
+		appConfigLock.RUnlock()
+		defaultCfg := DefaultConfig()
+		cachedConfig = defaultCfg
+		configCacheTime = time.Now()
+		return defaultCfg
+	}
+	
+	// 生成新的配置深拷贝
 	configCopy := *appConfig
 	configCopy.Security.WhiteList = append([]string(nil), appConfig.Security.WhiteList...)
 	configCopy.Security.BlackList = append([]string(nil), appConfig.Security.BlackList...)
 	configCopy.Proxy.WhiteList = append([]string(nil), appConfig.Proxy.WhiteList...)
 	configCopy.Proxy.BlackList = append([]string(nil), appConfig.Proxy.BlackList...)
+	appConfigLock.RUnlock()
 	
-	return &configCopy
+	cachedConfig = &configCopy
+	configCacheTime = time.Now()
+	
+	return cachedConfig
 }
 
 // setConfig 安全地设置配置
@@ -163,6 +193,11 @@ func setConfig(cfg *AppConfig) {
 	appConfigLock.Lock()
 	defer appConfigLock.Unlock()
 	appConfig = cfg
+	
+	// ✅ 配置更新时清除缓存
+	configCacheMutex.Lock()
+	cachedConfig = nil
+	configCacheMutex.Unlock()
 }
 
 // LoadConfig 加载配置文件
@@ -190,9 +225,7 @@ func LoadConfig() error {
 		go enableViperHotReload()
 	}
 	
-	fmt.Printf("配置加载成功: 监听 %s:%d, 文件大小限制 %d MB, 限流 %d请求/%g小时, 离线镜像并发数 %d\n",
-		cfg.Server.Host, cfg.Server.Port, cfg.Server.FileSize/(1024*1024), 
-		cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours, cfg.Download.MaxImages)
+	// 配置加载成功，详细信息在启动时统一显示
 	
 	return nil
 }
@@ -218,7 +251,7 @@ func enableViperHotReload() {
 	}
 	
 	isViperEnabled = true
-	fmt.Println("热重载已启用")
+	// 热重载已启用，不显示额外信息
 	
 	// 🚀 启用文件监听
 	viperInstance.WatchConfig()

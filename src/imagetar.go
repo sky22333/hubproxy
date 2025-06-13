@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -525,8 +526,7 @@ var globalImageStreamer *ImageStreamer
 // initImageStreamer 初始化镜像下载器
 func initImageStreamer() {
 	globalImageStreamer = NewImageStreamer(nil)
-	log.Printf("镜像下载器初始化完成，并发数: %d，缓存: %v", 
-		globalImageStreamer.concurrency, isCacheEnabled())
+	// 镜像下载器初始化完成
 }
 
 // formatPlatformText 格式化平台文本
@@ -724,7 +724,11 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 
 		log.Printf("处理镜像 %d/%d: %s", i+1, len(imageRefs), imageRef)
 		
-		manifest, repositories, err := is.streamSingleImageForBatch(ctx, tarWriter, imageRef, options)
+		// ✅ 添加超时保护，防止单个镜像处理时间过长
+		timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+		manifest, repositories, err := is.streamSingleImageForBatch(timeoutCtx, tarWriter, imageRef, options)
+		cancel()
+		
 		if err != nil {
 			log.Printf("下载镜像 %s 失败: %v", imageRef, err)
 			return fmt.Errorf("下载镜像 %s 失败: %w", imageRef, err)

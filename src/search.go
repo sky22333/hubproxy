@@ -114,22 +114,29 @@ func (c *Cache) Set(key string, data interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	
-	// 如果缓存已满，删除最旧的条目
-	if len(c.data) >= c.maxSize {
-		oldest := time.Now()
-		var oldestKey string
-		for k, v := range c.data {
-			if v.timestamp.Before(oldest) {
-				oldest = v.timestamp
-				oldestKey = k
-			}
+	// ✅ 先清理过期项，防止内存泄漏
+	now := time.Now()
+	for k, v := range c.data {
+		if now.Sub(v.timestamp) > cacheTTL {
+			delete(c.data, k)
 		}
-		delete(c.data, oldestKey)
+	}
+	
+	// 如果清理后仍然超限，批量删除最旧的条目
+	if len(c.data) >= c.maxSize {
+		toDelete := len(c.data) / 4 // 删除25%最旧的
+		for k := range c.data {
+			if toDelete <= 0 {
+				break
+			}
+			delete(c.data, k)
+			toDelete--
+		}
 	}
 	
 	c.data[key] = cacheEntry{
 		data:      data,
-		timestamp: time.Now(),
+		timestamp: now,
 	}
 }
 

@@ -79,7 +79,7 @@ func initDockerProxy() {
 		options:  options,
 	}
 
-	fmt.Printf("Docker代理已初始化\n")
+	// Docker代理初始化完成
 }
 
 // ProxyDockerRegistryGin 标准Docker Registry API v2代理

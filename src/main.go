@@ -3,12 +3,14 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 //go:embed public/*
@@ -66,6 +68,15 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
+	// ✅ 添加全局Panic恢复保护
+	router.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+		log.Printf("🚨 Panic recovered: %v", recovered)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Internal server error",
+			"code":  "INTERNAL_ERROR",
+		})
+	}))
+
 	// 初始化镜像tar下载路由
 	initImageTarRoutes(router)
 	
@@ -103,7 +114,10 @@ func main() {
 	router.NoRoute(RateLimitMiddleware(globalLimiter), handler)
 
 	cfg := GetConfig()
-	fmt.Printf("启动成功，项目地址：https://github.com/sky22333/hubproxy \n")
+	fmt.Printf("🚀 HubProxy 启动成功\n")
+	fmt.Printf("📡 监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
+	fmt.Printf("⚡ 限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
+	fmt.Printf("🔗 项目地址: https://github.com/sky22333/hubproxy\n")
 	
 	err := router.Run(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port))
 	if err != nil {
