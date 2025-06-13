@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
@@ -83,11 +84,11 @@ func (is *ImageStreamer) StreamImageToWriter(ctx context.Context, imageRef strin
 	}
 	switch desc.MediaType {
 	case types.OCIImageIndex, types.DockerManifestList:
-		return is.streamMultiArchImage(ctx, desc, writer, options, contextOptions)
+		return is.streamMultiArchImage(ctx, desc, writer, options, contextOptions, imageRef)
 	case types.OCIManifestSchema1, types.DockerManifestSchema2:
-		return is.streamSingleImage(ctx, desc, writer, options, contextOptions)
+		return is.streamSingleImage(ctx, desc, writer, options, contextOptions, imageRef)
 	default:
-		return is.streamSingleImage(ctx, desc, writer, options, contextOptions)
+		return is.streamSingleImage(ctx, desc, writer, options, contextOptions, imageRef)
 	}
 }
 
@@ -158,7 +159,7 @@ func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, 
 }
 
 // streamMultiArchImage 处理多架构镜像
-func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option) error {
+func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option, imageRef string) error {
 	index, err := desc.ImageIndex()
 	if err != nil {
 		return fmt.Errorf("获取镜像索引失败: %w", err)
@@ -203,21 +204,21 @@ func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.
 		return fmt.Errorf("获取选中镜像失败: %w", err)
 	}
 
-	return is.streamImageLayers(ctx, img, writer, options)
+	return is.streamImageLayers(ctx, img, writer, options, imageRef)
 }
 
 // streamSingleImage 处理单架构镜像
-func (is *ImageStreamer) streamSingleImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option) error {
+func (is *ImageStreamer) streamSingleImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option, imageRef string) error {
 	img, err := desc.Image()
 	if err != nil {
 		return fmt.Errorf("获取镜像失败: %w", err)
 	}
 
-	return is.streamImageLayers(ctx, img, writer, options)
+	return is.streamImageLayers(ctx, img, writer, options, imageRef)
 }
 
 // streamImageLayers 处理镜像层
-func (is *ImageStreamer) streamImageLayers(ctx context.Context, img v1.Image, writer io.Writer, options *StreamOptions) error {
+func (is *ImageStreamer) streamImageLayers(ctx context.Context, img v1.Image, writer io.Writer, options *StreamOptions, imageRef string) error {
 	var finalWriter io.Writer = writer
 
 	if options.Compression {
@@ -241,11 +242,11 @@ func (is *ImageStreamer) streamImageLayers(ctx context.Context, img v1.Image, wr
 
 	log.Printf("镜像包含 %d 层", len(layers))
 
-	return is.streamDockerFormat(ctx, tarWriter, img, layers, configFile)
+	return is.streamDockerFormat(ctx, tarWriter, img, layers, configFile, imageRef)
 }
 
 // streamDockerFormat 生成Docker格式
-func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.Writer, img v1.Image, layers []v1.Layer, configFile *v1.ConfigFile) error {
+func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.Writer, img v1.Image, layers []v1.Layer, configFile *v1.ConfigFile, imageRef string) error {
 	configDigest, err := img.ConfigName()
 	if err != nil {
 		return err
@@ -295,20 +296,21 @@ func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.
 				return err
 			}
 
+			// ✅ 最优流式方案：使用partial.UncompressedSize获取精确大小
+			uncompressedSize, err := partial.UncompressedSize(layer)
+			if err != nil {
+				return err
+			}
+
 			layerReader, err := layer.Uncompressed()
 			if err != nil {
 				return err
 			}
 			defer layerReader.Close() // ✅ 函数结束立即释放
 
-			size, err := layer.Size()
-			if err != nil {
-				return err
-			}
-
 			layerTarHeader := &tar.Header{
 				Name: layerDir + "/layer.tar",
-				Size: size,
+				Size: uncompressedSize, // ✅ 使用partial包获取精确的未压缩大小
 				Mode: 0644,
 			}
 			
@@ -316,6 +318,7 @@ func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.
 				return err
 			}
 
+			// ✅ 完全流式传输，零内存缓冲，零额外拷贝
 			if _, err := io.Copy(tarWriter, layerReader); err != nil {
 				return err
 			}
@@ -331,7 +334,7 @@ func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.
 
 	manifest := []map[string]interface{}{{
 		"Config":   configDigest.String() + ".json",
-		"RepoTags": []string{"imported:latest"},
+		"RepoTags": []string{imageRef},
 		"Layers":   func() []string {
 			var layers []string
 			for _, digest := range layerDigests {
