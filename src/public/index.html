@@ -543,14 +543,13 @@
                 padding: 1.5rem;
             }
             
-            /* 移动端快速生成加速链接区域优化 */
             .input-container {
                 flex-direction: column;
                 gap: 1rem;
             }
             
             .input {
-                font-size: 16px; /* 防止iOS缩放 */
+                font-size: 16px;
             }
             
             .button {
@@ -572,7 +571,6 @@
 </head>
 
 <body>
-    <!-- 现代化导航栏 -->
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="logo">
@@ -599,10 +597,8 @@
         </div>
     </nav>
 
-    <!-- 主要内容 -->
     <main class="main">
         <div class="container">
-            <!-- Hero 区域 -->
             <div class="hero">
                 <h1 class="hero-title">GitHub 文件加速</h1>
                 <p class="hero-subtitle">
@@ -610,7 +606,6 @@
                 </p>
             </div>
 
-            <!-- 主功能卡片 -->
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">
@@ -635,7 +630,6 @@
                     </div>
                 </div>
 
-                <!-- 输出区域 -->
                 <div class="output-container" id="outputBlock">
                     <div class="success-header">
                         <span>✅</span>
@@ -653,7 +647,6 @@
                 </div>
             </div>
 
-            <!-- Docker 信息卡片 -->
             <div class="card docker-info">
                 <div class="card-header">
                     <h3 class="card-title">
@@ -671,7 +664,6 @@
         </div>
     </main>
 
-    <!-- Docker 模态框 -->
     <div id="dockerModal" class="modal">
         <div class="modal-content">
             <button class="close-button" id="closeModal">&times;</button>
@@ -699,12 +691,10 @@
         </div>
     </div>
 
-    <!-- Toast 通知 -->
     <div id="toast" class="toast">
         链接已复制到剪贴板
     </div>
 
-    <!-- 页脚 -->
     <footer class="footer">
         <a href="https://github.com/sky22333/hubproxy" target="_blank" class="github-link">
             <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
@@ -823,7 +813,6 @@
             }
         });
 
-        // 移动端菜单切换
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         const navLinks = document.getElementById('navLinks');
         
@@ -832,7 +821,6 @@
             mobileMenuToggle.textContent = navLinks.classList.contains('active') ? '✕' : '☰';
         });
         
-        // 点击页面其他地方关闭菜单
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.navbar') && navLinks.classList.contains('active')) {
                 navLinks.classList.remove('active');

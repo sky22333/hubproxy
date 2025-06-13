@@ -78,8 +78,6 @@ func initDockerProxy() {
 		registry: registry,
 		options:  options,
 	}
-
-	// Docker代理初始化完成
 }
 
 // ProxyDockerRegistryGin 标准Docker Registry API v2代理
@@ -105,7 +103,6 @@ func handleRegistryRequest(c *gin.Context, path string) {
 	// 移除 /v2/ 前缀
 	pathWithoutV2 := strings.TrimPrefix(path, "/v2/")
 	
-	// 🔍 新增：Registry域名检测和路由
 	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(pathWithoutV2); registryDomain != "" {
 		if registryDetector.isRegistryEnabled(registryDomain) {
 			// 设置目标Registry信息到Context
@@ -118,7 +115,6 @@ func handleRegistryRequest(c *gin.Context, path string) {
 		}
 	}
 	
-	// 原有逻辑完全保持（零改动）
 	imageName, apiType, reference := parseRegistryPath(pathWithoutV2)
 	if imageName == "" || apiType == "" {
 		c.String(http.StatusBadRequest, "Invalid path format")
@@ -392,9 +388,7 @@ func (r *ResponseRecorder) Write(data []byte) (int, error) {
 	return r.ResponseWriter.Write(data)
 }
 
-// proxyDockerAuthOriginal Docker认证代理（原始逻辑，保持不变）
 func proxyDockerAuthOriginal(c *gin.Context) {
-	// 检查是否有目标Registry域名（来自Context）
 	var authURL string
 	if targetDomain, exists := c.Get("target_registry_domain"); exists {
 		if mapping, found := registryDetector.getRegistryMapping(targetDomain.(string)); found {
@@ -672,17 +666,11 @@ func createUpstreamOptions(mapping RegistryMapping) []remote.Option {
 		remote.WithUserAgent("hubproxy/go-containerregistry"),
 	}
 
-	// 根据Registry类型添加特定的认证选项
+	// 根据Registry类型添加特定的认证选项（方便后续扩展）
 	switch mapping.AuthType {
 	case "github":
-		// GitHub Container Registry 通常使用匿名访问
-		// 如需要认证，可在此处添加
 	case "google":
-		// Google Container Registry 配置
-		// 如需要认证，可在此处添加
 	case "quay":
-		// Quay.io 配置
-		// 如需要认证，可在此处添加
 	}
 
 	return options

@@ -31,13 +31,10 @@ var GlobalAccessController = &AccessController{}
 
 // ParseDockerImage 解析Docker镜像名称
 func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
-	// 移除可能的协议前缀
 	image = strings.TrimPrefix(image, "docker://")
 	
-	// 分离标签
 	var tag string
 	if idx := strings.LastIndex(image, ":"); idx != -1 {
-		// 检查是否是端口号而不是标签（包含斜杠）
 		part := image[idx+1:]
 		if !strings.Contains(part, "/") {
 			tag = part
@@ -48,15 +45,11 @@ func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 		tag = "latest"
 	}
 	
-	// 分离命名空间和仓库名
 	var namespace, repository string
 	if strings.Contains(image, "/") {
-		// 处理自定义registry的情况，如 registry.com/user/repo
 		parts := strings.Split(image, "/")
 		if len(parts) >= 2 {
-			// 检查第一部分是否是域名（包含.）
 			if strings.Contains(parts[0], ".") {
-				// 跳过registry域名，取用户名和仓库名
 				if len(parts) >= 3 {
 					namespace = parts[1]
 					repository = parts[2]
@@ -65,13 +58,11 @@ func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 					repository = parts[1]
 				}
 			} else {
-				// 标准格式：user/repo
 				namespace = parts[0]
 				repository = parts[1]
 			}
 		}
 	} else {
-		// 官方镜像，如 nginx
 		namespace = "library"
 		repository = image
 	}
@@ -171,7 +162,6 @@ func (ac *AccessController) matchImageInList(imageInfo DockerImageInfo, list []s
 			}
 		}
 		
-		// 5. 子仓库匹配（防止 user/repo 匹配到 user/repo-fork）
 		if strings.HasPrefix(fullName, item+"/") {
 			return true
 		}
@@ -185,7 +175,6 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 		return false
 	}
 	
-	// 组合用户名和仓库名，处理.git后缀
 	username := strings.ToLower(strings.TrimSpace(matches[0]))
 	repoName := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(matches[1], ".git")))
 	fullRepo := username + "/" + repoName
@@ -196,10 +185,7 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 			continue
 		}
 		
-		// 支持多种匹配模式：
-		// 1. 精确匹配: "vaxilu/x-ui"
-		// 2. 用户级匹配: "vaxilu/*" 或 "vaxilu"
-		// 3. 前缀匹配: "vaxilu/x-ui-*"
+		// 支持多种匹配模式
 		if fullRepo == item {
 			return true
 		}
@@ -225,15 +211,10 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 	return false
 }
 
-// 🔥 Reload 热重载访问控制规则
+// Reload 热重载访问控制规则
 func (ac *AccessController) Reload() {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
 	
-	// 访问控制器本身不缓存配置，每次检查时都会调用GetConfig()
-	// 所以这里只需要确保锁的原子性，实际的重载在GetConfig()中完成
-	// 可以在这里添加一些初始化逻辑，比如预编译正则表达式等
-	
-	// 目前访问控制器设计为无状态的，每次检查都读取最新配置
-	// 这样设计的好处是配置更新后无需额外处理，自动生效
+	// 访问控制器本身不缓存配置
 } 

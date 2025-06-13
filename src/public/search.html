@@ -9,7 +9,6 @@
     <title>Docker镜像搜索</title>
     <link rel="icon" href="./favicon.ico">
     <style>
-        /* 使用首页完全相同的颜色系统 */
         :root {
             --background: #ffffff;
             --foreground: #0f172a;
@@ -84,7 +83,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* 导航栏样式 - 与首页完全一致，使用!important确保优先级 */
         .navbar {
             position: sticky !important;
             top: 0 !important;
@@ -169,7 +167,6 @@
             color: var(--foreground) !important;
         }
 
-        /* 主要内容区域 */
         .main {
             flex: 1;
             padding: 2rem 1rem;
@@ -191,7 +188,6 @@
             margin-bottom: 30px;
         }
 
-        /* 重新定义基础按钮和输入框样式 */
         .btn {
             display: inline-block;
             padding: 0.375rem 0.75rem;
@@ -727,7 +723,6 @@
     </style>
 </head>
 <body>
-    <!-- 现代化导航栏 -->
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="logo">
@@ -789,7 +784,6 @@
     <div id="toast"></div>
 
     <script>
-        // 添加统一的格式化工具对象
         const formatUtils = {
             formatNumber(num) {
                 if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B+';
@@ -914,7 +908,6 @@
             prevButton.disabled = currentPage <= 1;
             nextButton.disabled = currentPage >= totalPages;
             
-            // 添加页码显示和快速跳转
             const paginationDiv = document.querySelector('.pagination');
             let pageInfo = document.getElementById('pageInfo');
             if (!pageInfo) {
@@ -925,11 +918,9 @@
                 container.style.alignItems = 'center';
                 container.style.gap = '10px';
                 
-                // 页码显示
                 const pageText = document.createElement('span');
                 pageText.id = 'pageText';
                 
-                // 跳转输入框
                 const jumpInput = document.createElement('input');
                 jumpInput.type = 'number';
                 jumpInput.min = '1';
@@ -941,7 +932,6 @@
                 jumpInput.style.backgroundColor = 'var(--input)';
                 jumpInput.style.color = 'var(--foreground)';
                 
-                // 跳转按钮
                 const jumpButton = document.createElement('button');
                 jumpButton.textContent = '跳转';
                 jumpButton.className = 'btn search-button';
@@ -960,23 +950,19 @@
                 container.appendChild(jumpInput);
                 container.appendChild(jumpButton);
                 
-                // 插入到分页区域
                 paginationDiv.insertBefore(container, nextButton);
                 pageInfo = container;
             }
             
-            // 更新页码显示
             const pageText = document.getElementById('pageText');
             pageText.textContent = `第 ${currentPage} / ${totalPages || 1} 页 共 ${totalPages || 1} 页`;
             
-            // 更新跳转输入框
             const jumpInput = document.getElementById('jumpPage');
             if (jumpInput) {
                 jumpInput.max = totalPages;
                 jumpInput.value = currentPage;
             }
             
-            // 显示或隐藏分页区域
             paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
         }
 
@@ -1005,13 +991,12 @@
             showLoading();
 
             try {
-                // 处理搜索查询
                 let searchQuery = query;
                 let targetRepo = '';
                 if (query.includes('/')) {
                     const [namespace, repo] = query.split('/');
-                    searchQuery = namespace; // 只使用斜杠前面的用户空间
-                    targetRepo = repo.toLowerCase(); // 保存目标仓库名用于排序
+                    searchQuery = namespace;
+                    targetRepo = repo.toLowerCase();
                 }
 
                 const response = await fetch(`/search?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=25`);
@@ -1021,11 +1006,9 @@
                     throw new Error(data.error || '搜索请求失败');
                 }
                 
-                // 更新总页数和分页状态
                 totalPages = Math.ceil(data.count / 25);
                 updatePagination();
                 
-                // 传入目标仓库名进行排序
                 displayResults(data.results, targetRepo);
             } catch (error) {
                 console.error('搜索错误:', error);
@@ -1044,9 +1027,7 @@
                 return;
             }
 
-            // 对结果进行排序
             results.sort((a, b) => {
-                // 如果有目标仓库名，将匹配的排在最前面
                 if (targetRepo) {
                     const aName = (a.name || a.repo_name || '').toLowerCase();
                     const bName = (b.name || b.repo_name || '').toLowerCase();
@@ -1057,12 +1038,10 @@
                     if (!aMatch && bMatch) return 1;
                 }
                 
-                // 其次按照官方镜像排序
                 if (a.is_official !== b.is_official) {
                     return b.is_official - a.is_official;
                 }
                 
-                // 最后按照拉取次数排序
                 return b.pull_count - a.pull_count;
             });
 
@@ -1070,13 +1049,10 @@
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 
-                // 构建显示名称
                 let displayName = '';
                 if (result.is_official) {
-                    // 对于官方镜像，去掉 library/ 前缀
                     displayName = (result.name || result.repo_name || '').replace('library/', '');
                 } else {
-                    // 对于非官方镜像，显示完整路径
                     const name = result.name || result.repo_name || '';
                     displayName = result.namespace ? `${result.namespace}/${name}` : name;
                 }
@@ -1161,7 +1137,6 @@
             const tagList = document.getElementById('tagList');
             const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
             const name = currentRepo.name || currentRepo.repo_name || '';
-            // 移除可能重复的 library/ 前缀
             const cleanName = name.replace(/^library\//, '');
             const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
             
@@ -1194,9 +1169,7 @@
 
             tagList.innerHTML = header;
             
-            // 存储所有标签数据供搜索使用
             window.allTags = tags;
-            // 初始显示所有标签
             renderFilteredTags(tags);
         }
 
@@ -1255,24 +1228,19 @@
             if (!searchText) {
                 filteredTags = window.allTags;
             } else {
-                // 对标签进行评分和排序
                 const scoredTags = window.allTags.map(tag => {
                     const name = tag.name.toLowerCase();
                     let score = 0;
 
-                    // 完全匹配
                     if (name === searchLower) {
                         score += 100;
                     }
-                    // 前缀匹配
                     else if (name.startsWith(searchLower)) {
                         score += 50;
                     }
-                    // 包含匹配
                     else if (name.includes(searchLower)) {
                         score += 30;
                     }
-                    // 部分匹配（按单词）
                     else if (searchLower.split(/\s+/).some(word => name.includes(word))) {
                         score += 10;
                     }
@@ -1280,7 +1248,6 @@
                     return { tag, score };
                 }).filter(item => item.score > 0);
 
-                // 按分数排序
                 scoredTags.sort((a, b) => b.score - a.score);
                 filteredTags = scoredTags.map(item => item.tag);
             }
@@ -1304,7 +1271,6 @@
             });
         }
 
-        // 初始加载
         const urlParams = new URLSearchParams(window.location.search);
         const initialQuery = urlParams.get('q');
         if (initialQuery) {
@@ -1312,7 +1278,6 @@
             performSearch();
         }
 
-        // 主题切换功能
         const themeToggle = document.getElementById('themeToggle');
         const html = document.documentElement;
                  
@@ -1331,7 +1296,6 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
         });
         
-        // 移动端菜单切换
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         const navLinks = document.getElementById('navLinks');
         
@@ -1340,7 +1304,6 @@
             mobileMenuToggle.textContent = navLinks.classList.contains('active') ? '✕' : '☰';
         });
         
-        // 点击页面其他地方关闭菜单
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.navbar') && navLinks.classList.contains('active')) {
                 navLinks.classList.remove('active');
@@ -1348,6 +1311,6 @@
             }
         });
     </script>
-    </main> <!-- 关闭 main -->
+    </main>
 </body>
 </html> 

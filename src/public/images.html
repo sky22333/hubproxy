@@ -348,7 +348,6 @@
             margin-top: 0.25rem;
         }
 
-        /* 响应式设计 */
         @media (max-width: 768px) {
             .navbar-container {
                 padding: 0 0.5rem;
@@ -385,7 +384,6 @@
             }
         }
 
-        /* 加载动画 */
         .loading {
             display: inline-block;
             width: 1rem;
@@ -405,7 +403,6 @@
             display: none;
         }
 
-        /* 移动端菜单样式 - 与其他页面完全一致 */
         .mobile-menu-toggle {
             display: none;
         }
@@ -480,7 +477,6 @@
     </style>
 </head>
 <body>
-    <!-- 现代化导航栏 -->
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="logo">
@@ -507,10 +503,8 @@
         </div>
     </nav>
 
-    <!-- 主要内容 -->
     <main class="main">
         <div class="container">
-            <!-- 页面头部 -->
             <div class="header">
                 <h1 class="title">Docker离线镜像下载</h1>
                 <p class="subtitle">即点即下，无需等待打包，完全符合docker load加载标准</p>
@@ -535,7 +529,6 @@
                 </div>
             </div>
 
-            <!-- 单镜像下载 -->
             <div class="download-section">
                 <h2 class="section-title">单镜像下载</h2>
                 
@@ -548,13 +541,12 @@
                             type="text" 
                             id="imageInput" 
                             class="form-input" 
-                            placeholder="例如: nginx:latest, ubuntu:20.04, redis:alpine"
-                            value="nginx:latest"
+                            placeholder="例如: nginx:alpine"
                         >
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="platformInput">目标平台（可选）</label>
+                        <label class="form-label" for="platformInput">目标架构（可选）</label>
                         <input 
                             type="text" 
                             id="platformInput" 
@@ -574,7 +566,6 @@
                 </form>
             </div>
 
-            <!-- 批量下载 -->
             <div class="batch-section">
                 <h2 class="section-title">多个镜像批量下载</h2>
                 
@@ -591,7 +582,7 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="batchPlatformInput">目标平台（可选）</label>
+                        <label class="form-label" for="batchPlatformInput">目标架构（可选）</label>
                         <input 
                             type="text" 
                             id="batchPlatformInput" 
@@ -600,7 +591,7 @@
                             value="linux/amd64"
                         >
                         <div class="help-text">
-                            所有镜像将使用相同的目标平台
+                            所有镜像将使用相同的目标架构
                         </div>
                     </div>
                     
@@ -634,7 +625,6 @@
             });
         }
 
-        // 显示状态消息
         function showStatus(elementId, message, type = 'success') {
             const element = document.getElementById(elementId);
             element.className = `status status-${type}`;
@@ -642,12 +632,10 @@
             element.classList.remove('hidden');
         }
 
-        // 隐藏状态消息
         function hideStatus(elementId) {
             document.getElementById(elementId).classList.add('hidden');
         }
 
-        // 设置按钮加载状态
         function setButtonLoading(btnId, textId, loadingId, loading) {
             const btn = document.getElementById(btnId);
             const text = document.getElementById(textId);
@@ -663,13 +651,10 @@
             }
         }
 
-        // 构建下载URL
         function buildDownloadUrl(imageName, platform = '') {
-            // 将斜杠替换为下划线以适应URL路径
             const encodedImage = imageName.replace(/\//g, '_');
             let url = `/api/image/download/${encodedImage}`;
             
-            // 只有指定平台时才添加查询参数
             if (platform && platform.trim()) {
                 url += `?platform=${encodeURIComponent(platform.trim())}`;
             }
@@ -677,7 +662,6 @@
             return url;
         }
 
-        // 单镜像下载
         document.getElementById('singleForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -692,26 +676,22 @@
             hideStatus('singleStatus');
             setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', true);
             
-            // 创建下载链接并触发下载
             const downloadUrl = buildDownloadUrl(imageName, platform);
             
             const link = document.createElement('a');
             link.href = downloadUrl;
-            link.download = ''; // 让浏览器决定文件名
+            link.download = '';
             link.style.display = 'none';
             document.body.appendChild(link);
             
-            // 触发下载
             link.click();
             document.body.removeChild(link);
             
-            // 显示成功消息
             const platformText = platform ? ` (${platform})` : '';
             showStatus('singleStatus', `开始下载 ${imageName}${platformText}`, 'success');
             setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', false);
         });
 
-        // 批量下载
         document.getElementById('batchForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -736,7 +716,6 @@
                 images: images
             };
             
-            // 如果指定了平台，添加到选项中
             if (platform) {
                 options.platform = platform;
             }
@@ -754,7 +733,6 @@
                 });
                 
                 if (response.ok) {
-                    // 获取文件名
                     const contentDisposition = response.headers.get('Content-Disposition');
                     let filename = `batch_${images.length}_images.tar`;
                     
@@ -763,7 +741,6 @@
                         if (matches) filename = matches[1];
                     }
                     
-                    // 创建blob并下载
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
@@ -805,7 +782,6 @@
             }
         }
 
-        // 初始化
         initTheme();
         initMobileMenu();
     </script>

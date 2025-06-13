@@ -89,8 +89,6 @@ var (
 	}
 )
 
-// HTTP客户端配置在 http_client.go 中统一管理
-
 func (c *Cache) Get(key string) (interface{}, bool) {
 	c.mu.RLock()
 	entry, exists := c.data[key]
@@ -114,7 +112,6 @@ func (c *Cache) Set(key string, data interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	
-	// ✅ 先清理过期项，防止内存泄漏
 	now := time.Now()
 	for k, v := range c.data {
 		if now.Sub(v.timestamp) > cacheTTL {
@@ -122,9 +119,8 @@ func (c *Cache) Set(key string, data interface{}) {
 		}
 	}
 	
-	// 如果清理后仍然超限，批量删除最旧的条目
 	if len(c.data) >= c.maxSize {
-		toDelete := len(c.data) / 4 // 删除25%最旧的
+		toDelete := len(c.data) / 4
 		for k := range c.data {
 			if toDelete <= 0 {
 				break
@@ -162,7 +158,6 @@ func init() {
 	}()
 }
 
-// 改进的搜索结果过滤函数
 func filterSearchResults(results []Repository, query string) []Repository {
 	searchTerm := strings.ToLower(strings.TrimPrefix(query, "library/"))
 	filtered := make([]Repository, 0)

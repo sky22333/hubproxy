@@ -48,10 +48,8 @@ type AppConfig struct {
 		MaxImages int `toml:"maxImages"` // 单次下载最大镜像数量限制
 	} `toml:"download"`
 
-	// 新增：Registry映射配置
 	Registries map[string]RegistryMapping `toml:"registries"`
 
-	// Token缓存配置
 	TokenCache struct {
 		Enabled    bool   `toml:"enabled"`    // 是否启用token缓存
 		DefaultTTL string `toml:"defaultTTL"` // 默认缓存时间
@@ -64,7 +62,6 @@ var (
 	isViperEnabled bool
 	viperInstance  *viper.Viper
 	
-	// ✅ 配置缓存变量
 	cachedConfig     *AppConfig
 	configCacheTime  time.Time
 	configCacheTTL   = 5 * time.Second
@@ -147,7 +144,6 @@ func DefaultConfig() *AppConfig {
 
 // GetConfig 安全地获取配置副本
 func GetConfig() *AppConfig {
-	// ✅ 快速缓存检查，减少深拷贝开销
 	configCacheMutex.RLock()
 	if cachedConfig != nil && time.Since(configCacheTime) < configCacheTTL {
 		config := cachedConfig
@@ -194,7 +190,6 @@ func setConfig(cfg *AppConfig) {
 	defer appConfigLock.Unlock()
 	appConfig = cfg
 	
-	// ✅ 配置更新时清除缓存
 	configCacheMutex.Lock()
 	cachedConfig = nil
 	configCacheMutex.Unlock()
@@ -220,17 +215,13 @@ func LoadConfig() error {
 	// 设置配置
 	setConfig(cfg)
 	
-	// 🔥 首次加载后启用Viper热重载
 	if !isViperEnabled {
 		go enableViperHotReload()
 	}
 	
-	// 配置加载成功，详细信息在启动时统一显示
-	
 	return nil
 }
 
-// 🔥 启用Viper自动热重载
 func enableViperHotReload() {
 	if isViperEnabled {
 		return
@@ -251,9 +242,7 @@ func enableViperHotReload() {
 	}
 	
 	isViperEnabled = true
-	// 热重载已启用，不显示额外信息
 	
-	// 🚀 启用文件监听
 	viperInstance.WatchConfig()
 	viperInstance.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Printf("检测到配置文件变化: %s\n", e.Name)
@@ -261,7 +250,6 @@ func enableViperHotReload() {
 	})
 }
 
-// 🔥 使用Viper进行热重载
 func hotReloadWithViper() {
 	start := time.Now()
 	fmt.Println("🔄 自动热重载...")
@@ -275,10 +263,8 @@ func hotReloadWithViper() {
 		return
 	}
 	
-	// 从环境变量覆盖（保持原有功能）
 	overrideFromEnv(cfg)
 	
-	// 原子性更新配置
 	setConfig(cfg)
 	
 	// 异步更新受影响的组件
@@ -288,7 +274,6 @@ func hotReloadWithViper() {
 	}()
 }
 
-// 🔧 更新受配置影响的组件
 func updateAffectedComponents() {
 	// 重新初始化限流器
 	if globalLimiter != nil {
@@ -302,7 +287,6 @@ func updateAffectedComponents() {
 		GlobalAccessController.Reload()
 	}
 	
-	// 🔥 刷新Registry配置映射
 	fmt.Println("🌐 更新Registry配置映射...")
 	reloadRegistryConfig()
 	
@@ -310,7 +294,6 @@ func updateAffectedComponents() {
 	fmt.Println("🔧 组件更新完成")
 }
 
-// 🔥 重新加载Registry配置
 func reloadRegistryConfig() {
 	cfg := GetConfig()
 	enabledCount := 0
@@ -324,8 +307,6 @@ func reloadRegistryConfig() {
 	
 	fmt.Printf("🌐 Registry配置已更新: %d个启用\n", enabledCount)
 	
-	// Registry配置是动态读取的，每次请求都会调用GetConfig()
-	// 所以这里只需要简单通知，实际生效是自动的
 }
 
 // overrideFromEnv 从环境变量覆盖配置

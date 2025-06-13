@@ -46,7 +46,7 @@ var (
 	}
 	globalLimiter *IPRateLimiter
 	
-	// ✅ 服务启动时间追踪
+	// 服务启动时间
 	serviceStartTime = time.Now()
 )
 
@@ -75,7 +75,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
-	// ✅ 添加全局Panic恢复保护
+	// 全局Panic恢复保护
 	router.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
 		log.Printf("🚨 Panic recovered: %v", recovered)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -84,13 +84,13 @@ func main() {
 		})
 	}))
 
-	// ✅ 初始化监控端点 (优先级最高，避免中间件影响)
+	// 初始化监控端点
 	initHealthRoutes(router)
 	
 	// 初始化镜像tar下载路由
 	initImageTarRoutes(router)
 	
-	// 静态文件路由（使用嵌入文件）
+	// 静态文件路由
 	router.GET("/", func(c *gin.Context) {
 		serveEmbedFile(c, "public/index.html")
 	})
@@ -120,7 +120,7 @@ func main() {
 	router.Any("/v2/*path", RateLimitMiddleware(globalLimiter), ProxyDockerRegistryGin)
 	
 
-	// 注册NoRoute处理器，应用限流中间件
+	// 注册NoRoute处理器
 	router.NoRoute(RateLimitMiddleware(globalLimiter), handler)
 
 	cfg := GetConfig()
@@ -226,7 +226,6 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
 	
-	// 智能处理系统 - 自动识别需要加速的内容
 	// 获取真实域名
 	realHost := c.Request.Header.Get("X-Forwarded-Host")
 	if realHost == "" {
@@ -237,15 +236,11 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 		realHost = "https://" + realHost
 	}
 
-	// 🚀 高性能预筛选：仅对.sh文件进行智能处理
 	if strings.HasSuffix(strings.ToLower(u), ".sh") {
-		// 检查是否为gzip压缩内容
 		isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
 		
-		// 仅对shell脚本使用智能处理器
 		processedBody, processedSize, err := ProcessSmart(resp.Body, isGzipCompressed, realHost)
 		if err != nil {
-			// 优雅降级 - 处理失败时使用直接代理模式
 			fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
 			processedBody = resp.Body
 			processedSize = 0
@@ -253,7 +248,6 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 
 		// 智能设置响应头
 		if processedSize > 0 {
-			// 内容被处理过，清理压缩相关头，使用chunked传输
 			resp.Header.Del("Content-Length")
 			resp.Header.Del("Content-Encoding")
 			resp.Header.Set("Transfer-Encoding", "chunked")
@@ -282,8 +276,6 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 			return
 		}
 	} else {
-		// 🔥 非.sh文件：直接高性能流式代理，零内存消耗
-		// 复制所有响应头
 		for key, values := range resp.Header {
 			for _, value := range values {
 				c.Header(key, value)
@@ -302,7 +294,7 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 
 		c.Status(resp.StatusCode)
 
-		// 直接流式转发，零内存拷贝
+		// 直接流式转发
 		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
 			fmt.Printf("直接代理失败: %v\n", err)
 		}
@@ -318,9 +310,9 @@ func checkURL(u string) []string {
 	return nil
 }
 
-// ✅ 初始化健康监控路由
+// 初始化健康监控路由
 func initHealthRoutes(router *gin.Engine) {
-	// 健康检查端点 - 最轻量级，无依赖检查
+	// 健康检查端点
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":    "healthy",
@@ -330,12 +322,11 @@ func initHealthRoutes(router *gin.Engine) {
 		})
 	})
 	
-	// 就绪检查端点 - 检查关键组件状态
+	// 就绪检查端点
 	router.GET("/ready", func(c *gin.Context) {
 		checks := make(map[string]string)
 		allReady := true
 		
-		// 检查配置状态
 		if GetConfig() != nil {
 			checks["config"] = "ok"
 		} else {

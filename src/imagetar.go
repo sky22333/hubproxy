@@ -361,7 +361,7 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 		default:
 		}
 
-		if err := func() error { // ✅ 匿名函数确保资源立即释放
+		if err := func() error {
 			digest, err := layer.Digest()
 			if err != nil {
 				return err
@@ -859,7 +859,7 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 
 		log.Printf("处理镜像 %d/%d: %s", i+1, len(imageRefs), imageRef)
 		
-		// ✅ 添加超时保护，防止单个镜像处理时间过长
+		// 防止单个镜像处理时间过长
 		timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 		manifest, repositories, err := is.streamSingleImageForBatch(timeoutCtx, tarWriter, imageRef, options)
 		cancel()
