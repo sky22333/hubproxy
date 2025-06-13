@@ -48,10 +48,8 @@ type AppConfig struct {
 		MaxImages int `toml:"maxImages"` // 单次下载最大镜像数量限制
 	} `toml:"download"`
 
-	// 新增：Registry映射配置
 	Registries map[string]RegistryMapping `toml:"registries"`
 
-	// Token缓存配置
 	TokenCache struct {
 		Enabled    bool   `toml:"enabled"`    // 是否启用token缓存
 		DefaultTTL string `toml:"defaultTTL"` // 默认缓存时间
@@ -63,6 +61,11 @@ var (
 	appConfigLock sync.RWMutex
 	isViperEnabled bool
 	viperInstance  *viper.Viper
+	
+	cachedConfig     *AppConfig
+	configCacheTime  time.Time
+	configCacheTTL   = 5 * time.Second
+	configCacheMutex sync.RWMutex
 )
 
 // DefaultConfig 返回默认配置
@@ -141,21 +144,44 @@ func DefaultConfig() *AppConfig {
 
 // GetConfig 安全地获取配置副本
 func GetConfig() *AppConfig {
-	appConfigLock.RLock()
-	defer appConfigLock.RUnlock()
+	configCacheMutex.RLock()
+	if cachedConfig != nil && time.Since(configCacheTime) < configCacheTTL {
+		config := cachedConfig
+		configCacheMutex.RUnlock()
+		return config
+	}
+	configCacheMutex.RUnlock()
 	
-	if appConfig == nil {
-		return DefaultConfig()
+	// 缓存过期，重新生成配置
+	configCacheMutex.Lock()
+	defer configCacheMutex.Unlock()
+	
+	// 双重检查，防止重复生成
+	if cachedConfig != nil && time.Since(configCacheTime) < configCacheTTL {
+		return cachedConfig
 	}
 	
-	// 返回配置的深拷贝
+	appConfigLock.RLock()
+	if appConfig == nil {
+		appConfigLock.RUnlock()
+		defaultCfg := DefaultConfig()
+		cachedConfig = defaultCfg
+		configCacheTime = time.Now()
+		return defaultCfg
+	}
+	
+	// 生成新的配置深拷贝
 	configCopy := *appConfig
 	configCopy.Security.WhiteList = append([]string(nil), appConfig.Security.WhiteList...)
 	configCopy.Security.BlackList = append([]string(nil), appConfig.Security.BlackList...)
 	configCopy.Proxy.WhiteList = append([]string(nil), appConfig.Proxy.WhiteList...)
 	configCopy.Proxy.BlackList = append([]string(nil), appConfig.Proxy.BlackList...)
+	appConfigLock.RUnlock()
 	
-	return &configCopy
+	cachedConfig = &configCopy
+	configCacheTime = time.Now()
+	
+	return cachedConfig
 }
 
 // setConfig 安全地设置配置
@@ -163,6 +189,10 @@ func setConfig(cfg *AppConfig) {
 	appConfigLock.Lock()
 	defer appConfigLock.Unlock()
 	appConfig = cfg
+	
+	configCacheMutex.Lock()
+	cachedConfig = nil
+	configCacheMutex.Unlock()
 }
 
 // LoadConfig 加载配置文件
@@ -185,19 +215,13 @@ func LoadConfig() error {
 	// 设置配置
 	setConfig(cfg)
 	
-	// 🔥 首次加载后启用Viper热重载
 	if !isViperEnabled {
 		go enableViperHotReload()
 	}
 	
-	fmt.Printf("配置加载成功: 监听 %s:%d, 文件大小限制 %d MB, 限流 %d请求/%g小时, 离线镜像并发数 %d\n",
-		cfg.Server.Host, cfg.Server.Port, cfg.Server.FileSize/(1024*1024), 
-		cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours, cfg.Download.MaxImages)
-	
 	return nil
 }
 
-// 🔥 启用Viper自动热重载
 func enableViperHotReload() {
 	if isViperEnabled {
 		return
@@ -218,9 +242,7 @@ func enableViperHotReload() {
 	}
 	
 	isViperEnabled = true
-	fmt.Println("自动热重载已启用")
 	
-	// 🚀 启用文件监听
 	viperInstance.WatchConfig()
 	viperInstance.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Printf("检测到配置文件变化: %s\n", e.Name)
@@ -228,7 +250,6 @@ func enableViperHotReload() {
 	})
 }
 
-// 🔥 使用Viper进行热重载
 func hotReloadWithViper() {
 	start := time.Now()
 	fmt.Println("🔄 自动热重载...")
@@ -242,10 +263,8 @@ func hotReloadWithViper() {
 		return
 	}
 	
-	// 从环境变量覆盖（保持原有功能）
 	overrideFromEnv(cfg)
 	
-	// 原子性更新配置
 	setConfig(cfg)
 	
 	// 异步更新受影响的组件
@@ -255,7 +274,6 @@ func hotReloadWithViper() {
 	}()
 }
 
-// 🔧 更新受配置影响的组件
 func updateAffectedComponents() {
 	// 重新初始化限流器
 	if globalLimiter != nil {
@@ -269,7 +287,6 @@ func updateAffectedComponents() {
 		GlobalAccessController.Reload()
 	}
 	
-	// 🔥 刷新Registry配置映射
 	fmt.Println("🌐 更新Registry配置映射...")
 	reloadRegistryConfig()
 	
@@ -277,7 +294,6 @@ func updateAffectedComponents() {
 	fmt.Println("🔧 组件更新完成")
 }
 
-// 🔥 重新加载Registry配置
 func reloadRegistryConfig() {
 	cfg := GetConfig()
 	enabledCount := 0
@@ -291,8 +307,6 @@ func reloadRegistryConfig() {
 	
 	fmt.Printf("🌐 Registry配置已更新: %d个启用\n", enabledCount)
 	
-	// Registry配置是动态读取的，每次请求都会调用GetConfig()
-	// 所以这里只需要简单通知，实际生效是自动的
 }
 
 // overrideFromEnv 从环境变量覆盖配置

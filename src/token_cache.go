@@ -21,24 +21,22 @@ type CachedItem struct {
 
 // UniversalCache 通用缓存，支持Token和Manifest
 type UniversalCache struct {
-	cache sync.Map // 线程安全的并发映射
+	cache sync.Map
 }
 
 var globalCache = &UniversalCache{}
 
-// Get 获取缓存项，如果不存在或过期返回nil
+// Get 获取缓存项
 func (c *UniversalCache) Get(key string) *CachedItem {
 	if v, ok := c.cache.Load(key); ok {
 		if cached := v.(*CachedItem); time.Now().Before(cached.ExpiresAt) {
 			return cached
 		}
-		// 自动清理过期项，保持内存整洁
 		c.cache.Delete(key)
 	}
 	return nil
 }
 
-// Set 设置缓存项
 func (c *UniversalCache) Set(key string, data []byte, contentType string, headers map[string]string, ttl time.Duration) {
 	c.cache.Store(key, &CachedItem{
 		Data:        data,
@@ -48,7 +46,6 @@ func (c *UniversalCache) Set(key string, data []byte, contentType string, header
 	})
 }
 
-// GetToken 获取缓存的token(向后兼容)
 func (c *UniversalCache) GetToken(key string) string {
 	if item := c.Get(key); item != nil {
 		return string(item.Data)
@@ -56,29 +53,32 @@ func (c *UniversalCache) GetToken(key string) string {
 	return ""
 }
 
-// SetToken 设置token缓存(向后兼容)
 func (c *UniversalCache) SetToken(key, token string, ttl time.Duration) {
 	c.Set(key, []byte(token), "application/json", nil, ttl)
 }
 
 // buildCacheKey 构建稳定的缓存key
 func buildCacheKey(prefix, query string) string {
-	// 使用MD5确保key的一致性和简洁性
 	return fmt.Sprintf("%s:%x", prefix, md5.Sum([]byte(query)))
 }
 
-// buildTokenCacheKey 构建token缓存key(向后兼容)
 func buildTokenCacheKey(query string) string {
 	return buildCacheKey("token", query)
 }
 
-// buildManifestCacheKey 构建manifest缓存key
 func buildManifestCacheKey(imageRef, reference string) string {
 	key := fmt.Sprintf("%s:%s", imageRef, reference)
 	return buildCacheKey("manifest", key)
 }
 
-// getManifestTTL 根据引用类型智能确定TTL
+func buildManifestCacheKeyWithPlatform(imageRef, reference, platform string) string {
+	if platform == "" {
+		platform = "default"
+	}
+	key := fmt.Sprintf("%s:%s@%s", imageRef, reference, platform)
+	return buildCacheKey("manifest", key)
+}
+
 func getManifestTTL(reference string) time.Duration {
 	cfg := GetConfig()
 	defaultTTL := 30 * time.Minute
@@ -88,9 +88,7 @@ func getManifestTTL(reference string) time.Duration {
 		}
 	}
 	
-	// 智能TTL策略
 	if strings.HasPrefix(reference, "sha256:") {
-		// immutable digest: 长期缓存
 		return 24 * time.Hour
 	}
 	
@@ -115,9 +113,8 @@ func extractTTLFromResponse(responseBody []byte) time.Duration {
 	defaultTTL := 30 * time.Minute
 	
 	if json.Unmarshal(responseBody, &tokenResp) == nil && tokenResp.ExpiresIn > 0 {
-		// 使用响应中的过期时间，但提前5分钟过期确保安全边际
 		safeTTL := time.Duration(tokenResp.ExpiresIn-300) * time.Second
-		if safeTTL > 5*time.Minute { // 确保至少有5分钟的缓存时间
+		if safeTTL > 5*time.Minute {
 			return safeTTL
 		}
 	}
@@ -125,16 +122,12 @@ func extractTTLFromResponse(responseBody []byte) time.Duration {
 	return defaultTTL
 }
 
-// writeTokenResponse 写入token响应(向后兼容)
 func writeTokenResponse(c *gin.Context, cachedBody string) {
-	// 直接返回缓存的完整响应体，保持格式一致性
 	c.Header("Content-Type", "application/json")
 	c.String(200, cachedBody)
 }
 
-// writeCachedResponse 写入缓存响应
 func writeCachedResponse(c *gin.Context, item *CachedItem) {
-	// 设置内容类型
 	if item.ContentType != "" {
 		c.Header("Content-Type", item.ContentType)
 	}

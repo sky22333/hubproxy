@@ -11,9 +11,6 @@ FROM alpine
 
 WORKDIR /root/
 
-# 安装依赖
-RUN apk add --no-cache skopeo
-
 COPY --from=builder /app/hubproxy .
 COPY --from=builder /app/config.toml .
 

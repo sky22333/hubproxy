@@ -14,7 +14,6 @@ import (
 const (
 	// 清理间隔
 	CleanupInterval = 10 * time.Minute
-	// 最大IP缓存数量，防止内存过度占用
 	MaxIPCacheSize = 10000
 )
 
@@ -30,16 +29,14 @@ type IPRateLimiter struct {
 
 // rateLimiterEntry 限流器条目
 type rateLimiterEntry struct {
-	limiter    *rate.Limiter // 限流器
-	lastAccess time.Time     // 最后访问时间
+	limiter    *rate.Limiter
+	lastAccess time.Time
 }
 
 // initGlobalLimiter 初始化全局限流器
 func initGlobalLimiter() *IPRateLimiter {
-	// 获取配置
 	cfg := GetConfig()
 	
-	// 解析白名单IP段
 	whitelist := make([]*net.IPNet, 0, len(cfg.Security.WhiteList))
 	for _, item := range cfg.Security.WhiteList {
 		if item = strings.TrimSpace(item); item != "" {
@@ -74,10 +71,9 @@ func initGlobalLimiter() *IPRateLimiter {
 	// 计算速率：将 "每N小时X个请求" 转换为 "每秒Y个请求"
 	ratePerSecond := rate.Limit(float64(cfg.RateLimit.RequestLimit) / (cfg.RateLimit.PeriodHours * 3600))
 	
-	// 令牌桶容量设置为最大突发请求数，建议设为限制值的一半以允许合理突发
 	burstSize := cfg.RateLimit.RequestLimit
 	if burstSize < 1 {
-		burstSize = 1 // 至少允许1个请求
+		burstSize = 1
 	}
 	
 	limiter := &IPRateLimiter{
@@ -92,13 +88,10 @@ func initGlobalLimiter() *IPRateLimiter {
 	// 启动定期清理goroutine
 	go limiter.cleanupRoutine()
 	
-	fmt.Printf("限流器初始化: %d请求/%g小时, 白名单 %d个, 黑名单 %d个\n",
-		cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours, len(whitelist), len(blacklist))
-	
 	return limiter
 }
 
-// initLimiter 初始化限流器（保持向后兼容）
+// initLimiter 初始化限流器
 func initLimiter() {
 	globalLimiter = initGlobalLimiter()
 }
@@ -153,7 +146,6 @@ func extractIPFromAddress(address string) string {
 		return address[:lastColon]
 	}
 	
-	// 如果没有端口号，直接返回
 	return address
 }
 
@@ -181,36 +173,43 @@ func (i *IPRateLimiter) GetLimiter(ip string) (*rate.Limiter, bool) {
 	
 	// 检查是否在黑名单中
 	if isIPInCIDRList(cleanIP, i.blacklist) {
-		return nil, false // 黑名单中的IP不允许访问
+		return nil, false
 	}
 	
 	// 检查是否在白名单中
 	if isIPInCIDRList(cleanIP, i.whitelist) {
-		return rate.NewLimiter(rate.Inf, i.b), true // 白名单中的IP不受限制
+		return rate.NewLimiter(rate.Inf, i.b), true
 	}
 	
-	// 使用纯IP作为缓存键
+	now := time.Now()
+	
 	i.mu.RLock()
 	entry, exists := i.ips[cleanIP]
 	i.mu.RUnlock()
 	
-	now := time.Now()
-	
-	if !exists {
-		// 创建新的限流器
+	if exists {
 		i.mu.Lock()
-		entry = &rateLimiterEntry{
-			limiter:    rate.NewLimiter(i.r, i.b),
-			lastAccess: now,
+		if entry, stillExists := i.ips[cleanIP]; stillExists {
+			entry.lastAccess = now
+			i.mu.Unlock()
+			return entry.limiter, true
 		}
-		i.ips[cleanIP] = entry
-		i.mu.Unlock()
-	} else {
-		// 更新最后访问时间
-		i.mu.Lock()
-		entry.lastAccess = now
 		i.mu.Unlock()
 	}
+	
+	i.mu.Lock()
+	if entry, exists := i.ips[cleanIP]; exists {
+		entry.lastAccess = now
+		i.mu.Unlock()
+		return entry.limiter, true
+	}
+	
+	entry = &rateLimiterEntry{
+		limiter:    rate.NewLimiter(i.r, i.b),
+		lastAccess: now,
+	}
+	i.ips[cleanIP] = entry
+	i.mu.Unlock()
 	
 	return entry.limiter, true
 }
@@ -272,7 +271,6 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 			return
 		}
 		
-		// 允许请求继续处理
 		c.Next()
 	}
 }

@@ -3,12 +3,15 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 //go:embed public/*
@@ -42,6 +45,9 @@ var (
 		regexp.MustCompile(`^(?:https?://)?(github|opengraph)\.githubassets\.com/([^/]+)/.+?$`),
 	}
 	globalLimiter *IPRateLimiter
+	
+	// 服务启动时间
+	serviceStartTime = time.Now()
 )
 
 func main() {
@@ -60,13 +66,31 @@ func main() {
 	// 初始化Docker流式代理
 	initDockerProxy()
 
+	// 初始化镜像流式下载器
+	initImageStreamer()
+
+	// 初始化防抖器
+	initDebouncer()
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
-	// 初始化skopeo路由（静态文件和API路由）
-	initSkopeoRoutes(router)
+	// 全局Panic恢复保护
+	router.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+		log.Printf("🚨 Panic recovered: %v", recovered)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Internal server error",
+			"code":  "INTERNAL_ERROR",
+		})
+	}))
+
+	// 初始化监控端点
+	initHealthRoutes(router)
 	
-	// 静态文件路由（使用嵌入文件）
+	// 初始化镜像tar下载路由
+	initImageTarRoutes(router)
+	
+	// 静态文件路由
 	router.GET("/", func(c *gin.Context) {
 		serveEmbedFile(c, "public/index.html")
 	})
@@ -74,8 +98,9 @@ func main() {
 		filepath := strings.TrimPrefix(c.Param("filepath"), "/")
 		serveEmbedFile(c, "public/"+filepath)
 	})
-	router.GET("/skopeo.html", func(c *gin.Context) {
-		serveEmbedFile(c, "public/skopeo.html")
+
+	router.GET("/images.html", func(c *gin.Context) {
+		serveEmbedFile(c, "public/images.html")
 	})
 	router.GET("/search.html", func(c *gin.Context) {
 		serveEmbedFile(c, "public/search.html")
@@ -95,11 +120,14 @@ func main() {
 	router.Any("/v2/*path", RateLimitMiddleware(globalLimiter), ProxyDockerRegistryGin)
 	
 
-	// 注册NoRoute处理器，应用限流中间件
+	// 注册NoRoute处理器
 	router.NoRoute(RateLimitMiddleware(globalLimiter), handler)
 
 	cfg := GetConfig()
-	fmt.Printf("启动成功，项目地址：https://github.com/sky22333/hubproxy \n")
+	fmt.Printf("🚀 HubProxy 启动成功\n")
+	fmt.Printf("📡 监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
+	fmt.Printf("⚡ 限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
+	fmt.Printf("🔗 项目地址: https://github.com/sky22333/hubproxy\n")
 	
 	err := router.Run(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port))
 	if err != nil {
@@ -198,57 +226,77 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
 	
-	// 对于需要处理的shell文件，使用chunked传输
-	isShellFile := strings.HasSuffix(strings.ToLower(u), ".sh")
-	if isShellFile {
-		resp.Header.Del("Content-Length")
-		resp.Header.Set("Transfer-Encoding", "chunked")
+	// 获取真实域名
+	realHost := c.Request.Header.Get("X-Forwarded-Host")
+	if realHost == "" {
+		realHost = c.Request.Host
+	}
+	// 如果域名中没有协议前缀，添加https://
+	if !strings.HasPrefix(realHost, "http://") && !strings.HasPrefix(realHost, "https://") {
+		realHost = "https://" + realHost
 	}
 
-	// 复制其他响应头
-	for key, values := range resp.Header {
-		for _, value := range values {
-			c.Header(key, value)
-		}
-	}
-
-	if location := resp.Header.Get("Location"); location != "" {
-		if checkURL(location) != nil {
-			c.Header("Location", "/"+location)
-		} else {
-			// 递归处理重定向，增加计数防止无限循环
-			proxyWithRedirect(c, location, redirectCount+1)
-			return
-		}
-	}
-
-	c.Status(resp.StatusCode)
-
-	// 处理响应体
-	if isShellFile {
-		// 获取真实域名
-		realHost := c.Request.Header.Get("X-Forwarded-Host")
-		if realHost == "" {
-			realHost = c.Request.Host
-		}
-		// 如果域名中没有协议前缀，添加https://
-		if !strings.HasPrefix(realHost, "http://") && !strings.HasPrefix(realHost, "https://") {
-			realHost = "https://" + realHost
-		}
-		// 使用ProcessGitHubURLs处理.sh文件
-		processedBody, _, err := ProcessGitHubURLs(resp.Body, resp.Header.Get("Content-Encoding") == "gzip", realHost, true)
+	if strings.HasSuffix(strings.ToLower(u), ".sh") {
+		isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
+		
+		processedBody, processedSize, err := ProcessSmart(resp.Body, isGzipCompressed, realHost)
 		if err != nil {
-			c.String(http.StatusInternalServerError, fmt.Sprintf("处理shell文件时发生错误: %v", err))
-			return
+			fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
+			processedBody = resp.Body
+			processedSize = 0
 		}
+
+		// 智能设置响应头
+		if processedSize > 0 {
+			resp.Header.Del("Content-Length")
+			resp.Header.Del("Content-Encoding")
+			resp.Header.Set("Transfer-Encoding", "chunked")
+		}
+
+		// 复制其他响应头
+		for key, values := range resp.Header {
+			for _, value := range values {
+				c.Header(key, value)
+			}
+		}
+
+		if location := resp.Header.Get("Location"); location != "" {
+			if checkURL(location) != nil {
+				c.Header("Location", "/"+location)
+			} else {
+				proxyWithRedirect(c, location, redirectCount+1)
+				return
+			}
+		}
+
+		c.Status(resp.StatusCode)
+
+		// 输出处理后的内容
 		if _, err := io.Copy(c.Writer, processedBody); err != nil {
-			c.String(http.StatusInternalServerError, fmt.Sprintf("写入响应时发生错误: %v", err))
 			return
 		}
 	} else {
-		// 对于非.sh文件，直接复制响应体
+		for key, values := range resp.Header {
+			for _, value := range values {
+				c.Header(key, value)
+			}
+		}
+
+		// 处理重定向
+		if location := resp.Header.Get("Location"); location != "" {
+			if checkURL(location) != nil {
+				c.Header("Location", "/"+location)
+			} else {
+				proxyWithRedirect(c, location, redirectCount+1)
+				return
+			}
+		}
+
+		c.Status(resp.StatusCode)
+
+		// 直接流式转发
 		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-			return
+			fmt.Printf("直接代理失败: %v\n", err)
 		}
 	}
 }
@@ -262,4 +310,72 @@ func checkURL(u string) []string {
 	return nil
 }
 
-
+// 初始化健康监控路由
+func initHealthRoutes(router *gin.Engine) {
+	// 健康检查端点
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"timestamp": time.Now().Unix(),
+			"uptime":    time.Since(serviceStartTime).Seconds(),
+			"service":   "hubproxy",
+		})
+	})
+	
+	// 就绪检查端点
+	router.GET("/ready", func(c *gin.Context) {
+		checks := make(map[string]string)
+		allReady := true
+		
+		if GetConfig() != nil {
+			checks["config"] = "ok"
+		} else {
+			checks["config"] = "failed"
+			allReady = false
+		}
+		
+		// 检查全局缓存状态
+		if globalCache != nil {
+			checks["cache"] = "ok"
+		} else {
+			checks["cache"] = "failed"
+			allReady = false
+		}
+		
+		// 检查限流器状态
+		if globalLimiter != nil {
+			checks["ratelimiter"] = "ok"
+		} else {
+			checks["ratelimiter"] = "failed"
+			allReady = false
+		}
+		
+		// 检查镜像下载器状态
+		if globalImageStreamer != nil {
+			checks["imagestreamer"] = "ok"
+		} else {
+			checks["imagestreamer"] = "failed"
+			allReady = false
+		}
+		
+		// 检查HTTP客户端状态
+		if GetGlobalHTTPClient() != nil {
+			checks["httpclient"] = "ok"
+		} else {
+			checks["httpclient"] = "failed"
+			allReady = false
+		}
+		
+		status := http.StatusOK
+		if !allReady {
+			status = http.StatusServiceUnavailable
+		}
+		
+		c.JSON(status, gin.H{
+			"ready":     allReady,
+			"checks":    checks,
+			"timestamp": time.Now().Unix(),
+			"uptime":    time.Since(serviceStartTime).Seconds(),
+		})
+	})
+}
