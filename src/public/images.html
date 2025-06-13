@@ -707,7 +707,7 @@
             
             // 显示成功消息
             const platformText = platform ? ` (${platform})` : '';
-            showStatus('singleStatus', `开始下载 ${imageName}${platformText}，请查看浏览器下载进度`, 'success');
+            showStatus('singleStatus', `开始下载 ${imageName}${platformText}`, 'success');
             setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', false);
         });
 
@@ -776,7 +776,7 @@
                     window.URL.revokeObjectURL(url);
                     
                     const platformText = platform ? ` (${platform})` : '';
-                    showStatus('batchStatus', `开始下载 ${images.length} 个镜像${platformText}，请查看浏览器下载进度`, 'success');
+                    showStatus('batchStatus', `开始下载 ${images.length} 个镜像${platformText}`, 'success');
                 } else {
                     const error = await response.json();
                     showStatus('batchStatus', error.error || '下载失败', 'error');
