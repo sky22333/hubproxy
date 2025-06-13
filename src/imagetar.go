@@ -147,7 +147,7 @@ func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, 
 		options = &StreamOptions{}
 	}
 
-	filename := strings.ReplaceAll(imageRef, "/", "_") + ".docker"
+	filename := strings.ReplaceAll(imageRef, "/", "_") + ".tar"
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	
@@ -262,7 +262,6 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 				return err
 			}
 
-			// ✅ 最优流式方案：使用partial.UncompressedSize获取精确大小
 			uncompressedSize, err := partial.UncompressedSize(layer)
 			if err != nil {
 				return err
@@ -272,11 +271,11 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 			if err != nil {
 				return err
 			}
-			defer layerReader.Close() // ✅ 函数结束立即释放
+			defer layerReader.Close()
 
 			layerTarHeader := &tar.Header{
 				Name: layerDir + "/layer.tar",
-				Size: uncompressedSize, // ✅ 使用partial包获取精确的未压缩大小
+				Size: uncompressedSize,
 				Mode: 0644,
 			}
 			
@@ -284,7 +283,6 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 				return err
 			}
 
-			// ✅ 完全流式传输，零内存缓冲，零额外拷贝
 			if _, err := io.Copy(tarWriter, layerReader); err != nil {
 				return err
 			}
@@ -590,6 +588,12 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		return
 	}
 
+	for i, imageRef := range req.Images {
+		if !strings.Contains(imageRef, ":") && !strings.Contains(imageRef, "@") {
+			req.Images[i] = imageRef + ":latest"
+		}
+	}
+
 	cfg := GetConfig()
 	if len(req.Images) > cfg.Download.MaxImages {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -712,6 +716,10 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 			return fmt.Errorf("下载镜像 %s 失败: %w", imageRef, err)
 		}
 
+		if manifest == nil {
+			return fmt.Errorf("镜像 %s manifest数据为空", imageRef)
+		}
+
 		// 收集manifest信息
 		allManifests = append(allManifests, manifest)
 
@@ -768,4 +776,4 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 
 	log.Printf("批量下载完成，共处理 %d 个镜像", len(imageRefs))
 	return nil
-} 
+}
