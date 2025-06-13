@@ -211,51 +211,8 @@ func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote
 
 // getImageDescriptorWithPlatform 获取指定平台的镜像描述符
 func (is *ImageStreamer) getImageDescriptorWithPlatform(ref name.Reference, options []remote.Option, platform string) (*remote.Descriptor, error) {
-	if isCacheEnabled() {
-		var reference string
-		if tagged, ok := ref.(name.Tag); ok {
-			reference = tagged.TagStr()
-		} else if digested, ok := ref.(name.Digest); ok {
-			reference = digested.DigestStr()
-		}
-		
-		if reference != "" {
-			cacheKey := buildManifestCacheKeyWithPlatform(ref.Context().String(), reference, platform)
-			if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
-				desc := &remote.Descriptor{
-					Manifest: cachedItem.Data,
-				}
-				log.Printf("使用缓存的manifest: %s (平台: %s)", ref.String(), platform)
-				return desc, nil
-			}
-		}
-	}
-
-	desc, err := remote.Get(ref, options...)
-	if err != nil {
-		return nil, err
-	}
-
-	if isCacheEnabled() {
-		var reference string
-		if tagged, ok := ref.(name.Tag); ok {
-			reference = tagged.TagStr()
-		} else if digested, ok := ref.(name.Digest); ok {
-			reference = digested.DigestStr()
-		}
-		
-		if reference != "" {
-			cacheKey := buildManifestCacheKeyWithPlatform(ref.Context().String(), reference, platform)
-			ttl := getManifestTTL(reference)
-			headers := map[string]string{
-				"Docker-Content-Digest": desc.Digest.String(),
-			}
-			globalCache.Set(cacheKey, desc.Manifest, string(desc.MediaType), headers, ttl)
-			log.Printf("缓存manifest: %s (平台: %s, TTL: %v)", ref.String(), platform, ttl)
-		}
-	}
-
-	return desc, nil
+	// 直接从网络获取完整的descriptor，确保对象完整性
+	return remote.Get(ref, options...)
 }
 
 // StreamImageToGin 流式响应到Gin
@@ -503,7 +460,7 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 	switch desc.MediaType {
 	case types.OCIImageIndex, types.DockerManifestList:
-		// 处理多架构镜像，复用单个下载的逻辑
+		// 处理多架构镜像
 		img, err := is.selectPlatformImage(desc, options)
 		if err != nil {
 			return nil, nil, fmt.Errorf("选择平台镜像失败: %w", err)
@@ -573,6 +530,8 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 	return manifest, repositories, nil
 }
+
+
 
 // selectPlatformImage 从多架构镜像中选择合适的平台镜像
 func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *StreamOptions) (v1.Image, error) {
