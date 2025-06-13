@@ -78,6 +78,15 @@ func buildManifestCacheKey(imageRef, reference string) string {
 	return buildCacheKey("manifest", key)
 }
 
+// buildManifestCacheKeyWithPlatform 构建包含平台信息的manifest缓存key
+func buildManifestCacheKeyWithPlatform(imageRef, reference, platform string) string {
+	if platform == "" {
+		platform = "default"
+	}
+	key := fmt.Sprintf("%s:%s@%s", imageRef, reference, platform)
+	return buildCacheKey("manifest", key)
+}
+
 // getManifestTTL 根据引用类型智能确定TTL
 func getManifestTTL(reference string) time.Duration {
 	cfg := GetConfig()

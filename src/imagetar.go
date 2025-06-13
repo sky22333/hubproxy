@@ -78,7 +78,7 @@ func (is *ImageStreamer) StreamImageToWriter(ctx context.Context, imageRef strin
 
 	contextOptions := append(is.remoteOptions, remote.WithContext(ctx))
 
-	desc, err := is.getImageDescriptor(ref, contextOptions)
+	desc, err := is.getImageDescriptorWithPlatform(ref, contextOptions, options.Platform)
 	if err != nil {
 		return fmt.Errorf("获取镜像描述失败: %w", err)
 	}
@@ -94,6 +94,11 @@ func (is *ImageStreamer) StreamImageToWriter(ctx context.Context, imageRef strin
 
 // getImageDescriptor 获取镜像描述符
 func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote.Option) (*remote.Descriptor, error) {
+	return is.getImageDescriptorWithPlatform(ref, options, "")
+}
+
+// getImageDescriptorWithPlatform 获取指定平台的镜像描述符
+func (is *ImageStreamer) getImageDescriptorWithPlatform(ref name.Reference, options []remote.Option, platform string) (*remote.Descriptor, error) {
 	if isCacheEnabled() {
 		var reference string
 		if tagged, ok := ref.(name.Tag); ok {
@@ -103,14 +108,14 @@ func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote
 		}
 		
 		if reference != "" {
-			cacheKey := buildManifestCacheKey(ref.Context().String(), reference)
-					if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
-			desc := &remote.Descriptor{
-				Manifest: cachedItem.Data,
+			cacheKey := buildManifestCacheKeyWithPlatform(ref.Context().String(), reference, platform)
+			if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
+				desc := &remote.Descriptor{
+					Manifest: cachedItem.Data,
+				}
+				log.Printf("使用缓存的manifest: %s (平台: %s)", ref.String(), platform)
+				return desc, nil
 			}
-			log.Printf("使用缓存的manifest: %s", ref.String())
-			return desc, nil
-		}
 		}
 	}
 
@@ -128,13 +133,13 @@ func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote
 		}
 		
 		if reference != "" {
-			cacheKey := buildManifestCacheKey(ref.Context().String(), reference)
+			cacheKey := buildManifestCacheKeyWithPlatform(ref.Context().String(), reference, platform)
 			ttl := getManifestTTL(reference)
 			headers := map[string]string{
 				"Docker-Content-Digest": desc.Digest.String(),
 			}
 			globalCache.Set(cacheKey, desc.Manifest, string(desc.MediaType), headers, ttl)
-			log.Printf("缓存manifest: %s (TTL: %v)", ref.String(), ttl)
+			log.Printf("缓存manifest: %s (平台: %s, TTL: %v)", ref.String(), platform, ttl)
 		}
 	}
 
@@ -376,7 +381,7 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 	contextOptions := append(is.remoteOptions, remote.WithContext(ctx))
 
-	desc, err := is.getImageDescriptor(ref, contextOptions)
+	desc, err := is.getImageDescriptorWithPlatform(ref, contextOptions, options.Platform)
 	if err != nil {
 		return nil, nil, fmt.Errorf("获取镜像描述失败: %w", err)
 	}
