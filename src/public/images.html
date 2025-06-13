@@ -513,7 +513,7 @@
             <!-- 页面头部 -->
             <div class="header">
                 <h1 class="title">Docker离线镜像下载</h1>
-                <p class="subtitle">即点即下，无需等待打包，使用docker load加载镜像</p>
+                <p class="subtitle">即点即下，无需等待打包，完全符合docker load标准</p>
                 
                 <div class="features">
                     <div class="feature">
@@ -568,7 +568,7 @@
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-full" id="downloadBtn">
-                        <span id="downloadText">立即下载 (Docker格式)</span>
+                        <span id="downloadText">立即下载</span>
                         <span id="downloadLoading" class="loading hidden"></span>
                     </button>
                 </form>
@@ -576,17 +576,17 @@
 
             <!-- 批量下载 -->
             <div class="batch-section">
-                <h2 class="section-title">批量下载</h2>
+                <h2 class="section-title">多个镜像批量下载</h2>
                 
                 <div id="batchStatus"></div>
                 
                 <form id="batchForm">
                     <div class="form-group">
-                        <label class="form-label" for="imagesTextarea">镜像列表（每行一个）</label>
+                        <label class="form-label" for="imagesTextarea">镜像列表，每行一个，会将多个镜像合并为tar格式，完全兼容docker load</label>
                         <textarea 
                             id="imagesTextarea" 
                             class="textarea" 
-                            placeholder="nginx:latest&#10;redis:alpine&#10;ubuntu:20.04&#10;mysql:8.0"
+                            placeholder="alpine&#10;redis:alpine&#10;stilleshan/frpc:0.62.1"
                         ></textarea>
                     </div>
                     
@@ -605,7 +605,7 @@
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-full" id="batchDownloadBtn">
-                        <span id="batchDownloadText">批量下载 (Docker格式，自动压缩)</span>
+                        <span id="batchDownloadText">开始下载</span>
                         <span id="batchDownloadLoading" class="loading hidden"></span>
                     </button>
                 </form>
