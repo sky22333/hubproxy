@@ -103,14 +103,13 @@ func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote
 		
 		if reference != "" {
 			cacheKey := buildManifestCacheKey(ref.Context().String(), reference)
-			if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
-				desc := &remote.Descriptor{
-					Manifest:  cachedItem.Data,
-					MediaType: types.MediaType(cachedItem.ContentType),
-				}
-				log.Printf("使用缓存的manifest: %s", ref.String())
-				return desc, nil
+					if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
+			desc := &remote.Descriptor{
+				Manifest: cachedItem.Data,
 			}
+			log.Printf("使用缓存的manifest: %s", ref.String())
+			return desc, nil
+		}
 		}
 	}
 
@@ -278,45 +277,51 @@ func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.
 		default:
 		}
 
-		digest, err := layer.Digest()
-		if err != nil {
-			return err
-		}
-		layerDigests[i] = digest.String()
+		if err := func() error { // ✅ 匿名函数确保资源立即释放
+			digest, err := layer.Digest()
+			if err != nil {
+				return err
+			}
+			layerDigests[i] = digest.String()
 
-		layerDir := digest.String()
-		layerHeader := &tar.Header{
-			Name:     layerDir + "/",
-			Typeflag: tar.TypeDir,
-			Mode:     0755,
-		}
-		
-		if err := tarWriter.WriteHeader(layerHeader); err != nil {
-			return err
-		}
+			layerDir := digest.String()
+			layerHeader := &tar.Header{
+				Name:     layerDir + "/",
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+			}
+			
+			if err := tarWriter.WriteHeader(layerHeader); err != nil {
+				return err
+			}
 
-		layerReader, err := layer.Uncompressed()
-		if err != nil {
-			return err
-		}
-		defer layerReader.Close()
+			layerReader, err := layer.Uncompressed()
+			if err != nil {
+				return err
+			}
+			defer layerReader.Close() // ✅ 函数结束立即释放
 
-		size, err := layer.Size()
-		if err != nil {
-			return err
-		}
+			size, err := layer.Size()
+			if err != nil {
+				return err
+			}
 
-		layerTarHeader := &tar.Header{
-			Name: layerDir + "/layer.tar",
-			Size: size,
-			Mode: 0644,
-		}
-		
-		if err := tarWriter.WriteHeader(layerTarHeader); err != nil {
-			return err
-		}
+			layerTarHeader := &tar.Header{
+				Name: layerDir + "/layer.tar",
+				Size: size,
+				Mode: 0644,
+			}
+			
+			if err := tarWriter.WriteHeader(layerTarHeader); err != nil {
+				return err
+			}
 
-		if _, err := io.Copy(tarWriter, layerReader); err != nil {
+			if _, err := io.Copy(tarWriter, layerReader); err != nil {
+				return err
+			}
+
+			return nil
+		}(); err != nil {
 			return err
 		}
 
@@ -394,7 +399,7 @@ func handleDirectImageDownload(c *gin.Context) {
 
 	imageRef := strings.ReplaceAll(imageParam, "_", "/")
 	platform := c.Query("platform")
-	tag := c.DefaultQuery("tag")
+	tag := c.DefaultQuery("tag", "")
 
 	if tag != "" && !strings.Contains(imageRef, ":") && !strings.Contains(imageRef, "@") {
 		imageRef = imageRef + ":" + tag
