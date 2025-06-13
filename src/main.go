@@ -60,11 +60,14 @@ func main() {
 	// 初始化Docker流式代理
 	initDockerProxy()
 
+	// 初始化镜像流式下载器
+	initImageStreamer()
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
-	// 初始化skopeo路由（静态文件和API路由）
-	initSkopeoRoutes(router)
+	// 初始化镜像tar下载路由
+	initImageTarRoutes(router)
 	
 	// 静态文件路由（使用嵌入文件）
 	router.GET("/", func(c *gin.Context) {
@@ -74,8 +77,9 @@ func main() {
 		filepath := strings.TrimPrefix(c.Param("filepath"), "/")
 		serveEmbedFile(c, "public/"+filepath)
 	})
-	router.GET("/skopeo.html", func(c *gin.Context) {
-		serveEmbedFile(c, "public/skopeo.html")
+
+	router.GET("/images.html", func(c *gin.Context) {
+		serveEmbedFile(c, "public/images.html")
 	})
 	router.GET("/search.html", func(c *gin.Context) {
 		serveEmbedFile(c, "public/search.html")

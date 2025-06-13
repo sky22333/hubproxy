@@ -6,10 +6,8 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/go-containerregistry v0.20.5
-	github.com/gorilla/websocket v1.5.1
 	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/spf13/viper v1.20.1
-	golang.org/x/sync v0.14.0
 	golang.org/x/time v0.11.0
 )
 
@@ -55,6 +53,7 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect

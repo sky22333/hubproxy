@@ -62,7 +62,7 @@ else
     
     # 检查依赖
     missing_deps=()
-    for cmd in curl jq tar skopeo; do
+    for cmd in curl jq tar; do
         if ! command -v $cmd &> /dev/null; then
             missing_deps+=($cmd)
         fi
@@ -72,14 +72,14 @@ else
         echo -e "${YELLOW}检测到缺少依赖: ${missing_deps[*]}${NC}"
         echo -e "${BLUE}正在自动安装依赖...${NC}"
         
-        apt update && apt install -y curl jq skopeo
+        apt update && apt install -y curl jq
         if [ $? -ne 0 ]; then
             echo -e "${RED}依赖安装失败${NC}"
             exit 1
         fi
         
         # 重新检查依赖
-        for cmd in curl jq tar skopeo; do
+        for cmd in curl jq tar; do
             if ! command -v $cmd &> /dev/null; then
                 echo -e "${RED}依赖安装后仍缺少: $cmd${NC}"
                 exit 1

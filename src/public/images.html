@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Docker镜像流式下载工具,即点即下,无需等待">
+    <meta name="keywords" content="Docker,镜像下载,流式下载,即时下载">
+    <meta name="color-scheme" content="dark light">
+    <title>Docker离线镜像下载</title>
+    <link rel="icon" href="./favicon.ico">
+    <style>
+        :root {
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --card-foreground: #0f172a;
+            --primary: #2563eb;
+            --primary-foreground: #f8fafc;
+            --secondary: #f1f5f9;
+            --secondary-foreground: #0f172a;
+            --muted: #f1f5f9;
+            --muted-foreground: #64748b;
+            --accent: #f1f5f9;
+            --accent-foreground: #0f172a;
+            --border: #e2e8f0;
+            --input: #ffffff;
+            --ring: #2563eb;
+            --radius: 0.5rem;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        .dark {
+            --background: #0f172a;
+            --foreground: #f8fafc;
+            --card: #1e293b;
+            --card-foreground: #f8fafc;
+            --primary: #3b82f6;
+            --primary-foreground: #f8fafc;
+            --secondary: #1e293b;
+            --secondary-foreground: #f8fafc;
+            --muted: #1e293b;
+            --muted-foreground: #94a3b8;
+            --accent: #1e293b;
+            --accent-foreground: #f8fafc;
+            --border: #334155;
+            --input: #1e293b;
+            --ring: #3b82f6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #0f172a;
+                --foreground: #f8fafc;
+                --card: #1e293b;
+                --card-foreground: #f8fafc;
+                --primary: #3b82f6;
+                --primary-foreground: #f8fafc;
+                --secondary: #1e293b;
+                --secondary-foreground: #f8fafc;
+                --muted: #1e293b;
+                --muted-foreground: #94a3b8;
+                --accent: #1e293b;
+                --accent-foreground: #f8fafc;
+                --border: #334155;
+                --input: #1e293b;
+                --ring: #3b82f6;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            width: 100%;
+            border-bottom: 1px solid var(--border);
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 0;
+        }
+
+        .dark .navbar {
+            background-color: rgba(15, 23, 42, 0.95);
+        }
+
+        .navbar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 4rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--foreground);
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .logo-icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            text-decoration: none;
+            color: var(--muted-foreground);
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--foreground);
+            background-color: var(--muted);
+        }
+
+        .theme-toggle {
+            padding: 0.5rem;
+            border: none;
+            border-radius: var(--radius);
+            background-color: transparent;
+            color: var(--muted-foreground);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--muted);
+            color: var(--foreground);
+        }
+
+        /* 主要内容 */
+        .main {
+            flex: 1;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: var(--muted-foreground);
+            margin-bottom: 2rem;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-weight: 500;
+        }
+
+        .feature-icon {
+            font-size: 1.25rem;
+        }
+
+        /* 下载区域 */
+        .download-section,
+        .batch-section {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--foreground);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--foreground);
+        }
+
+        .form-input,
+        .form-select,
+        .textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background-color: var(--input);
+            color: var(--foreground);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .textarea:focus {
+            outline: none;
+            border-color: var(--ring);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #1d4ed8;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-error {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .help-text {
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+            margin-top: 0.25rem;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .navbar-container {
+                padding: 0 0.5rem;
+            }
+            
+            .nav-links {
+                gap: 0.25rem;
+            }
+            
+            .nav-link {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            .main {
+                padding: 1rem 0.5rem;
+            }
+            
+            .download-section,
+            .batch-section {
+                padding: 1.5rem;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* 移动端菜单样式 - 与其他页面完全一致 */
+        .mobile-menu-toggle {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-container {
+                padding: 0 0.5rem;
+            }
+            
+            .nav-links {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background: var(--background);
+                border: 1px solid var(--border);
+                border-top: none;
+                border-radius: 0 0 12px 12px;
+                padding: 1rem;
+                flex-direction: column;
+                gap: 0.5rem;
+                z-index: 1000;
+                transform: translateY(-100vh);
+                transition: transform 0.3s ease;
+            }
+            
+            .nav-links.active {
+                transform: translateY(0);
+            }
+            
+            .mobile-menu-toggle {
+                display: block !important;
+                background: none;
+                border: none;
+                color: var(--foreground);
+                font-size: 1.5rem;
+                cursor: pointer;
+                padding: 0.5rem;
+                border-radius: var(--radius);
+                transition: background-color 0.2s;
+            }
+            
+            .mobile-menu-toggle:hover {
+                background-color: var(--muted);
+            }
+            
+            .navbar-container {
+                justify-content: space-between !important;
+            }
+            
+            .main {
+                padding: 1rem 0.5rem;
+            }
+            
+            .download-section,
+            .batch-section {
+                padding: 1.5rem;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 现代化导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    ⚡
+                </div>
+                加速服务
+            </a>
+            
+            <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                ☰
+            </button>
+            
+            <div class="nav-links" id="navLinks">
+                <a href="/" class="nav-link">🚀 GitHub加速</a>
+                <a href="/images.html" class="nav-link active">🐳 离线镜像下载</a>
+                <a href="/search.html" class="nav-link">🔍 镜像搜索</a>
+                <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="nav-link">📄 Hosts</a>
+                
+                <button class="theme-toggle" id="themeToggle">
+                    🌙
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="main">
+        <div class="container">
+            <!-- 页面头部 -->
+            <div class="header">
+                <h1 class="title">Docker离线镜像下载</h1>
+                <p class="subtitle">即点即下，无需等待打包，使用docker load加载镜像</p>
+                
+                <div class="features">
+                    <div class="feature">
+                        <span class="feature-icon">⚡</span>
+                        <span>即时下载</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🔄</span>
+                        <span>流式传输</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">💾</span>
+                        <span>无需打包</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🏗️</span>
+                        <span>多架构支持</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 单镜像下载 -->
+            <div class="download-section">
+                <h2 class="section-title">单镜像下载</h2>
+                
+                <div id="singleStatus"></div>
+                
+                <form id="singleForm">
+                    <div class="form-group">
+                        <label class="form-label" for="imageInput">镜像名称</label>
+                        <input 
+                            type="text" 
+                            id="imageInput" 
+                            class="form-input" 
+                            placeholder="例如: nginx:latest, ubuntu:20.04, redis:alpine"
+                            value="nginx:latest"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="platformInput">目标平台（可选）</label>
+                        <input 
+                            type="text" 
+                            id="platformInput" 
+                            class="form-input" 
+                            placeholder="linux/amd64"
+                            value="linux/amd64"
+                        >
+                        <div class="help-text">
+                            常用平台: linux/amd64, linux/arm64, linux/arm/v7
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full" id="downloadBtn">
+                        <span id="downloadText">立即下载 (Docker格式)</span>
+                        <span id="downloadLoading" class="loading hidden"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- 批量下载 -->
+            <div class="batch-section">
+                <h2 class="section-title">批量下载</h2>
+                
+                <div id="batchStatus"></div>
+                
+                <form id="batchForm">
+                    <div class="form-group">
+                        <label class="form-label" for="imagesTextarea">镜像列表（每行一个）</label>
+                        <textarea 
+                            id="imagesTextarea" 
+                            class="textarea" 
+                            placeholder="nginx:latest&#10;redis:alpine&#10;ubuntu:20.04&#10;mysql:8.0"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="batchPlatformInput">目标平台（可选）</label>
+                        <input 
+                            type="text" 
+                            id="batchPlatformInput" 
+                            class="form-input" 
+                            placeholder="linux/amd64"
+                            value="linux/amd64"
+                        >
+                        <div class="help-text">
+                            所有镜像将使用相同的目标平台
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full" id="batchDownloadBtn">
+                        <span id="batchDownloadText">批量下载 (Docker格式，自动压缩)</span>
+                        <span id="batchDownloadLoading" class="loading hidden"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function initTheme() {
+            const themeToggle = document.getElementById('themeToggle');
+            const html = document.documentElement;
+                     
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                html.classList.add('dark');
+                themeToggle.textContent = '☀️';
+            }
+            
+            themeToggle.addEventListener('click', () => {
+                html.classList.toggle('dark');
+                const isDark = html.classList.contains('dark');
+                themeToggle.textContent = isDark ? '☀️' : '🌙';
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            });
+        }
+
+        // 显示状态消息
+        function showStatus(elementId, message, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.className = `status status-${type}`;
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        // 隐藏状态消息
+        function hideStatus(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+
+        // 设置按钮加载状态
+        function setButtonLoading(btnId, textId, loadingId, loading) {
+            const btn = document.getElementById(btnId);
+            const text = document.getElementById(textId);
+            const loadingSpinner = document.getElementById(loadingId);
+            
+            btn.disabled = loading;
+            if (loading) {
+                text.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden');
+            } else {
+                text.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+            }
+        }
+
+        // 构建下载URL
+        function buildDownloadUrl(imageName, platform = '') {
+            // 将斜杠替换为下划线以适应URL路径
+            const encodedImage = imageName.replace(/\//g, '_');
+            let url = `/api/image/download/${encodedImage}`;
+            
+            // 只有指定平台时才添加查询参数
+            if (platform && platform.trim()) {
+                url += `?platform=${encodeURIComponent(platform.trim())}`;
+            }
+            
+            return url;
+        }
+
+        // 单镜像下载
+        document.getElementById('singleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const imageName = document.getElementById('imageInput').value.trim();
+            if (!imageName) {
+                showStatus('singleStatus', '请输入镜像名称', 'error');
+                return;
+            }
+            
+            const platform = document.getElementById('platformInput').value.trim();
+            
+            hideStatus('singleStatus');
+            setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', true);
+            
+            // 创建下载链接并触发下载
+            const downloadUrl = buildDownloadUrl(imageName, platform);
+            
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = ''; // 让浏览器决定文件名
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            
+            // 触发下载
+            link.click();
+            document.body.removeChild(link);
+            
+            // 显示成功消息
+            const platformText = platform ? ` (${platform})` : '';
+            showStatus('singleStatus', `开始下载 ${imageName}${platformText}，请查看浏览器下载进度`, 'success');
+            setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', false);
+        });
+
+        // 批量下载
+        document.getElementById('batchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const imagesText = document.getElementById('imagesTextarea').value.trim();
+            if (!imagesText) {
+                showStatus('batchStatus', '请输入镜像列表', 'error');
+                return;
+            }
+            
+            const images = imagesText.split('\n')
+                .map(line => line.trim())
+                .filter(line => line && !line.startsWith('#'));
+            
+            if (images.length === 0) {
+                showStatus('batchStatus', '镜像列表为空', 'error');
+                return;
+            }
+            
+            const platform = document.getElementById('batchPlatformInput').value.trim();
+            
+            const options = {
+                images: images
+            };
+            
+            // 如果指定了平台，添加到选项中
+            if (platform) {
+                options.platform = platform;
+            }
+            
+            hideStatus('batchStatus');
+            setButtonLoading('batchDownloadBtn', 'batchDownloadText', 'batchDownloadLoading', true);
+            
+            try {
+                const response = await fetch('/api/image/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(options)
+                });
+                
+                if (response.ok) {
+                    // 获取文件名
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = `batch_${images.length}_images.docker.gz`;
+                    
+                    if (contentDisposition) {
+                        const matches = contentDisposition.match(/filename="(.+)"/);
+                        if (matches) filename = matches[1];
+                    }
+                    
+                    // 创建blob并下载
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    
+                    const platformText = platform ? ` (${platform})` : '';
+                    showStatus('batchStatus', `开始下载 ${images.length} 个镜像${platformText}，请查看浏览器下载进度`, 'success');
+                } else {
+                    const error = await response.json();
+                    showStatus('batchStatus', error.error || '下载失败', 'error');
+                }
+            } catch (error) {
+                showStatus('batchStatus', '网络错误: ' + error.message, 'error');
+            } finally {
+                setButtonLoading('batchDownloadBtn', 'batchDownloadText', 'batchDownloadLoading', false);
+            }
+        });
+
+        function initMobileMenu() {
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (mobileMenuToggle && navLinks) {
+                mobileMenuToggle.addEventListener('click', () => {
+                    navLinks.classList.toggle('active');
+                });
+                
+                navLinks.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('nav-link')) {
+                        navLinks.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        // 初始化
+        initTheme();
+        initMobileMenu();
+    </script>
+</body>
+</html> 
