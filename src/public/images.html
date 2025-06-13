@@ -513,7 +513,7 @@
             <!-- 页面头部 -->
             <div class="header">
                 <h1 class="title">Docker离线镜像下载</h1>
-                <p class="subtitle">即点即下，无需等待打包，完全符合docker load标准</p>
+                <p class="subtitle">即点即下，无需等待打包，完全符合docker load加载标准</p>
                 
                 <div class="features">
                     <div class="feature">
@@ -582,7 +582,7 @@
                 
                 <form id="batchForm">
                     <div class="form-group">
-                        <label class="form-label" for="imagesTextarea">镜像列表，每行一个，会将多个镜像合并为tar格式，完全兼容docker load</label>
+                        <label class="form-label" for="imagesTextarea">镜像列表，每行一个，会将多个镜像自动合并，符合官方标准，完全兼容docker load</label>
                         <textarea 
                             id="imagesTextarea" 
                             class="textarea" 
@@ -756,7 +756,7 @@
                 if (response.ok) {
                     // 获取文件名
                     const contentDisposition = response.headers.get('Content-Disposition');
-                    let filename = `batch_${images.length}_images.docker.gz`;
+                    let filename = `batch_${images.length}_images.tar`;
                     
                     if (contentDisposition) {
                         const matches = contentDisposition.match(/filename="(.+)"/);

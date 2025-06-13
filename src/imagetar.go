@@ -160,48 +160,9 @@ func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, 
 
 // streamMultiArchImage 处理多架构镜像
 func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option, imageRef string) error {
-	index, err := desc.ImageIndex()
+	img, err := is.selectPlatformImage(desc, options)
 	if err != nil {
-		return fmt.Errorf("获取镜像索引失败: %w", err)
-	}
-
-	manifest, err := index.IndexManifest()
-	if err != nil {
-		return fmt.Errorf("获取索引清单失败: %w", err)
-	}
-
-	// 选择合适的平台
-	var selectedDesc *v1.Descriptor
-	for _, m := range manifest.Manifests {
-		if m.Platform == nil {
-			continue
-		}
-		
-		if options.Platform != "" {
-			platformParts := strings.Split(options.Platform, "/")
-			if len(platformParts) == 2 && 
-				m.Platform.OS == platformParts[0] && 
-				m.Platform.Architecture == platformParts[1] {
-				selectedDesc = &m
-				break
-			}
-		} else if m.Platform.OS == "linux" && m.Platform.Architecture == "amd64" {
-			selectedDesc = &m
-			break
-		}
-	}
-
-	if selectedDesc == nil && len(manifest.Manifests) > 0 {
-		selectedDesc = &manifest.Manifests[0]
-	}
-
-	if selectedDesc == nil {
-		return fmt.Errorf("未找到合适的平台镜像")
-	}
-
-	img, err := index.Image(selectedDesc.Digest)
-	if err != nil {
-		return fmt.Errorf("获取选中镜像失败: %w", err)
+		return err
 	}
 
 	return is.streamImageLayers(ctx, img, writer, options, imageRef)
@@ -427,7 +388,28 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 	switch desc.MediaType {
 	case types.OCIImageIndex, types.DockerManifestList:
-		return nil, nil, fmt.Errorf("批量下载暂不支持多架构镜像")
+		// 处理多架构镜像，复用单个下载的逻辑
+		img, err := is.selectPlatformImage(desc, options)
+		if err != nil {
+			return nil, nil, fmt.Errorf("选择平台镜像失败: %w", err)
+		}
+
+		layers, err := img.Layers()
+		if err != nil {
+			return nil, nil, fmt.Errorf("获取镜像层失败: %w", err)
+		}
+
+		configFile, err := img.ConfigFile()
+		if err != nil {
+			return nil, nil, fmt.Errorf("获取镜像配置失败: %w", err)
+		}
+
+		log.Printf("镜像包含 %d 层", len(layers))
+
+		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories)
+		if err != nil {
+			return nil, nil, err
+		}
 	case types.OCIManifestSchema1, types.DockerManifestSchema2:
 		img, err := desc.Image()
 		if err != nil {
@@ -475,6 +457,55 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 	}
 
 	return manifest, repositories, nil
+}
+
+// selectPlatformImage 从多架构镜像中选择合适的平台镜像
+func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *StreamOptions) (v1.Image, error) {
+	index, err := desc.ImageIndex()
+	if err != nil {
+		return nil, fmt.Errorf("获取镜像索引失败: %w", err)
+	}
+
+	manifest, err := index.IndexManifest()
+	if err != nil {
+		return nil, fmt.Errorf("获取索引清单失败: %w", err)
+	}
+
+	// 选择合适的平台
+	var selectedDesc *v1.Descriptor
+	for _, m := range manifest.Manifests {
+		if m.Platform == nil {
+			continue
+		}
+		
+		if options.Platform != "" {
+			platformParts := strings.Split(options.Platform, "/")
+			if len(platformParts) == 2 && 
+				m.Platform.OS == platformParts[0] && 
+				m.Platform.Architecture == platformParts[1] {
+				selectedDesc = &m
+				break
+			}
+		} else if m.Platform.OS == "linux" && m.Platform.Architecture == "amd64" {
+			selectedDesc = &m
+			break
+		}
+	}
+
+	if selectedDesc == nil && len(manifest.Manifests) > 0 {
+		selectedDesc = &manifest.Manifests[0]
+	}
+
+	if selectedDesc == nil {
+		return nil, fmt.Errorf("未找到合适的平台镜像")
+	}
+
+	img, err := index.Image(selectedDesc.Digest)
+	if err != nil {
+		return nil, fmt.Errorf("获取选中镜像失败: %w", err)
+	}
+
+	return img, nil
 }
 
 var globalImageStreamer *ImageStreamer
@@ -569,17 +600,16 @@ func handleSimpleBatchDownload(c *gin.Context) {
 
 	options := &StreamOptions{
 		Platform:    req.Platform,
-		Compression: true,
+		Compression: false,
 	}
 
 	ctx := c.Request.Context()
 	log.Printf("批量下载 %d 个镜像 (平台: %s)", len(req.Images), formatPlatformText(req.Platform))
 
-	filename := fmt.Sprintf("batch_%d_images.docker.gz", len(req.Images))
+	filename := fmt.Sprintf("batch_%d_images.tar", len(req.Images))
 	
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-	c.Header("Content-Encoding", "gzip")
 
 	if err := globalImageStreamer.StreamMultipleImages(ctx, req.Images, c.Writer, options); err != nil {
 		log.Printf("批量镜像下载失败: %v", err)
