@@ -101,11 +101,11 @@ example.com {
 host = "0.0.0.0"
 # 监听端口
 port = 5000
-# 文件大小限制（字节），默认2GB
+# Github文件大小限制（字节），默认2GB
 fileSize = 2147483648
 
 [rateLimit]
-# 每个IP每小时允许的请求数(Docker镜像每个层为一个请求)
+# 每个IP每小时允许的请求数(注意Docker镜像每个层为一个请求)
 requestLimit = 200
 # 限流周期（小时）
 periodHours = 1.0
