@@ -141,7 +141,7 @@ blackList = [
 # 批量下载离线镜像数量限制
 maxImages = 10
 
-# Registry映射配置，支持多种Container Registry
+# Registry映射配置，支持多种镜像仓库上游
 [registries]
 
 # GitHub Container Registry
