@@ -3,24 +3,24 @@
 host = "0.0.0.0"
 # 监听端口
 port = 5000
-# 文件大小限制（字节），默认2GB
+# Github文件大小限制（字节），默认2GB
 fileSize = 2147483648
 
 [rateLimit]
-# 每个IP每小时允许的请求数(Docker镜像每个层为一个请求)
+# 每个IP每小时允许的请求数(注意Docker镜像每个层为一个请求)
 requestLimit = 200
 # 限流周期（小时）
 periodHours = 1.0
 
 [security]
-# IP白名单，支持单个IP或CIDR格式
+# IP白名单，支持单个IP或IP段
 # 白名单中的IP不受限流限制
 whiteList = [
     "127.0.0.1",
     "192.168.1.0/24"
 ]
 
-# IP黑名单，支持单个IP或CIDR格式  
+# IP黑名单，支持单个IP或IP段
 # 黑名单中的IP将被直接拒绝访问
 blackList = [
     "192.168.100.1"
@@ -40,10 +40,10 @@ blackList = [
 ] 
 
 [download]
-# 单次并发下载离线镜像数量限制
+# 批量下载离线镜像数量限制
 maxImages = 10
 
-# Registry映射配置，支持多种Container Registry
+# Registry映射配置，支持多种镜像仓库上游
 [registries]
 
 # GitHub Container Registry
@@ -74,16 +74,8 @@ authHost = "registry.k8s.io"
 authType = "anonymous"
 enabled = true
 
-# 私有Registry示例（默认禁用）
-# [registries."harbor.company.com"]
-# upstream = "harbor.company.com"
-# authHost = "harbor.company.com/service/token"
-# authType = "basic"
-# enabled = false
-
-# 缓存配置：Docker临时Token和Manifest统一管理，显著提升性能
 [tokenCache]
-# 是否启用缓存(同时控制Token和Manifest缓存)
+# 是否启用缓存(同时控制Token和Manifest缓存)显著提升性能
 enabled = true
-# 默认缓存时间
+# 默认缓存时间(分钟)
 defaultTTL = "20m"
