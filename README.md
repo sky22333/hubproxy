@@ -74,7 +74,7 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 
 
 
-## ⚙️ 提示
+## ⚙️ 配置
 
 容器内的配置文件位于 `/root/config.toml`
 
@@ -91,6 +91,94 @@ example.com {
     }
 }
 ```
+
+### `config.toml`配置示例
+
+不配置也可以，程序内置有默认值
+```
+[server]
+# 监听地址，默认监听所有接口
+host = "0.0.0.0"
+# 监听端口
+port = 5000
+# 文件大小限制（字节），默认2GB
+fileSize = 2147483648
+
+[rateLimit]
+# 每个IP每小时允许的请求数(Docker镜像每个层为一个请求)
+requestLimit = 200
+# 限流周期（小时）
+periodHours = 1.0
+
+[security]
+# IP白名单，支持单个IP或IP段
+# 白名单中的IP不受限流限制
+whiteList = [
+    "127.0.0.1",
+    "192.168.1.0/24"
+]
+
+# IP黑名单，支持单个IP或IP段
+# 黑名单中的IP将被直接拒绝访问
+blackList = [
+    "192.168.100.1"
+]
+
+[proxy]
+# 代理服务白名单（支持GitHub仓库和Docker镜像，支持通配符）
+# 只允许访问白名单中的仓库/镜像，为空时不限制
+whiteList = []
+
+# 代理服务黑名单（支持GitHub仓库和Docker镜像，支持通配符）
+# 禁止访问黑名单中的仓库/镜像
+blackList = [
+    "baduser/malicious-repo",
+    "*/malicious-repo",
+    "baduser/*"
+] 
+
+[download]
+# 批量下载离线镜像数量限制
+maxImages = 10
+
+# Registry映射配置，支持多种Container Registry
+[registries]
+
+# GitHub Container Registry
+[registries."ghcr.io"]
+upstream = "ghcr.io"
+authHost = "ghcr.io/token" 
+authType = "github"
+enabled = true
+
+# Google Container Registry
+[registries."gcr.io"]
+upstream = "gcr.io"
+authHost = "gcr.io/v2/token"
+authType = "google"
+enabled = true
+
+# Quay.io Container Registry
+[registries."quay.io"]
+upstream = "quay.io"
+authHost = "quay.io/v2/auth"
+authType = "quay"
+enabled = true
+
+# Kubernetes Container Registry
+[registries."registry.k8s.io"]
+upstream = "registry.k8s.io"
+authHost = "registry.k8s.io"
+authType = "anonymous"
+enabled = true
+
+[tokenCache]
+# 是否启用缓存(同时控制Token和Manifest缓存)显著提升性能
+enabled = true
+# 默认缓存时间(分钟)
+defaultTTL = "20m"
+```
+
 
 
 ## ⚠️ 免责声明
