@@ -29,13 +29,13 @@ docker run -d \
 
 
 
-### 一键安装
+### 一键脚本安装
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install-service.sh | sudo bash
 ```
 
-可直接下载二进制文件执行`./hubproxy`使用，无需配置文件即可启动，内置默认配置，支持所有功能。初始内存占用约18M，二进制文件大小约12M
+也可以直接下载二进制文件执行`./hubproxy`使用，无需配置文件即可启动，内置默认配置，支持所有功能。初始内存占用约18M，二进制文件大小约12M
 
 这个命令会：
 - 🔍 自动检测系统架构（AMD64/ARM64）
@@ -54,10 +54,10 @@ curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install-serv
 docker pull nginx
 
 # 使用加速
-docker pull demo.52013120.xyz/nginx
+docker pull yourdomain.com/nginx
 
 # ghcr加速
-docker pull demo.52013120.xyz/ghcr.io/sky22333/hubproxy
+docker pull yourdomain.com/ghcr.io/sky22333/hubproxy
 
 # 符合Docker Registry API v2标准的仓库都支持
 ```
