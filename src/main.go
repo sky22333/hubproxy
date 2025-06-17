@@ -171,11 +171,11 @@ func handler(c *gin.Context) {
 		rawPath = strings.Replace(rawPath, "/blob/", "/raw/", 1)
 	}
 
-	proxy(c, rawPath)
+	proxyRequest(c, rawPath)
 }
 
 
-func proxy(c *gin.Context, u string) {
+func proxyRequest(c *gin.Context, u string) {
 	proxyWithRedirect(c, u, 0)
 }
 

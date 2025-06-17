@@ -41,7 +41,7 @@ func (s *SmartRateLimit) ShouldSkipRateLimit(ip, path string) bool {
 		return false
 	}
 	
-	sessionKey := ip
+	sessionKey := normalizeIPForRateLimit(ip)
 	sessionInterface, _ := s.sessions.LoadOrStore(sessionKey, &PullSession{})
 	session := sessionInterface.(*PullSession)
 	
