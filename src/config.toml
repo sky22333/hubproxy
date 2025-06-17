@@ -37,7 +37,13 @@ blackList = [
     "baduser/malicious-repo",
     "*/malicious-repo",
     "baduser/*"
-] 
+]
+
+# SOCKS5代理配置，支持有用户名/密码认证和无认证模式
+# 无认证: socks5://127.0.0.1:1080
+# 有认证: socks5://username:password@127.0.0.1:1080
+# 留空不使用代理
+socks5 = "" 
 
 [download]
 # 批量下载离线镜像数量限制

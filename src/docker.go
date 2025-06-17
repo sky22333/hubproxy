@@ -72,6 +72,7 @@ func initDockerProxy() {
 	options := []remote.Option{
 		remote.WithAuth(authn.Anonymous),
 		remote.WithUserAgent("hubproxy/go-containerregistry"),
+		remote.WithTransport(GetGlobalHTTPClient().Transport),
 	}
 
 	dockerProxy = &DockerProxy{
@@ -407,9 +408,10 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 		authURL += "?" + c.Request.URL.RawQuery
 	}
 
-	// 创建HTTP客户端
+	// 创建HTTP客户端，复用全局传输配置（包含代理设置）
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout:   30 * time.Second,
+		Transport: GetGlobalHTTPClient().Transport,
 	}
 
 	// 创建请求
@@ -664,6 +666,7 @@ func createUpstreamOptions(mapping RegistryMapping) []remote.Option {
 	options := []remote.Option{
 		remote.WithAuth(authn.Anonymous),
 		remote.WithUserAgent("hubproxy/go-containerregistry"),
+		remote.WithTransport(GetGlobalHTTPClient().Transport),
 	}
 
 	// 根据Registry类型添加特定的认证选项（方便后续扩展）

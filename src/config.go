@@ -42,6 +42,7 @@ type AppConfig struct {
 	Proxy struct {
 		WhiteList []string `toml:"whiteList"` // 代理白名单（仓库级别）
 		BlackList []string `toml:"blackList"` // 代理黑名单（仓库级别）
+		Socks5    string   `toml:"socks5"`    // SOCKS5代理地址: socks5://[user:pass@]host:port
 	} `toml:"proxy"`
 
 	Download struct {
@@ -97,9 +98,11 @@ func DefaultConfig() *AppConfig {
 		Proxy: struct {
 			WhiteList []string `toml:"whiteList"`
 			BlackList []string `toml:"blackList"`
+			Socks5    string   `toml:"socks5"`
 		}{
 			WhiteList: []string{},
 			BlackList: []string{},
+			Socks5:    "", // 默认不使用代理
 		},
 		Download: struct {
 			MaxImages int `toml:"maxImages"`
