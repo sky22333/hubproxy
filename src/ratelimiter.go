@@ -250,15 +250,22 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 			ip = c.ClientIP()
 		}
 		
-		// 提取纯IP地址（去除端口号）
+		// 提取纯IP地址（去除可能存在的端口）
 		cleanIP := extractIPFromAddress(ip)
 		
 		// 日志记录请求IP和头信息
-		fmt.Printf("请求IP: %s (去除端口后: %s), X-Forwarded-For: %s, X-Real-IP: %s\n", 
-			ip, 
-			cleanIP,
-			c.GetHeader("X-Forwarded-For"), 
-			c.GetHeader("X-Real-IP"))
+		normalizedIP := normalizeIPForRateLimit(cleanIP)
+		if cleanIP != normalizedIP {
+			fmt.Printf("请求IP: %s (提纯后: %s, 限流段: %s), X-Forwarded-For: %s, X-Real-IP: %s\n", 
+				ip, cleanIP, normalizedIP,
+				c.GetHeader("X-Forwarded-For"), 
+				c.GetHeader("X-Real-IP"))
+		} else {
+			fmt.Printf("请求IP: %s (提纯后: %s), X-Forwarded-For: %s, X-Real-IP: %s\n", 
+				ip, cleanIP,
+				c.GetHeader("X-Forwarded-For"), 
+				c.GetHeader("X-Real-IP"))
+		}
 		
 		// 获取限流器并检查是否允许访问
 		ipLimiter, allowed := limiter.GetLimiter(cleanIP)
