@@ -278,16 +278,16 @@ func (is *ImageStreamer) streamImageLayers(ctx context.Context, img v1.Image, wr
 
 	log.Printf("镜像包含 %d 层", len(layers))
 
-	return is.streamDockerFormat(ctx, tarWriter, img, layers, configFile, imageRef)
+	return is.streamDockerFormat(ctx, tarWriter, img, layers, configFile, imageRef, options)
 }
 
 // streamDockerFormat 生成Docker格式
-func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.Writer, img v1.Image, layers []v1.Layer, configFile *v1.ConfigFile, imageRef string) error {
-	return is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, nil, nil)
+func (is *ImageStreamer) streamDockerFormat(ctx context.Context, tarWriter *tar.Writer, img v1.Image, layers []v1.Layer, configFile *v1.ConfigFile, imageRef string, options *StreamOptions) error {
+	return is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, nil, nil, options)
 }
 
 // streamDockerFormatWithReturn 生成Docker格式并返回manifest和repositories信息
-func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWriter *tar.Writer, img v1.Image, layers []v1.Layer, configFile *v1.ConfigFile, imageRef string, manifestOut *map[string]interface{}, repositoriesOut *map[string]map[string]string) error {
+func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWriter *tar.Writer, img v1.Image, layers []v1.Layer, configFile *v1.ConfigFile, imageRef string, manifestOut *map[string]interface{}, repositoriesOut *map[string]map[string]string, options *StreamOptions) error {
 	configDigest, err := img.ConfigName()
 	if err != nil {
 		return err
@@ -491,7 +491,7 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 		log.Printf("镜像包含 %d 层", len(layers))
 
-		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories)
+		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -513,7 +513,7 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 		log.Printf("镜像包含 %d 层", len(layers))
 
-		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories)
+		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -535,7 +535,7 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 		log.Printf("镜像包含 %d 层", len(layers))
 
-		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories)
+		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
 		if err != nil {
 			return nil, nil, err
 		}
