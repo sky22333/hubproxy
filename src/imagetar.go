@@ -33,16 +33,18 @@ type DebounceEntry struct {
 
 // DownloadDebouncer 下载防抖器
 type DownloadDebouncer struct {
-	mu      sync.RWMutex
-	entries map[string]*DebounceEntry
-	window  time.Duration
+	mu          sync.RWMutex
+	entries     map[string]*DebounceEntry
+	window      time.Duration
+	lastCleanup time.Time
 }
 
 // NewDownloadDebouncer 创建下载防抖器
 func NewDownloadDebouncer(window time.Duration) *DownloadDebouncer {
 	return &DownloadDebouncer{
-		entries: make(map[string]*DebounceEntry),
-		window:  window,
+		entries:     make(map[string]*DebounceEntry),
+		window:      window,
+		lastCleanup: time.Now(),
 	}
 }
 
@@ -66,9 +68,10 @@ func (d *DownloadDebouncer) ShouldAllow(userID, contentKey string) bool {
 		UserID:      userID,
 	}
 	
-	// 清理过期条目（简单策略：每100次请求清理一次）
-	if len(d.entries)%100 == 0 {
+	// 清理过期条目（每5分钟清理一次）
+	if time.Since(d.lastCleanup) > 5*time.Minute {
 		d.cleanup(now)
+		d.lastCleanup = now
 	}
 	
 	return true
@@ -128,8 +131,8 @@ var (
 func initDebouncer() {
 	// 单个镜像：5秒防抖窗口
 	singleImageDebouncer = NewDownloadDebouncer(5 * time.Second)
-	// 批量镜像：30秒防抖窗口（影响更大，需要更长保护）
-	batchImageDebouncer = NewDownloadDebouncer(30 * time.Second)
+	// 批量镜像：60秒防抖窗口
+	batchImageDebouncer = NewDownloadDebouncer(60 * time.Second)
 }
 
 // ImageStreamer 镜像流式下载器
@@ -454,7 +457,31 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 	return err
 }
 
-// streamSingleImageForBatch 为批量下载流式处理单个镜像
+// processImageForBatch 处理镜像的公共逻辑，用于批量下载
+func (is *ImageStreamer) processImageForBatch(ctx context.Context, img v1.Image, tarWriter *tar.Writer, imageRef string, options *StreamOptions) (map[string]interface{}, map[string]map[string]string, error) {
+	layers, err := img.Layers()
+	if err != nil {
+		return nil, nil, fmt.Errorf("获取镜像层失败: %w", err)
+	}
+
+	configFile, err := img.ConfigFile()
+	if err != nil {
+		return nil, nil, fmt.Errorf("获取镜像配置失败: %w", err)
+	}
+
+	log.Printf("镜像包含 %d 层", len(layers))
+
+	var manifest map[string]interface{}
+	var repositories map[string]map[string]string
+	
+	err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	return manifest, repositories, nil
+}
+
 func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWriter *tar.Writer, imageRef string, options *StreamOptions) (map[string]interface{}, map[string]map[string]string, error) {
 	ref, err := name.ParseReference(imageRef)
 	if err != nil {
@@ -468,83 +495,29 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 		return nil, nil, fmt.Errorf("获取镜像描述失败: %w", err)
 	}
 
-	var manifest map[string]interface{}
-	var repositories map[string]map[string]string
+	var img v1.Image
 
 	switch desc.MediaType {
 	case types.OCIImageIndex, types.DockerManifestList:
 		// 处理多架构镜像
-		img, err := is.selectPlatformImage(desc, options)
+		img, err = is.selectPlatformImage(desc, options)
 		if err != nil {
 			return nil, nil, fmt.Errorf("选择平台镜像失败: %w", err)
 		}
-
-		layers, err := img.Layers()
-		if err != nil {
-			return nil, nil, fmt.Errorf("获取镜像层失败: %w", err)
-		}
-
-		configFile, err := img.ConfigFile()
-		if err != nil {
-			return nil, nil, fmt.Errorf("获取镜像配置失败: %w", err)
-		}
-
-		log.Printf("镜像包含 %d 层", len(layers))
-
-		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
-		if err != nil {
-			return nil, nil, err
-		}
 	case types.OCIManifestSchema1, types.DockerManifestSchema2:
-		img, err := desc.Image()
+		img, err = desc.Image()
 		if err != nil {
 			return nil, nil, fmt.Errorf("获取镜像失败: %w", err)
-		}
-
-		layers, err := img.Layers()
-		if err != nil {
-			return nil, nil, fmt.Errorf("获取镜像层失败: %w", err)
-		}
-
-		configFile, err := img.ConfigFile()
-		if err != nil {
-			return nil, nil, fmt.Errorf("获取镜像配置失败: %w", err)
-		}
-
-		log.Printf("镜像包含 %d 层", len(layers))
-
-		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
-		if err != nil {
-			return nil, nil, err
 		}
 	default:
-		img, err := desc.Image()
+		img, err = desc.Image()
 		if err != nil {
 			return nil, nil, fmt.Errorf("获取镜像失败: %w", err)
-		}
-
-		layers, err := img.Layers()
-		if err != nil {
-			return nil, nil, fmt.Errorf("获取镜像层失败: %w", err)
-		}
-
-		configFile, err := img.ConfigFile()
-		if err != nil {
-			return nil, nil, fmt.Errorf("获取镜像配置失败: %w", err)
-		}
-
-		log.Printf("镜像包含 %d 层", len(layers))
-
-		err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
-		if err != nil {
-			return nil, nil, err
 		}
 	}
 
-	return manifest, repositories, nil
+	return is.processImageForBatch(ctx, img, tarWriter, imageRef, options)
 }
-
-
 
 // selectPlatformImage 从多架构镜像中选择合适的平台镜像
 func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *StreamOptions) (v1.Image, error) {
@@ -609,7 +582,6 @@ var globalImageStreamer *ImageStreamer
 // initImageStreamer 初始化镜像下载器
 func initImageStreamer() {
 	globalImageStreamer = NewImageStreamer(nil)
-	// 镜像下载器初始化完成
 }
 
 // formatPlatformText 格式化平台文本
@@ -721,7 +693,7 @@ func handleSimpleBatchDownload(c *gin.Context) {
 	if !batchImageDebouncer.ShouldAllow(userID, contentKey) {
 		c.JSON(http.StatusTooManyRequests, gin.H{
 			"error": "批量下载请求过于频繁，请稍后再试",
-			"retry_after": 30,
+			"retry_after": 60,
 		})
 		return
 	}
