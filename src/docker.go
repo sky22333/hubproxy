@@ -364,11 +364,9 @@ func proxyDockerAuthWithCache(c *gin.Context) {
 		globalCache.SetToken(cacheKey, string(recorder.body), ttl)
 	}
 	
-	// 6. 写入实际响应（如果还没写入）
-	if !recorder.written {
-		c.Writer = recorder.ResponseWriter
-		c.Data(recorder.statusCode, "application/json", recorder.body)
-	}
+	// 6. 写入实际响应
+	c.Writer = recorder.ResponseWriter
+	c.Data(recorder.statusCode, "application/json", recorder.body)
 }
 
 // ResponseRecorder HTTP响应记录器
@@ -376,7 +374,6 @@ type ResponseRecorder struct {
 	gin.ResponseWriter
 	statusCode int
 	body       []byte
-	written    bool
 }
 
 func (r *ResponseRecorder) WriteHeader(code int) {
@@ -385,7 +382,6 @@ func (r *ResponseRecorder) WriteHeader(code int) {
 
 func (r *ResponseRecorder) Write(data []byte) (int, error) {
 	r.body = append(r.body, data...)
-	r.written = true
 	return len(data), nil
 }
 
