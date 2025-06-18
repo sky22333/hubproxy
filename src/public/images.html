@@ -399,6 +399,67 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 切换开关样式 */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--muted);
+            transition: 0.2s;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.2s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .switch-label {
+            font-weight: 500;
+            color: var(--foreground);
+            cursor: pointer;
+        }
+
         .hidden {
             display: none;
         }
@@ -559,6 +620,14 @@
                         </div>
                     </div>
                     
+                    <div class="switch-container">
+                        <label class="switch">
+                            <input type="checkbox" id="compressedToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="compressedToggle" class="switch-label">使用压缩层（减小包体积）</label>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary btn-full" id="downloadBtn">
                         <span id="downloadText">立即下载</span>
                         <span id="downloadLoading" class="loading hidden"></span>
@@ -593,6 +662,14 @@
                         <div class="help-text">
                             所有镜像将使用相同的目标架构
                         </div>
+                    </div>
+                    
+                    <div class="switch-container">
+                        <label class="switch">
+                            <input type="checkbox" id="batchCompressedToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="batchCompressedToggle" class="switch-label">使用压缩层（减小包体积）</label>
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-full" id="batchDownloadBtn">
@@ -651,12 +728,18 @@
             }
         }
 
-        function buildDownloadUrl(imageName, platform = '') {
+        function buildDownloadUrl(imageName, platform = '', useCompressed = true) {
             const encodedImage = imageName.replace(/\//g, '_');
             let url = `/api/image/download/${encodedImage}`;
             
+            const params = new URLSearchParams();
             if (platform && platform.trim()) {
-                url += `?platform=${encodeURIComponent(platform.trim())}`;
+                params.append('platform', platform.trim());
+            }
+            params.append('compressed', useCompressed.toString());
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
             }
             
             return url;
@@ -672,11 +755,12 @@
             }
             
             const platform = document.getElementById('platformInput').value.trim();
+            const useCompressed = document.getElementById('compressedToggle').checked;
             
             hideStatus('singleStatus');
             setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', true);
             
-            const downloadUrl = buildDownloadUrl(imageName, platform);
+            const downloadUrl = buildDownloadUrl(imageName, platform, useCompressed);
             
             const link = document.createElement('a');
             link.href = downloadUrl;
@@ -711,9 +795,11 @@
             }
             
             const platform = document.getElementById('batchPlatformInput').value.trim();
+            const useCompressed = document.getElementById('batchCompressedToggle').checked;
             
             const options = {
-                images: images
+                images: images,
+                useCompressedLayers: useCompressed
             };
             
             if (platform) {

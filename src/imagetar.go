@@ -171,8 +171,9 @@ func NewImageStreamer(config *ImageStreamerConfig) *ImageStreamer {
 
 // StreamOptions 下载选项
 type StreamOptions struct {
-	Platform    string
-	Compression bool
+	Platform            string
+	Compression         bool
+	UseCompressedLayers bool // 是否保存原始压缩层，默认true
 }
 
 // StreamImageToWriter 流式下载镜像到Writer
@@ -336,12 +337,24 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 				return err
 			}
 
-			uncompressedSize, err := partial.UncompressedSize(layer)
-			if err != nil {
-				return err
+			var layerSize int64
+			var layerReader io.ReadCloser
+			
+			// 根据配置选择使用压缩层或未压缩层
+			if options != nil && options.UseCompressedLayers {
+				layerSize, err = layer.Size()
+				if err != nil {
+					return err
+				}
+				layerReader, err = layer.Compressed()
+			} else {
+				layerSize, err = partial.UncompressedSize(layer)
+				if err != nil {
+					return err
+				}
+				layerReader, err = layer.Uncompressed()
 			}
-
-			layerReader, err := layer.Uncompressed()
+			
 			if err != nil {
 				return err
 			}
@@ -349,7 +362,7 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 
 			layerTarHeader := &tar.Header{
 				Name: layerDir + "/layer.tar",
-				Size: uncompressedSize,
+				Size: layerSize,
 				Mode: 0644,
 			}
 			
@@ -628,6 +641,7 @@ func handleDirectImageDownload(c *gin.Context) {
 	imageRef := strings.ReplaceAll(imageParam, "_", "/")
 	platform := c.Query("platform")
 	tag := c.DefaultQuery("tag", "")
+	useCompressed := c.DefaultQuery("compressed", "true") == "true"
 
 	if tag != "" && !strings.Contains(imageRef, ":") && !strings.Contains(imageRef, "@") {
 		imageRef = imageRef + ":" + tag
@@ -653,8 +667,9 @@ func handleDirectImageDownload(c *gin.Context) {
 	}
 
 	options := &StreamOptions{
-		Platform:    platform,
-		Compression: false,
+		Platform:            platform,
+		Compression:         false,
+		UseCompressedLayers: useCompressed,
 	}
 
 	ctx := c.Request.Context()
@@ -670,8 +685,9 @@ func handleDirectImageDownload(c *gin.Context) {
 // handleSimpleBatchDownload 处理批量下载
 func handleSimpleBatchDownload(c *gin.Context) {
 	var req struct {
-		Images   []string `json:"images" binding:"required"`
-		Platform string   `json:"platform"`
+		Images              []string `json:"images" binding:"required"`
+		Platform            string   `json:"platform"`
+		UseCompressedLayers *bool    `json:"useCompressedLayers"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -710,9 +726,15 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		return
 	}
 
+	useCompressed := true // 默认启用原始压缩层
+	if req.UseCompressedLayers != nil {
+		useCompressed = *req.UseCompressedLayers
+	}
+
 	options := &StreamOptions{
-		Platform:    req.Platform,
-		Compression: false,
+		Platform:            req.Platform,
+		Compression:         false,
+		UseCompressedLayers: useCompressed,
 	}
 
 	ctx := c.Request.Context()
