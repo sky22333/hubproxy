@@ -287,11 +287,8 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 			return
 		}
 		
-		// 智能限流判断：检查是否应该跳过限流计数
-		shouldSkip := smartLimiter.ShouldSkipRateLimit(cleanIP, c.Request.URL.Path)
-		
-		// 只有在不跳过的情况下才检查限流
-		if !shouldSkip && !ipLimiter.Allow() {
+		// 检查限流
+		if !ipLimiter.Allow() {
 			c.JSON(429, gin.H{
 				"error": "请求频率过快，暂时限制访问",
 			})
