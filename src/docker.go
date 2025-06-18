@@ -386,7 +386,7 @@ func (r *ResponseRecorder) WriteHeader(code int) {
 func (r *ResponseRecorder) Write(data []byte) (int, error) {
 	r.body = append(r.body, data...)
 	r.written = true
-	return r.ResponseWriter.Write(data)
+	return len(data), nil
 }
 
 func proxyDockerAuthOriginal(c *gin.Context) {
