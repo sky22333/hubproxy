@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
-	"github.com/spf13/viper"
-	"github.com/fsnotify/fsnotify"
 )
 
 // RegistryMapping Registry映射配置
@@ -60,8 +58,6 @@ type AppConfig struct {
 var (
 	appConfig     *AppConfig
 	appConfigLock sync.RWMutex
-	isViperEnabled bool
-	viperInstance  *viper.Viper
 	
 	cachedConfig     *AppConfig
 	configCacheTime  time.Time
@@ -218,98 +214,7 @@ func LoadConfig() error {
 	// 设置配置
 	setConfig(cfg)
 	
-	if !isViperEnabled {
-		go enableViperHotReload()
-	}
-	
 	return nil
-}
-
-func enableViperHotReload() {
-	if isViperEnabled {
-		return
-	}
-	
-	// 创建Viper实例
-	viperInstance = viper.New()
-	
-	// 配置Viper
-	viperInstance.SetConfigName("config")
-	viperInstance.SetConfigType("toml")
-	viperInstance.AddConfigPath(".")
-	
-	// 读取配置文件
-	if err := viperInstance.ReadInConfig(); err != nil {
-		fmt.Printf("读取配置失败，继续使用当前配置: %v\n", err)
-		return
-	}
-	
-	isViperEnabled = true
-	
-	viperInstance.WatchConfig()
-	viperInstance.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Printf("检测到配置文件变化: %s\n", e.Name)
-		hotReloadWithViper()
-	})
-}
-
-func hotReloadWithViper() {
-	start := time.Now()
-	fmt.Println("🔄 自动热重载...")
-	
-	// 创建新配置
-	cfg := DefaultConfig()
-	
-	// 使用Viper解析配置到结构体
-	if err := viperInstance.Unmarshal(cfg); err != nil {
-		fmt.Printf("❌ 配置解析失败: %v\n", err)
-		return
-	}
-	
-	overrideFromEnv(cfg)
-	
-	setConfig(cfg)
-	
-	// 异步更新受影响的组件
-	go func() {
-		updateAffectedComponents()
-		fmt.Printf("✅ Viper配置热重载完成，耗时: %v\n", time.Since(start))
-	}()
-}
-
-func updateAffectedComponents() {
-	// 重新初始化限流器
-	if globalLimiter != nil {
-		fmt.Println("📡 重新初始化限流器...")
-		initLimiter()
-	}
-	
-	// 重新加载访问控制
-	fmt.Println("🔒 重新加载访问控制规则...")
-	if GlobalAccessController != nil {
-		GlobalAccessController.Reload()
-	}
-	
-	fmt.Println("🌐 更新Registry配置映射...")
-	reloadRegistryConfig()
-	
-	// 其他需要重新初始化的组件可以在这里添加
-	fmt.Println("🔧 组件更新完成")
-}
-
-func reloadRegistryConfig() {
-	cfg := GetConfig()
-	enabledCount := 0
-	
-	// 统计启用的Registry数量
-	for _, mapping := range cfg.Registries {
-		if mapping.Enabled {
-			enabledCount++
-		}
-	}
-	
-	fmt.Printf("🌐 Registry配置已更新: %d个启用\n", enabledCount)
-	
 }
 
 // overrideFromEnv 从环境变量覆盖配置

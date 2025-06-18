@@ -211,10 +211,4 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 	return false
 }
 
-// Reload 热重载访问控制规则
-func (ac *AccessController) Reload() {
-	ac.mu.Lock()
-	defer ac.mu.Unlock()
-	
-	// 访问控制器本身不缓存配置
-} 
+ 
