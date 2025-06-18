@@ -596,9 +596,9 @@ func formatPlatformText(platform string) string {
 func initImageTarRoutes(router *gin.Engine) {
 	imageAPI := router.Group("/api/image")
 	{
-		imageAPI.GET("/download/:image", RateLimitMiddleware(globalLimiter), handleDirectImageDownload)
-		imageAPI.GET("/info/:image", RateLimitMiddleware(globalLimiter), handleImageInfo)
-		imageAPI.POST("/batch", RateLimitMiddleware(globalLimiter), handleSimpleBatchDownload)
+		imageAPI.GET("/download/:image", handleDirectImageDownload)
+		imageAPI.GET("/info/:image", handleImageInfo)
+		imageAPI.POST("/batch", handleSimpleBatchDownload)
 	}
 }
 

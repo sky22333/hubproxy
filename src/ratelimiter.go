@@ -230,6 +230,14 @@ func (i *IPRateLimiter) GetLimiter(ip string) (*rate.Limiter, bool) {
 // RateLimitMiddleware 速率限制中间件
 func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 静态文件豁免：跳过限流检查
+		path := c.Request.URL.Path
+		if path == "/" || path == "/favicon.ico" || path == "/images.html" || path == "/search.html" || 
+		   strings.HasPrefix(path, "/public/") {
+			c.Next()
+			return
+		}
+
 		// 获取客户端真实IP
 		var ip string
 		
@@ -295,25 +303,4 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 	}
 }
 
-// ApplyRateLimit 应用限流到特定路由
-func ApplyRateLimit(router *gin.Engine, path string, method string, handler gin.HandlerFunc) {
-	// 使用全局限流器
-	limiter := globalLimiter
-	if limiter == nil {
-		limiter = initGlobalLimiter()
-	}
-	
-	// 根据HTTP方法应用限流
-	switch method {
-	case "GET":
-		router.GET(path, RateLimitMiddleware(limiter), handler)
-	case "POST":
-		router.POST(path, RateLimitMiddleware(limiter), handler)
-	case "PUT":
-		router.PUT(path, RateLimitMiddleware(limiter), handler)
-	case "DELETE":
-		router.DELETE(path, RateLimitMiddleware(limiter), handler)
-	default:
-		router.Any(path, RateLimitMiddleware(limiter), handler)
-	}
-}
+

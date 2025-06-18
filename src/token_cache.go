@@ -71,14 +71,6 @@ func buildManifestCacheKey(imageRef, reference string) string {
 	return buildCacheKey("manifest", key)
 }
 
-func buildManifestCacheKeyWithPlatform(imageRef, reference, platform string) string {
-	if platform == "" {
-		platform = "default"
-	}
-	key := fmt.Sprintf("%s:%s@%s", imageRef, reference, platform)
-	return buildCacheKey("manifest", key)
-}
-
 func getManifestTTL(reference string) time.Duration {
 	cfg := GetConfig()
 	defaultTTL := 30 * time.Minute
@@ -149,4 +141,28 @@ func isCacheEnabled() bool {
 // isTokenCacheEnabled 检查token缓存是否启用(向后兼容)
 func isTokenCacheEnabled() bool {
 	return isCacheEnabled()
+}
+
+// 定期清理过期缓存，防止内存泄漏
+func init() {
+	go func() {
+		ticker := time.NewTicker(20 * time.Minute)
+		defer ticker.Stop()
+		
+		for range ticker.C {
+			now := time.Now()
+			expiredKeys := make([]string, 0)
+			
+			globalCache.cache.Range(func(key, value interface{}) bool {
+				if cached := value.(*CachedItem); now.After(cached.ExpiresAt) {
+					expiredKeys = append(expiredKeys, key.(string))
+				}
+				return true
+			})
+			
+			for _, key := range expiredKeys {
+				globalCache.cache.Delete(key)
+			}
+		}
+	}()
 } 

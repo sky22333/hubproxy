@@ -84,6 +84,9 @@ func main() {
 		})
 	}))
 
+	// 全局限流中间件 - 应用到所有路由
+	router.Use(RateLimitMiddleware(globalLimiter))
+
 	// 初始化监控端点
 	initHealthRoutes(router)
 	
@@ -113,15 +116,15 @@ func main() {
 	RegisterSearchRoute(router)
 	
 	// 注册Docker认证路由（/token*）
-	router.Any("/token", RateLimitMiddleware(globalLimiter), ProxyDockerAuthGin)
-	router.Any("/token/*path", RateLimitMiddleware(globalLimiter), ProxyDockerAuthGin)
+	router.Any("/token", ProxyDockerAuthGin)
+	router.Any("/token/*path", ProxyDockerAuthGin)
 	
 	// 注册Docker Registry代理路由
-	router.Any("/v2/*path", RateLimitMiddleware(globalLimiter), ProxyDockerRegistryGin)
+	router.Any("/v2/*path", ProxyDockerRegistryGin)
 	
 
 	// 注册NoRoute处理器
-	router.NoRoute(RateLimitMiddleware(globalLimiter), handler)
+	router.NoRoute(handler)
 
 	cfg := GetConfig()
 	fmt.Printf("🚀 HubProxy 启动成功\n")
