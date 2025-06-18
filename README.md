@@ -98,7 +98,6 @@ example.com {
 不配置也可以，程序内置有默认值
 ```
 [server]
-# 监听地址，默认监听所有接口
 host = "0.0.0.0"
 # 监听端口
 port = 5000
@@ -106,8 +105,8 @@ port = 5000
 fileSize = 2147483648
 
 [rateLimit]
-# 每个IP每小时允许的请求数(注意Docker镜像每个层为一个请求)
-requestLimit = 200
+# 每个IP每小时允许的请求数(注意Docker镜像会有多个层，会消耗多个次数)
+requestLimit = 500
 # 限流周期（小时）
 periodHours = 1.0
 
@@ -122,7 +121,8 @@ whiteList = [
 # IP黑名单，支持单个IP或IP段
 # 黑名单中的IP将被直接拒绝访问
 blackList = [
-    "192.168.100.1"
+    "192.168.100.1",
+    "192.168.100.0/24"
 ]
 
 [proxy]
@@ -136,7 +136,13 @@ blackList = [
     "baduser/malicious-repo",
     "*/malicious-repo",
     "baduser/*"
-] 
+]
+
+# SOCKS5代理配置，支持有用户名/密码认证和无认证模式
+# 无认证: socks5://127.0.0.1:1080
+# 有认证: socks5://username:password@127.0.0.1:1080
+# 留空不使用代理
+socks5 = "" 
 
 [download]
 # 批量下载离线镜像数量限制
