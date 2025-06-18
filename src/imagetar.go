@@ -173,13 +173,13 @@ func NewImageStreamer(config *ImageStreamerConfig) *ImageStreamer {
 type StreamOptions struct {
 	Platform            string
 	Compression         bool
-	UseCompressedLayers bool // 是否保存原始压缩层，默认true
+	UseCompressedLayers bool // 是否保存原始压缩层，默认开启
 }
 
 // StreamImageToWriter 流式下载镜像到Writer
 func (is *ImageStreamer) StreamImageToWriter(ctx context.Context, imageRef string, writer io.Writer, options *StreamOptions) error {
 	if options == nil {
-		options = &StreamOptions{}
+		options = &StreamOptions{UseCompressedLayers: true}
 	}
 
 	ref, err := name.ParseReference(imageRef)
@@ -219,7 +219,7 @@ func (is *ImageStreamer) getImageDescriptorWithPlatform(ref name.Reference, opti
 // StreamImageToGin 流式响应到Gin
 func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, c *gin.Context, options *StreamOptions) error {
 	if options == nil {
-		options = &StreamOptions{}
+		options = &StreamOptions{UseCompressedLayers: true}
 	}
 
 	filename := strings.ReplaceAll(imageRef, "/", "_") + ".tar"
@@ -814,7 +814,7 @@ func handleImageInfo(c *gin.Context) {
 // StreamMultipleImages 批量下载多个镜像
 func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []string, writer io.Writer, options *StreamOptions) error {
 	if options == nil {
-		options = &StreamOptions{}
+		options = &StreamOptions{UseCompressedLayers: true}
 	}
 
 	var finalWriter io.Writer = writer
