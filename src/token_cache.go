@@ -99,7 +99,6 @@ func getManifestTTL(reference string) time.Duration {
 		return 10 * time.Minute
 	}
 	
-	// 普通tag: 中等缓存时间
 	return defaultTTL
 }
 
