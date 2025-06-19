@@ -28,7 +28,7 @@ type RegistryDetector struct{}
 // detectRegistryDomain 检测Registry域名并返回域名和剩余路径
 func (rd *RegistryDetector) detectRegistryDomain(path string) (string, string) {
 	cfg := GetConfig()
-	
+
 	// 检查路径是否以已知Registry域名开头
 	for domain := range cfg.Registries {
 		if strings.HasPrefix(path, domain+"/") {
@@ -37,7 +37,7 @@ func (rd *RegistryDetector) detectRegistryDomain(path string) (string, string) {
 			return domain, remainingPath
 		}
 	}
-	
+
 	return "", path
 }
 
@@ -103,19 +103,19 @@ func ProxyDockerRegistryGin(c *gin.Context) {
 func handleRegistryRequest(c *gin.Context, path string) {
 	// 移除 /v2/ 前缀
 	pathWithoutV2 := strings.TrimPrefix(path, "/v2/")
-	
+
 	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(pathWithoutV2); registryDomain != "" {
 		if registryDetector.isRegistryEnabled(registryDomain) {
 			// 设置目标Registry信息到Context
 			c.Set("target_registry_domain", registryDomain)
 			c.Set("target_path", remainingPath)
-			
+
 			// 处理多Registry请求
 			handleMultiRegistryRequest(c, registryDomain, remainingPath)
 			return
 		}
 	}
-	
+
 	imageName, apiType, reference := parseRegistryPath(pathWithoutV2)
 	if imageName == "" || apiType == "" {
 		c.String(http.StatusBadRequest, "Invalid path format")
@@ -158,14 +158,14 @@ func parseRegistryPath(path string) (imageName, apiType, reference string) {
 		reference = path[idx+len("/manifests/"):]
 		return
 	}
-	
+
 	if idx := strings.Index(path, "/blobs/"); idx != -1 {
 		imageName = path[:idx]
 		apiType = "blobs"
 		reference = path[idx+len("/blobs/"):]
 		return
 	}
-	
+
 	if idx := strings.Index(path, "/tags/list"); idx != -1 {
 		imageName = path[:idx]
 		apiType = "tags"
@@ -181,14 +181,14 @@ func handleManifestRequest(c *gin.Context, imageRef, reference string) {
 	// Manifest缓存逻辑(仅对GET请求缓存)
 	if isCacheEnabled() && c.Request.Method == http.MethodGet {
 		cacheKey := buildManifestCacheKey(imageRef, reference)
-		
+
 		// 优先从缓存获取
 		if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
 			writeCachedResponse(c, cachedItem)
 			return
 		}
 	}
-	
+
 	var ref name.Reference
 	var err error
 
@@ -236,7 +236,7 @@ func handleManifestRequest(c *gin.Context, imageRef, reference string) {
 			"Docker-Content-Digest": desc.Digest.String(),
 			"Content-Length":        fmt.Sprintf("%d", len(desc.Manifest)),
 		}
-		
+
 		// 缓存响应
 		if isCacheEnabled() {
 			cacheKey := buildManifestCacheKey(imageRef, reference)
@@ -341,29 +341,29 @@ func ProxyDockerAuthGin(c *gin.Context) {
 func proxyDockerAuthWithCache(c *gin.Context) {
 	// 1. 构建缓存key（基于完整的查询参数）
 	cacheKey := buildTokenCacheKey(c.Request.URL.RawQuery)
-	
+
 	// 2. 尝试从缓存获取token
 	if cachedToken := globalCache.GetToken(cacheKey); cachedToken != "" {
 		writeTokenResponse(c, cachedToken)
 		return
 	}
-	
+
 	// 3. 缓存未命中，创建响应记录器
 	recorder := &ResponseRecorder{
 		ResponseWriter: c.Writer,
 		statusCode:     200,
 	}
 	c.Writer = recorder
-	
+
 	// 4. 调用原有认证逻辑
 	proxyDockerAuthOriginal(c)
-	
+
 	// 5. 如果认证成功，缓存响应
 	if recorder.statusCode == 200 && len(recorder.body) > 0 {
 		ttl := extractTTLFromResponse(recorder.body)
 		globalCache.SetToken(cacheKey, string(recorder.body), ttl)
 	}
-	
+
 	// 6. 写入实际响应
 	c.Writer = recorder.ResponseWriter
 	c.Data(recorder.statusCode, "application/json", recorder.body)
@@ -399,7 +399,7 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 		// 构建默认Docker认证URL
 		authURL = "https://auth.docker.io" + c.Request.URL.Path
 	}
-	
+
 	if c.Request.URL.RawQuery != "" {
 		authURL += "?" + c.Request.URL.RawQuery
 	}
@@ -472,7 +472,7 @@ func rewriteAuthHeader(authHeader, proxyHost string) string {
 	authHeader = strings.ReplaceAll(authHeader, "https://ghcr.io", "http://"+proxyHost)
 	authHeader = strings.ReplaceAll(authHeader, "https://gcr.io", "http://"+proxyHost)
 	authHeader = strings.ReplaceAll(authHeader, "https://quay.io", "http://"+proxyHost)
-	
+
 	return authHeader
 }
 
@@ -484,7 +484,7 @@ func handleMultiRegistryRequest(c *gin.Context, registryDomain, remainingPath st
 		c.String(http.StatusBadRequest, "Registry not configured")
 		return
 	}
-	
+
 	// 解析剩余路径
 	imageName, apiType, reference := parseRegistryPath(remainingPath)
 	if imageName == "" || apiType == "" {
@@ -521,14 +521,14 @@ func handleUpstreamManifestRequest(c *gin.Context, imageRef, reference string, m
 	// Manifest缓存逻辑(仅对GET请求缓存)
 	if isCacheEnabled() && c.Request.Method == http.MethodGet {
 		cacheKey := buildManifestCacheKey(imageRef, reference)
-		
+
 		// 优先从缓存获取
 		if cachedItem := globalCache.Get(cacheKey); cachedItem != nil {
 			writeCachedResponse(c, cachedItem)
 			return
 		}
 	}
-	
+
 	var ref name.Reference
 	var err error
 
@@ -574,7 +574,7 @@ func handleUpstreamManifestRequest(c *gin.Context, imageRef, reference string, m
 			"Docker-Content-Digest": desc.Digest.String(),
 			"Content-Length":        fmt.Sprintf("%d", len(desc.Manifest)),
 		}
-		
+
 		// 缓存响应
 		if isCacheEnabled() {
 			cacheKey := buildManifestCacheKey(imageRef, reference)
@@ -587,7 +587,7 @@ func handleUpstreamManifestRequest(c *gin.Context, imageRef, reference string, m
 		for key, value := range headers {
 			c.Header(key, value)
 		}
-		
+
 		c.Data(http.StatusOK, string(desc.MediaType), desc.Manifest)
 	}
 }

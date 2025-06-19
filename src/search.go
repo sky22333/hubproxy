@@ -25,27 +25,27 @@ type SearchResult struct {
 
 // Repository 仓库信息
 type Repository struct {
-	Name           string    `json:"repo_name"`
-	Description    string    `json:"short_description"`
-	IsOfficial     bool      `json:"is_official"`
-	IsAutomated    bool      `json:"is_automated"`
-	StarCount      int       `json:"star_count"`
-	PullCount      int       `json:"pull_count"`
-	RepoOwner      string    `json:"repo_owner"`
-	LastUpdated    string    `json:"last_updated"`
-	Status         int       `json:"status"`
-	Organization   string    `json:"affiliation"`
-	PullsLastWeek  int       `json:"pulls_last_week"`
-	Namespace      string    `json:"namespace"`
+	Name          string `json:"repo_name"`
+	Description   string `json:"short_description"`
+	IsOfficial    bool   `json:"is_official"`
+	IsAutomated   bool   `json:"is_automated"`
+	StarCount     int    `json:"star_count"`
+	PullCount     int    `json:"pull_count"`
+	RepoOwner     string `json:"repo_owner"`
+	LastUpdated   string `json:"last_updated"`
+	Status        int    `json:"status"`
+	Organization  string `json:"affiliation"`
+	PullsLastWeek int    `json:"pulls_last_week"`
+	Namespace     string `json:"namespace"`
 }
 
 // TagInfo 标签信息
 type TagInfo struct {
-	Name          string    `json:"name"`
-	FullSize      int64     `json:"full_size"`
-	LastUpdated   time.Time `json:"last_updated"`
-	LastPusher    string    `json:"last_pusher"`
-	Images        []Image   `json:"images"`
+	Name            string    `json:"name"`
+	FullSize        int64     `json:"full_size"`
+	LastUpdated     time.Time `json:"last_updated"`
+	LastPusher      string    `json:"last_pusher"`
+	Images          []Image   `json:"images"`
 	Vulnerabilities struct {
 		Critical int `json:"critical"`
 		High     int `json:"high"`
@@ -77,9 +77,9 @@ const (
 )
 
 type Cache struct {
-	data     map[string]cacheEntry
-	mu       sync.RWMutex
-	maxSize  int
+	data    map[string]cacheEntry
+	mu      sync.RWMutex
+	maxSize int
 }
 
 var (
@@ -93,32 +93,32 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 	c.mu.RLock()
 	entry, exists := c.data[key]
 	c.mu.RUnlock()
-	
+
 	if !exists {
 		return nil, false
 	}
-	
+
 	if time.Since(entry.timestamp) > cacheTTL {
 		c.mu.Lock()
 		delete(c.data, key)
 		c.mu.Unlock()
 		return nil, false
 	}
-	
+
 	return entry.data, true
 }
 
 func (c *Cache) Set(key string, data interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	now := time.Now()
 	for k, v := range c.data {
 		if now.Sub(v.timestamp) > cacheTTL {
 			delete(c.data, k)
 		}
 	}
-	
+
 	if len(c.data) >= c.maxSize {
 		toDelete := len(c.data) / 4
 		for k := range c.data {
@@ -129,7 +129,7 @@ func (c *Cache) Set(key string, data interface{}) {
 			toDelete--
 		}
 	}
-	
+
 	c.data[key] = cacheEntry{
 		data:      data,
 		timestamp: now,
@@ -139,7 +139,7 @@ func (c *Cache) Set(key string, data interface{}) {
 func (c *Cache) Cleanup() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	now := time.Now()
 	for key, entry := range c.data {
 		if now.Sub(entry.timestamp) > cacheTTL {
@@ -161,46 +161,46 @@ func init() {
 func filterSearchResults(results []Repository, query string) []Repository {
 	searchTerm := strings.ToLower(strings.TrimPrefix(query, "library/"))
 	filtered := make([]Repository, 0)
-	
+
 	for _, repo := range results {
 		// 标准化仓库名称
 		repoName := strings.ToLower(repo.Name)
 		repoDesc := strings.ToLower(repo.Description)
-		
+
 		// 计算相关性得分
 		score := 0
-		
+
 		// 完全匹配
 		if repoName == searchTerm {
 			score += 100
 		}
-		
+
 		// 前缀匹配
 		if strings.HasPrefix(repoName, searchTerm) {
 			score += 50
 		}
-		
+
 		// 包含匹配
 		if strings.Contains(repoName, searchTerm) {
 			score += 30
 		}
-		
+
 		// 描述匹配
 		if strings.Contains(repoDesc, searchTerm) {
 			score += 10
 		}
-		
+
 		// 官方镜像加分
 		if repo.IsOfficial {
 			score += 20
 		}
-		
+
 		// 分数达到阈值的结果才保留
 		if score > 0 {
 			filtered = append(filtered, repo)
 		}
 	}
-	
+
 	// 按相关性排序
 	sort.Slice(filtered, func(i, j int) bool {
 		// 优先考虑官方镜像
@@ -210,23 +210,23 @@ func filterSearchResults(results []Repository, query string) []Repository {
 		// 其次考虑拉取次数
 		return filtered[i].PullCount > filtered[j].PullCount
 	})
-	
+
 	return filtered
 }
 
 // searchDockerHub 搜索镜像
 func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*SearchResult, error) {
 	cacheKey := fmt.Sprintf("search:%s:%d:%d", query, page, pageSize)
-	
+
 	// 尝试从缓存获取
 	if cached, ok := searchCache.Get(cacheKey); ok {
 		return cached.(*SearchResult), nil
 	}
-	
+
 	// 判断是否是用户/仓库格式的搜索
 	isUserRepo := strings.Contains(query, "/")
 	var namespace, repoName string
-	
+
 	if isUserRepo {
 		parts := strings.Split(query, "/")
 		if len(parts) == 2 {
@@ -234,12 +234,12 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			repoName = parts[1]
 		}
 	}
-	
+
 	// 构建搜索URL
 	baseURL := "https://registry.hub.docker.com/v2"
 	var fullURL string
 	var params url.Values
-	
+
 	if isUserRepo && namespace != "" {
 		// 如果是用户/仓库格式，使用repositories接口
 		fullURL = fmt.Sprintf("%s/repositories/%s/", baseURL, namespace)
@@ -256,9 +256,9 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			"page_size": {fmt.Sprintf("%d", pageSize)},
 		}
 	}
-	
+
 	fullURL = fullURL + "?" + params.Encode()
-	
+
 	// 使用统一的搜索HTTP客户端
 	resp, err := GetSearchHTTPClient().Get(fullURL)
 	if err != nil {
@@ -269,12 +269,12 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			fmt.Printf("关闭搜索响应体失败: %v\n", err)
 		}
 	}()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("读取响应失败: %v", err)
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {
 		case http.StatusTooManyRequests:
@@ -291,7 +291,7 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
 		}
 	}
-	
+
 	// 解析响应
 	var result *SearchResult
 	if isUserRepo && namespace != "" {
@@ -305,7 +305,7 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 		if err := json.Unmarshal(body, &userRepos); err != nil {
 			return nil, fmt.Errorf("解析响应失败: %v", err)
 		}
-		
+
 		// 转换为SearchResult格式
 		result = &SearchResult{
 			Count:    userRepos.Count,
@@ -313,7 +313,7 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			Previous: userRepos.Previous,
 			Results:  make([]Repository, 0),
 		}
-		
+
 		// 处理结果
 		for _, repo := range userRepos.Results {
 			// 如果指定了仓库名，只保留匹配的结果
@@ -326,12 +326,12 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 				result.Results = append(result.Results, repo)
 			}
 		}
-		
+
 		// 如果没有找到结果，尝试普通搜索
 		if len(result.Results) == 0 {
 			return searchDockerHub(ctx, repoName, page, pageSize)
 		}
-		
+
 		result.Count = len(result.Results)
 	} else {
 		// 解析普通搜索响应
@@ -339,7 +339,7 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 		if err := json.Unmarshal(body, &result); err != nil {
 			return nil, fmt.Errorf("解析响应失败: %v", err)
 		}
-		
+
 		// 处理搜索结果
 		for i := range result.Results {
 			if result.Results[i].IsOfficial {
@@ -358,7 +358,7 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 				}
 			}
 		}
-		
+
 		// 如果是用户/仓库搜索，过滤结果
 		if isUserRepo && namespace != "" {
 			filteredResults := make([]Repository, 0)
@@ -371,7 +371,7 @@ func searchDockerHub(ctx context.Context, query string, page, pageSize int) (*Se
 			result.Count = len(filteredResults)
 		}
 	}
-	
+
 	// 缓存结果
 	searchCache.Set(cacheKey, result)
 	return result, nil
@@ -382,15 +382,15 @@ func isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	// 网络错误、超时等可以重试
 	if strings.Contains(err.Error(), "timeout") ||
-	   strings.Contains(err.Error(), "connection refused") ||
-	   strings.Contains(err.Error(), "no such host") ||
-	   strings.Contains(err.Error(), "too many requests") {
+		strings.Contains(err.Error(), "connection refused") ||
+		strings.Contains(err.Error(), "no such host") ||
+		strings.Contains(err.Error(), "too many requests") {
 		return true
 	}
-	
+
 	return false
 }
 
