@@ -52,28 +52,28 @@ func NewDownloadDebouncer(window time.Duration) *DownloadDebouncer {
 func (d *DownloadDebouncer) ShouldAllow(userID, contentKey string) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	key := userID + ":" + contentKey
 	now := time.Now()
-	
+
 	if entry, exists := d.entries[key]; exists {
 		if now.Sub(entry.LastRequest) < d.window {
 			return false // 在防抖窗口内，拒绝请求
 		}
 	}
-	
+
 	// 更新或创建条目
 	d.entries[key] = &DebounceEntry{
 		LastRequest: now,
 		UserID:      userID,
 	}
-	
+
 	// 清理过期条目（每5分钟清理一次）
 	if time.Since(d.lastCleanup) > 5*time.Minute {
 		d.cleanup(now)
 		d.lastCleanup = now
 	}
-	
+
 	return true
 }
 
@@ -92,10 +92,10 @@ func generateContentFingerprint(images []string, platform string) string {
 	sortedImages := make([]string, len(images))
 	copy(sortedImages, images)
 	sort.Strings(sortedImages)
-	
+
 	// 组合内容：镜像列表 + 平台信息
 	content := strings.Join(sortedImages, "|") + ":" + platform
-	
+
 	// 生成MD5哈希
 	hash := md5.Sum([]byte(content))
 	return hex.EncodeToString(hash[:])
@@ -107,14 +107,14 @@ func getUserID(c *gin.Context) string {
 	if sessionID, err := c.Cookie("session_id"); err == nil && sessionID != "" {
 		return "session:" + sessionID
 	}
-	
+
 	// 备用方案：IP + User-Agent组合
 	ip := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
 	if userAgent == "" {
 		userAgent = "unknown"
 	}
-	
+
 	// 生成简短标识
 	combined := ip + ":" + userAgent
 	hash := md5.Sum([]byte(combined))
@@ -228,7 +228,7 @@ func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, 
 	filename := strings.ReplaceAll(imageRef, "/", "_") + ".tar"
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-	
+
 	if options.Compression {
 		c.Header("Content-Encoding", "gzip")
 	}
@@ -295,18 +295,18 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 	if err != nil {
 		return err
 	}
-	
+
 	configData, err := json.Marshal(configFile)
 	if err != nil {
 		return err
 	}
-	
+
 	configHeader := &tar.Header{
 		Name: configDigest.String() + ".json",
 		Size: int64(len(configData)),
 		Mode: 0644,
 	}
-	
+
 	if err := tarWriter.WriteHeader(configHeader); err != nil {
 		return err
 	}
@@ -335,14 +335,14 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 				Typeflag: tar.TypeDir,
 				Mode:     0755,
 			}
-			
+
 			if err := tarWriter.WriteHeader(layerHeader); err != nil {
 				return err
 			}
 
 			var layerSize int64
 			var layerReader io.ReadCloser
-			
+
 			// 根据配置选择使用压缩层或未压缩层
 			if options != nil && options.UseCompressedLayers {
 				layerSize, err = layer.Size()
@@ -357,7 +357,7 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 				}
 				layerReader, err = layer.Uncompressed()
 			}
-			
+
 			if err != nil {
 				return err
 			}
@@ -368,7 +368,7 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 				Size: layerSize,
 				Mode: 0644,
 			}
-			
+
 			if err := tarWriter.WriteHeader(layerTarHeader); err != nil {
 				return err
 			}
@@ -385,12 +385,11 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 		log.Printf("已处理层 %d/%d", i+1, len(layers))
 	}
 
-
 	// 构建单个镜像的manifest信息
 	singleManifest := map[string]interface{}{
 		"Config":   configDigest.String() + ".json",
 		"RepoTags": []string{imageRef},
-		"Layers":   func() []string {
+		"Layers": func() []string {
 			var layers []string
 			for _, digest := range layerDigests {
 				layers = append(layers, digest+"/layer.tar")
@@ -417,22 +416,22 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 
 	// 单镜像下载，直接写入manifest.json
 	manifest := []map[string]interface{}{singleManifest}
-	
+
 	manifestData, err := json.Marshal(manifest)
 	if err != nil {
 		return err
 	}
-	
+
 	manifestHeader := &tar.Header{
 		Name: "manifest.json",
 		Size: int64(len(manifestData)),
 		Mode: 0644,
 	}
-	
+
 	if err := tarWriter.WriteHeader(manifestHeader); err != nil {
 		return err
 	}
-	
+
 	if _, err := tarWriter.Write(manifestData); err != nil {
 		return err
 	}
@@ -442,17 +441,17 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 	if err != nil {
 		return err
 	}
-	
+
 	repositoriesHeader := &tar.Header{
 		Name: "repositories",
 		Size: int64(len(repositoriesData)),
 		Mode: 0644,
 	}
-	
+
 	if err := tarWriter.WriteHeader(repositoriesHeader); err != nil {
 		return err
 	}
-	
+
 	_, err = tarWriter.Write(repositoriesData)
 	return err
 }
@@ -473,12 +472,12 @@ func (is *ImageStreamer) processImageForBatch(ctx context.Context, img v1.Image,
 
 	var manifest map[string]interface{}
 	var repositories map[string]map[string]string
-	
+
 	err = is.streamDockerFormatWithReturn(ctx, tarWriter, img, layers, configFile, imageRef, &manifest, &repositories, options)
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	return manifest, repositories, nil
 }
 
@@ -537,7 +536,7 @@ func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *S
 		if m.Platform == nil {
 			continue
 		}
-		
+
 		if options.Platform != "" {
 			platformParts := strings.Split(options.Platform, "/")
 			if len(platformParts) >= 2 {
@@ -547,10 +546,10 @@ func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *S
 				if len(platformParts) >= 3 {
 					targetVariant = platformParts[2]
 				}
-				
-				if m.Platform.OS == targetOS && 
-				   m.Platform.Architecture == targetArch &&
-				   m.Platform.Variant == targetVariant {
+
+				if m.Platform.OS == targetOS &&
+					m.Platform.Architecture == targetArch &&
+					m.Platform.Variant == targetVariant {
 					selectedDesc = &m
 					break
 				}
@@ -629,10 +628,10 @@ func handleDirectImageDownload(c *gin.Context) {
 	// 防抖检查
 	userID := getUserID(c)
 	contentKey := generateContentFingerprint([]string{imageRef}, platform)
-	
+
 	if !singleImageDebouncer.ShouldAllow(userID, contentKey) {
 		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error": "请求过于频繁，请稍后再试",
+			"error":       "请求过于频繁，请稍后再试",
 			"retry_after": 5,
 		})
 		return
@@ -689,10 +688,10 @@ func handleSimpleBatchDownload(c *gin.Context) {
 	// 批量下载防抖检查
 	userID := getUserID(c)
 	contentKey := generateContentFingerprint(req.Images, req.Platform)
-	
+
 	if !batchImageDebouncer.ShouldAllow(userID, contentKey) {
 		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error": "批量下载请求过于频繁，请稍后再试",
+			"error":       "批量下载请求过于频繁，请稍后再试",
 			"retry_after": 60,
 		})
 		return
@@ -713,7 +712,7 @@ func handleSimpleBatchDownload(c *gin.Context) {
 	log.Printf("批量下载 %d 个镜像 (平台: %s)", len(req.Images), formatPlatformText(req.Platform))
 
 	filename := fmt.Sprintf("batch_%d_images.tar", len(req.Images))
-	
+
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 
@@ -811,12 +810,12 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 		}
 
 		log.Printf("处理镜像 %d/%d: %s", i+1, len(imageRefs), imageRef)
-		
+
 		// 防止单个镜像处理时间过长
 		timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 		manifest, repositories, err := is.streamSingleImageForBatch(timeoutCtx, tarWriter, imageRef, options)
 		cancel()
-		
+
 		if err != nil {
 			log.Printf("下载镜像 %s 失败: %v", imageRef, err)
 			return fmt.Errorf("下载镜像 %s 失败: %w", imageRef, err)
@@ -845,17 +844,17 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 	if err != nil {
 		return fmt.Errorf("序列化manifest失败: %w", err)
 	}
-	
+
 	manifestHeader := &tar.Header{
 		Name: "manifest.json",
 		Size: int64(len(manifestData)),
 		Mode: 0644,
 	}
-	
+
 	if err := tarWriter.WriteHeader(manifestHeader); err != nil {
 		return fmt.Errorf("写入manifest header失败: %w", err)
 	}
-	
+
 	if _, err := tarWriter.Write(manifestData); err != nil {
 		return fmt.Errorf("写入manifest数据失败: %w", err)
 	}
@@ -865,17 +864,17 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 	if err != nil {
 		return fmt.Errorf("序列化repositories失败: %w", err)
 	}
-	
+
 	repositoriesHeader := &tar.Header{
 		Name: "repositories",
 		Size: int64(len(repositoriesData)),
 		Mode: 0644,
 	}
-	
+
 	if err := tarWriter.WriteHeader(repositoriesHeader); err != nil {
 		return fmt.Errorf("写入repositories header失败: %w", err)
 	}
-	
+
 	if _, err := tarWriter.Write(repositoriesData); err != nil {
 		return fmt.Errorf("写入repositories数据失败: %w", err)
 	}
