@@ -138,11 +138,17 @@ blackList = [
     "baduser/*"
 ]
 
-# SOCKS5代理配置，支持有用户名/密码认证和无认证模式
+# 代理配置，支持有用户名/密码认证和无认证模式
 # 无认证: socks5://127.0.0.1:1080
 # 有认证: socks5://username:password@127.0.0.1:1080
+# HTTP 代理示例
+# http://username:password@127.0.0.1:7890
+# SOCKS5 代理示例
+# socks5://username:password@127.0.0.1:1080
+# SOCKS5H 代理示例
+# socks5h://username:password@127.0.0.1:1080
 # 留空不使用代理
-socks5 = "" 
+proxy = "" 
 
 [download]
 # 批量下载离线镜像数量限制

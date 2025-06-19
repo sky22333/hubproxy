@@ -32,7 +32,7 @@ var GlobalAccessController = &AccessController{}
 // ParseDockerImage 解析Docker镜像名称
 func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 	image = strings.TrimPrefix(image, "docker://")
-	
+
 	var tag string
 	if idx := strings.LastIndex(image, ":"); idx != -1 {
 		part := image[idx+1:]
@@ -44,7 +44,7 @@ func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 	if tag == "" {
 		tag = "latest"
 	}
-	
+
 	var namespace, repository string
 	if strings.Contains(image, "/") {
 		parts := strings.Split(image, "/")
@@ -66,9 +66,9 @@ func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 		namespace = "library"
 		repository = image
 	}
-	
+
 	fullName := namespace + "/" + repository
-	
+
 	return DockerImageInfo{
 		Namespace:  namespace,
 		Repository: repository,
@@ -80,24 +80,24 @@ func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 // CheckDockerAccess 检查Docker镜像访问权限
 func (ac *AccessController) CheckDockerAccess(image string) (allowed bool, reason string) {
 	cfg := GetConfig()
-	
+
 	// 解析镜像名称
 	imageInfo := ac.ParseDockerImage(image)
-	
+
 	// 检查白名单（如果配置了白名单，则只允许白名单中的镜像）
-	if len(cfg.Proxy.WhiteList) > 0 {
-		if !ac.matchImageInList(imageInfo, cfg.Proxy.WhiteList) {
+	if len(cfg.Access.WhiteList) > 0 {
+		if !ac.matchImageInList(imageInfo, cfg.Access.WhiteList) {
 			return false, "不在Docker镜像白名单内"
 		}
 	}
-	
+
 	// 检查黑名单
-	if len(cfg.Proxy.BlackList) > 0 {
-		if ac.matchImageInList(imageInfo, cfg.Proxy.BlackList) {
+	if len(cfg.Access.BlackList) > 0 {
+		if ac.matchImageInList(imageInfo, cfg.Access.BlackList) {
 			return false, "Docker镜像在黑名单内"
 		}
 	}
-	
+
 	return true, ""
 }
 
@@ -106,19 +106,19 @@ func (ac *AccessController) CheckGitHubAccess(matches []string) (allowed bool, r
 	if len(matches) < 2 {
 		return false, "无效的GitHub仓库格式"
 	}
-	
+
 	cfg := GetConfig()
-	
+
 	// 检查白名单
-	if len(cfg.Proxy.WhiteList) > 0 && !ac.checkList(matches, cfg.Proxy.WhiteList) {
+	if len(cfg.Access.WhiteList) > 0 && !ac.checkList(matches, cfg.Access.WhiteList) {
 		return false, "不在GitHub仓库白名单内"
 	}
-	
+
 	// 检查黑名单
-	if len(cfg.Proxy.BlackList) > 0 && ac.checkList(matches, cfg.Proxy.BlackList) {
+	if len(cfg.Access.BlackList) > 0 && ac.checkList(matches, cfg.Access.BlackList) {
 		return false, "GitHub仓库在黑名单内"
 	}
-	
+
 	return true, ""
 }
 
@@ -126,28 +126,28 @@ func (ac *AccessController) CheckGitHubAccess(matches []string) (allowed bool, r
 func (ac *AccessController) matchImageInList(imageInfo DockerImageInfo, list []string) bool {
 	fullName := strings.ToLower(imageInfo.FullName)
 	namespace := strings.ToLower(imageInfo.Namespace)
-	
+
 	for _, item := range list {
 		item = strings.ToLower(strings.TrimSpace(item))
 		if item == "" {
 			continue
 		}
-		
+
 		if fullName == item {
 			return true
 		}
-		
+
 		if item == namespace || item == namespace+"/*" {
 			return true
 		}
-		
+
 		if strings.HasSuffix(item, "*") {
 			prefix := strings.TrimSuffix(item, "*")
 			if strings.HasPrefix(fullName, prefix) {
 				return true
 			}
 		}
-		
+
 		if strings.HasPrefix(item, "*/") {
 			repoPattern := strings.TrimPrefix(item, "*/")
 			if strings.HasSuffix(repoPattern, "*") {
@@ -161,7 +161,7 @@ func (ac *AccessController) matchImageInList(imageInfo DockerImageInfo, list []s
 				}
 			}
 		}
-		
+
 		if strings.HasPrefix(fullName, item+"/") {
 			return true
 		}
@@ -174,27 +174,27 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 	if len(matches) < 2 {
 		return false
 	}
-	
+
 	username := strings.ToLower(strings.TrimSpace(matches[0]))
 	repoName := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(matches[1], ".git")))
 	fullRepo := username + "/" + repoName
-	
+
 	for _, item := range list {
 		item = strings.ToLower(strings.TrimSpace(item))
 		if item == "" {
 			continue
 		}
-		
+
 		// 支持多种匹配模式
 		if fullRepo == item {
 			return true
 		}
-		
+
 		// 用户级匹配
 		if item == username || item == username+"/*" {
 			return true
 		}
-		
+
 		// 前缀匹配（支持通配符）
 		if strings.HasSuffix(item, "*") {
 			prefix := strings.TrimSuffix(item, "*")
@@ -202,7 +202,7 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 				return true
 			}
 		}
-		
+
 		// 子仓库匹配（防止 user/repo 匹配到 user/repo-fork）
 		if strings.HasPrefix(fullRepo, item+"/") {
 			return true
@@ -210,5 +210,3 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 	}
 	return false
 }
-
- 
