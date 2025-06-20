@@ -41,7 +41,7 @@ type AppConfig struct {
 		WhiteList []string `toml:"whiteList"` // 代理白名单（仓库级别）
 		BlackList []string `toml:"blackList"` // 代理黑名单（仓库级别）
 		Proxy     string   `toml:"proxy"`     // 代理地址: 支持 http/https/socks5/socks5h
-	} `toml:"proxy"`
+	} `toml:"access"`
 
 	Download struct {
 		MaxImages int `toml:"maxImages"` // 单次下载最大镜像数量限制
