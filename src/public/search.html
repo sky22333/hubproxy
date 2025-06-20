@@ -778,7 +778,12 @@
             </div>
         </div>
 
-        <div class="tag-list" id="tagList"></div>
+        <div class="tag-list" id="tagList">
+            <div class="pagination" id="tagPagination" style="display: none;">
+                <button id="tagPrevPage" disabled>上一页</button>
+                <button id="tagNextPage" disabled>下一页</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast"></div>
@@ -853,6 +858,10 @@
         let totalPages = 1;
         let currentQuery = '';
         let currentRepo = null;
+        
+        // 标签分页相关变量
+        let currentTagPage = 1;
+        let totalTagPages = 1;
 
         document.getElementById('searchButton').addEventListener('click', () => {
             currentPage = 1;
@@ -884,6 +893,21 @@
             showSearchResults();
         });
 
+        // 使用事件委托处理分页按钮点击（避免DOM重建导致事件丢失）
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'tagPrevPage') {
+                if (currentTagPage > 1) {
+                    currentTagPage--;
+                    loadTagPage();
+                }
+            } else if (e.target.id === 'tagNextPage') {
+                if (currentTagPage < totalTagPages) {
+                    currentTagPage++;
+                    loadTagPage();
+                }
+            }
+        });
+
         function showLoading() {
             document.querySelector('.loading').style.display = 'block';
         }
@@ -901,70 +925,134 @@
             }, 3000);
         }
 
-        function updatePagination() {
-            const prevButton = document.getElementById('prevPage');
-            const nextButton = document.getElementById('nextPage');
+        // 统一分页更新函数（支持搜索和标签分页）
+        function updatePagination(config = {}) {
+            const {
+                currentPage: page = currentPage,
+                totalPages: total = totalPages,
+                prefix = ''
+            } = config;
+
+            const prevButtonId = prefix ? `${prefix}PrevPage` : 'prevPage';
+            const nextButtonId = prefix ? `${prefix}NextPage` : 'nextPage';
+            const paginationId = prefix ? `${prefix}Pagination` : '.pagination';
+
+            const prevButton = document.getElementById(prevButtonId);
+            const nextButton = document.getElementById(nextButtonId);
+            const paginationDiv = prefix ? document.getElementById(paginationId) : document.querySelector(paginationId);
             
-            prevButton.disabled = currentPage <= 1;
-            nextButton.disabled = currentPage >= totalPages;
+            if (!prevButton || !nextButton || !paginationDiv) {
+                return; // 静默处理，避免控制台警告
+            }
             
-            const paginationDiv = document.querySelector('.pagination');
-            let pageInfo = document.getElementById('pageInfo');
+            // 更新按钮状态
+            prevButton.disabled = page <= 1;
+            nextButton.disabled = page >= total;
+            
+            // 更新或创建页面信息
+            const pageInfoId = prefix ? `${prefix}PageInfo` : 'pageInfo';
+            let pageInfo = document.getElementById(pageInfoId);
+            
             if (!pageInfo) {
-                const container = document.createElement('div');
-                container.id = 'pageInfo';
-                container.style.margin = '0 10px';
-                container.style.display = 'flex';
-                container.style.alignItems = 'center';
-                container.style.gap = '10px';
-                
-                const pageText = document.createElement('span');
-                pageText.id = 'pageText';
-                
-                const jumpInput = document.createElement('input');
-                jumpInput.type = 'number';
-                jumpInput.min = '1';
-                jumpInput.id = 'jumpPage';
-                jumpInput.style.width = '60px';
-                jumpInput.style.padding = '4px';
-                jumpInput.style.borderRadius = '4px';
-                jumpInput.style.border = '1px solid var(--border)';
-                jumpInput.style.backgroundColor = 'var(--input)';
-                jumpInput.style.color = 'var(--foreground)';
-                
-                const jumpButton = document.createElement('button');
-                jumpButton.textContent = '跳转';
-                jumpButton.className = 'btn search-button';
-                jumpButton.style.padding = '4px 8px';
-                jumpButton.onclick = () => {
-                    const page = parseInt(jumpInput.value);
-                    if (page && page >= 1 && page <= totalPages) {
-                        currentPage = page;
-                        performSearch();
-                    } else {
-                        showToast('请输入有效的页码');
-                    }
-                };
-                
-                container.appendChild(pageText);
-                container.appendChild(jumpInput);
-                container.appendChild(jumpButton);
-                
-                paginationDiv.insertBefore(container, nextButton);
-                pageInfo = container;
+                pageInfo = createPageInfo(pageInfoId, prefix, total);
+                paginationDiv.insertBefore(pageInfo, nextButton);
             }
             
-            const pageText = document.getElementById('pageText');
-            pageText.textContent = `第 ${currentPage} / ${totalPages || 1} 页 共 ${totalPages || 1} 页`;
-            
-            const jumpInput = document.getElementById('jumpPage');
-            if (jumpInput) {
-                jumpInput.max = totalPages;
-                jumpInput.value = currentPage;
-            }
-            
-            paginationDiv.style.display = totalPages > 1 ? 'flex' : 'none';
+            updatePageInfo(pageInfo, page, total, prefix);
+            paginationDiv.style.display = total > 1 ? 'flex' : 'none';
         }
+
+        // 创建页面信息元素
+        function createPageInfo(pageInfoId, prefix, total) {
+            const container = document.createElement('div');
+            container.id = pageInfoId;
+            container.style.cssText = 'margin: 0 10px; display: flex; align-items: center; gap: 10px;';
+            
+            const pageText = document.createElement('span');
+            pageText.id = prefix ? `${prefix}PageText` : 'pageText';
+            
+            const jumpInput = document.createElement('input');
+            jumpInput.type = 'number';
+            jumpInput.min = '1';
+            jumpInput.max = prefix === 'tag' ? total : Math.min(total, 100); // 搜索页面限制100页
+            jumpInput.id = prefix ? `${prefix}JumpPage` : 'jumpPage';
+            jumpInput.style.cssText = 'width: 60px; padding: 4px; border-radius: 4px; border: 1px solid var(--border); background-color: var(--input); color: var(--foreground);';
+            
+            const jumpButton = document.createElement('button');
+            jumpButton.textContent = '跳转';
+            jumpButton.className = 'btn search-button';
+            jumpButton.style.padding = '4px 8px';
+            jumpButton.onclick = () => handlePageJump(jumpInput, prefix, total);
+            
+            container.append(pageText, jumpInput, jumpButton);
+            return container;
+        }
+
+        // 更新页面信息显示
+        function updatePageInfo(pageInfo, page, total, prefix) {
+            const pageText = pageInfo.querySelector('span');
+            const jumpInput = pageInfo.querySelector('input');
+            
+            // 标签分页显示策略：根据是否确定总页数显示不同格式
+            const isTagPagination = prefix === 'tag';
+            const maxDisplayPages = isTagPagination ? total : Math.min(total, 100);
+            const pageTextContent = isTagPagination 
+                ? `第 ${page} 页` + (total > page ? ` (至少 ${total} 页)` : ` (共 ${total} 页)`)
+                : `第 ${page} / ${maxDisplayPages} 页 共 ${maxDisplayPages} 页` + (total > 100 ? ' (最多100页)' : '');
+            
+            pageText.textContent = pageTextContent;
+            jumpInput.max = maxDisplayPages;
+            jumpInput.value = page;
+        }
+
+        // 处理页面跳转
+        function handlePageJump(jumpInput, prefix, total) {
+            const inputPage = parseInt(jumpInput.value);
+            const maxPage = prefix === 'tag' ? total : Math.min(total, 100);
+            if (!inputPage || inputPage < 1 || inputPage > maxPage) {
+                const limitText = prefix === 'tag' ? '页码' : '页码 (最多100页)';
+                showToast(`请输入有效的${limitText}`);
+                return;
+            }
+            
+            if (prefix === 'tag') {
+                currentTagPage = inputPage;
+                loadTagPage();
+            } else {
+                currentPage = inputPage;
+                performSearch();
+            }
+        }
+
+        // 统一仓库信息处理
+        function parseRepositoryInfo(repo) {
+            const namespace = repo.namespace || (repo.is_official ? 'library' : '');
+            let name = repo.name || repo.repo_name || '';
+            
+            // 清理名称，确保不包含命名空间前缀
+            if (name.includes('/')) {
+                const parts = name.split('/');
+                name = parts[parts.length - 1];
+            }
+            
+            const cleanName = name.replace(/^library\//, '');
+            const fullRepoName = repo.is_official ? cleanName : `${namespace}/${cleanName}`;
+            
+            return {
+                namespace,
+                name,
+                cleanName,
+                fullRepoName
+            };
+        }
+
+        // 分页更新函数
+        const updateSearchPagination = () => updatePagination();
+        const updateTagPagination = () => updatePagination({
+            currentPage: currentTagPage,
+            totalPages: totalTagPages,
+            prefix: 'tag'
+        });
 
         function showSearchResults() {
             document.querySelector('.search-results').style.display = 'block';
@@ -1006,7 +1094,7 @@
                     throw new Error(data.error || '搜索请求失败');
                 }
                 
-                totalPages = Math.ceil(data.count / 25);
+                totalPages = Math.min(Math.ceil(data.count / 25), 100);
                 updatePagination();
                 
                 displayResults(data.results, targetRepo);
@@ -1108,23 +1196,58 @@
             });
         }
 
+        // 内存管理
+        
         async function loadTags(namespace, name) {
+            currentTagPage = 1;
+            await loadTagPage(namespace, name);
+        }
+
+        async function loadTagPage(namespace = null, name = null) {
             showLoading();
             try {
-                if (!namespace || !name) {
+                // 如果传入了新的namespace和name，更新currentRepo
+                if (namespace && name) {
+                    // 清理旧数据，防止内存泄露
+                    cleanupOldTagData();
+                }
+
+                // 获取当前仓库信息
+                const repoInfo = parseRepositoryInfo(currentRepo);
+                const currentNamespace = namespace || repoInfo.namespace;
+                const currentName = name || repoInfo.name;
+                
+                // 调试日志
+                console.log(`loadTagPage: namespace=${currentNamespace}, name=${currentName}, page=${currentTagPage}`);
+                
+                if (!currentNamespace || !currentName) {
                     showToast('命名空间和镜像名称不能为空');
                     return;
                 }
 
-                const response = await fetch(`/tags/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`);
+                const response = await fetch(`/tags/${encodeURIComponent(currentNamespace)}/${encodeURIComponent(currentName)}?page=${currentTagPage}&page_size=100`);
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(errorText || '获取标签信息失败');
                 }
 
                 const data = await response.json();
-                displayTags(data);
-                showTagList();
+                
+                // 改进的总页数计算：使用更准确的分页策略
+                if (data.has_more) {
+                    // 如果还有更多页面，至少有当前页+1页，但可能更多
+                    totalTagPages = Math.max(currentTagPage + 1, totalTagPages);
+                } else {
+                    // 如果没有更多页面，当前页就是最后一页
+                    totalTagPages = currentTagPage;
+                }
+                
+                displayTags(data.tags, data.has_more);
+                updateTagPagination();
+                
+                if (namespace && name) {
+                    showTagList();
+                }
             } catch (error) {
                 console.error('加载标签错误:', error);
                 showToast(error.message || '获取标签信息失败，请稍后重试');
@@ -1133,12 +1256,24 @@
             }
         }
 
-        function displayTags(tags) {
+        function cleanupOldTagData() {
+            // 清理全局变量，释放内存
+            if (window.currentPageTags) {
+                window.currentPageTags.length = 0;
+                window.currentPageTags = null;
+            }
+            
+            // 清理DOM缓存
+            const tagsContainer = document.getElementById('tagsContainer');
+            if (tagsContainer) {
+                tagsContainer.innerHTML = '';
+            }
+        }
+
+        function displayTags(tags, hasMore = false) {
             const tagList = document.getElementById('tagList');
-            const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
-            const name = currentRepo.name || currentRepo.repo_name || '';
-            const cleanName = name.replace(/^library\//, '');
-            const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
+            const repoInfo = parseRepositoryInfo(currentRepo);
+            const { fullRepoName } = repoInfo;
             
             let header = `
                 <div class="tag-header">
@@ -1165,22 +1300,60 @@
                     <button class="tag-search-clear" onclick="clearTagSearch()">×</button>
                 </div>
                 <div id="tagsContainer"></div>
+                <div class="pagination" id="tagPagination" style="display: none;">
+                    <button id="tagPrevPage" disabled>上一页</button>
+                    <button id="tagNextPage" disabled>下一页</button>
+                </div>
             `;
 
             tagList.innerHTML = header;
             
-            window.allTags = tags;
+            // 存储当前页标签数据
+            window.currentPageTags = tags;
             renderFilteredTags(tags);
         }
 
         function renderFilteredTags(filteredTags) {
             const tagsContainer = document.getElementById('tagsContainer');
-            const namespace = currentRepo.namespace || (currentRepo.is_official ? 'library' : '');
-            const name = currentRepo.name || currentRepo.repo_name || '';
-            const cleanName = name.replace(/^library\//, '');
-            const fullRepoName = currentRepo.is_official ? cleanName : `${namespace}/${cleanName}`;
+            const repoInfo = parseRepositoryInfo(currentRepo);
+            const { fullRepoName } = repoInfo;
 
-            let tagsHtml = filteredTags.map(tag => {
+            if (filteredTags.length === 0) {
+                tagsContainer.innerHTML = '<div class="text-center" style="padding: 20px;">未找到匹配的标签</div>';
+                return;
+            }
+
+            // 渐进式渲染：分批处理大数据集
+            const BATCH_SIZE = 50;
+            
+            if (filteredTags.length <= BATCH_SIZE) {
+                // 小数据集：直接渲染
+                renderTagsBatch(filteredTags, fullRepoName, tagsContainer, true);
+            } else {
+                // 大数据集：分批渲染
+                tagsContainer.innerHTML = ''; // 清空容器
+                let currentBatch = 0;
+                
+                function renderNextBatch() {
+                    const start = currentBatch * BATCH_SIZE;
+                    const end = Math.min(start + BATCH_SIZE, filteredTags.length);
+                    const batch = filteredTags.slice(start, end);
+                    
+                    renderTagsBatch(batch, fullRepoName, tagsContainer, false);
+                    
+                    currentBatch++;
+                    if (end < filteredTags.length) {
+                        // 使用requestAnimationFrame确保UI响应性
+                        requestAnimationFrame(renderNextBatch);
+                    }
+                }
+                
+                renderNextBatch();
+            }
+        }
+
+        function renderTagsBatch(tags, fullRepoName, container, replaceContent = false) {
+            const tagsHtml = tags.map(tag => {
                 const vulnIndicators = Object.entries(tag.vulnerabilities || {})
                     .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
                     .join('');
@@ -1212,23 +1385,23 @@
                 `;
             }).join('');
 
-            if (filteredTags.length === 0) {
-                tagsHtml = '<div class="text-center" style="padding: 20px;">未找到匹配的标签</div>';
+            if (replaceContent) {
+                container.innerHTML = tagsHtml;
+            } else {
+                container.insertAdjacentHTML('beforeend', tagsHtml);
             }
-
-            tagsContainer.innerHTML = tagsHtml;
         }
 
         function filterTags(searchText) {
-            if (!window.allTags) return;
+            if (!window.currentPageTags) return;
 
             const searchLower = searchText.toLowerCase();
             let filteredTags;
 
             if (!searchText) {
-                filteredTags = window.allTags;
+                filteredTags = window.currentPageTags;
             } else {
-                const scoredTags = window.allTags.map(tag => {
+                const scoredTags = window.currentPageTags.map(tag => {
                     const name = tag.name.toLowerCase();
                     let score = 0;
 
@@ -1262,6 +1435,8 @@
                 filterTags('');
             }
         }
+
+
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
