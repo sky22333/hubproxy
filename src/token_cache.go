@@ -13,10 +13,10 @@ import (
 
 // CachedItem 通用缓存项，支持Token和Manifest
 type CachedItem struct {
-	Data        []byte         // 缓存数据(token字符串或manifest字节)
-	ContentType string         // 内容类型
+	Data        []byte            // 缓存数据(token字符串或manifest字节)
+	ContentType string            // 内容类型
 	Headers     map[string]string // 额外的响应头
-	ExpiresAt   time.Time      // 过期时间
+	ExpiresAt   time.Time         // 过期时间
 }
 
 // UniversalCache 通用缓存，支持Token和Manifest
@@ -79,18 +79,18 @@ func getManifestTTL(reference string) time.Duration {
 			defaultTTL = parsed
 		}
 	}
-	
+
 	if strings.HasPrefix(reference, "sha256:") {
 		return 24 * time.Hour
 	}
-	
+
 	// mutable tag的智能判断
-	if reference == "latest" || reference == "main" || reference == "master" || 
-	   reference == "dev" || reference == "develop" {
+	if reference == "latest" || reference == "main" || reference == "master" ||
+		reference == "dev" || reference == "develop" {
 		// 热门可变标签: 短期缓存
 		return 10 * time.Minute
 	}
-	
+
 	return defaultTTL
 }
 
@@ -99,17 +99,17 @@ func extractTTLFromResponse(responseBody []byte) time.Duration {
 	var tokenResp struct {
 		ExpiresIn int `json:"expires_in"`
 	}
-	
+
 	// 默认30分钟TTL，确保稳定性
 	defaultTTL := 30 * time.Minute
-	
+
 	if json.Unmarshal(responseBody, &tokenResp) == nil && tokenResp.ExpiresIn > 0 {
 		safeTTL := time.Duration(tokenResp.ExpiresIn-300) * time.Second
 		if safeTTL > 5*time.Minute {
 			return safeTTL
 		}
 	}
-	
+
 	return defaultTTL
 }
 
@@ -122,12 +122,12 @@ func writeCachedResponse(c *gin.Context, item *CachedItem) {
 	if item.ContentType != "" {
 		c.Header("Content-Type", item.ContentType)
 	}
-	
+
 	// 设置额外的响应头
 	for key, value := range item.Headers {
 		c.Header(key, value)
 	}
-	
+
 	// 返回数据
 	c.Data(200, item.ContentType, item.Data)
 }
@@ -148,21 +148,21 @@ func init() {
 	go func() {
 		ticker := time.NewTicker(20 * time.Minute)
 		defer ticker.Stop()
-		
+
 		for range ticker.C {
 			now := time.Now()
 			expiredKeys := make([]string, 0)
-			
+
 			globalCache.cache.Range(func(key, value interface{}) bool {
 				if cached := value.(*CachedItem); now.After(cached.ExpiresAt) {
 					expiredKeys = append(expiredKeys, key.(string))
 				}
 				return true
 			})
-			
+
 			for _, key := range expiredKeys {
 				globalCache.cache.Delete(key)
 			}
 		}
 	}()
-} 
+}

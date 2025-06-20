@@ -45,7 +45,7 @@ var (
 		regexp.MustCompile(`^(?:https?://)?(github|opengraph)\.githubassets\.com/([^/]+)/.+?$`),
 	}
 	globalLimiter *IPRateLimiter
-	
+
 	// 服务启动时间
 	serviceStartTime = time.Now()
 )
@@ -56,13 +56,13 @@ func main() {
 		fmt.Printf("配置加载失败: %v\n", err)
 		return
 	}
-	
+
 	// 初始化HTTP客户端
 	initHTTPClients()
-	
+
 	// 初始化限流器
 	initLimiter()
-	
+
 	// 初始化Docker流式代理
 	initDockerProxy()
 
@@ -89,10 +89,10 @@ func main() {
 
 	// 初始化监控端点
 	initHealthRoutes(router)
-	
+
 	// 初始化镜像tar下载路由
 	initImageTarRoutes(router)
-	
+
 	// 静态文件路由
 	router.GET("/", func(c *gin.Context) {
 		serveEmbedFile(c, "public/index.html")
@@ -114,14 +114,13 @@ func main() {
 
 	// 注册dockerhub搜索路由
 	RegisterSearchRoute(router)
-	
+
 	// 注册Docker认证路由（/token*）
 	router.Any("/token", ProxyDockerAuthGin)
 	router.Any("/token/*path", ProxyDockerAuthGin)
-	
+
 	// 注册Docker Registry代理路由
 	router.Any("/v2/*path", ProxyDockerRegistryGin)
-	
 
 	// 注册NoRoute处理器
 	router.NoRoute(handler)
@@ -131,7 +130,7 @@ func main() {
 	fmt.Printf("📡 监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("⚡ 限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
 	fmt.Printf("🔗 项目地址: https://github.com/sky22333/hubproxy\n")
-	
+
 	err := router.Run(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port))
 	if err != nil {
 		fmt.Printf("启动服务失败: %v\n", err)
@@ -177,11 +176,9 @@ func handler(c *gin.Context) {
 	proxyRequest(c, rawPath)
 }
 
-
 func proxyRequest(c *gin.Context, u string) {
 	proxyWithRedirect(c, u, 0)
 }
-
 
 func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	// 限制最大重定向次数，防止无限递归
@@ -218,7 +215,7 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	cfg := GetConfig()
 	if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
 		if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil && size > cfg.Server.FileSize {
-			c.String(http.StatusRequestEntityTooLarge, 
+			c.String(http.StatusRequestEntityTooLarge,
 				fmt.Sprintf("文件过大，限制大小: %d MB", cfg.Server.FileSize/(1024*1024)))
 			return
 		}
@@ -228,7 +225,7 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 	resp.Header.Del("Content-Security-Policy")
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
-	
+
 	// 获取真实域名
 	realHost := c.Request.Header.Get("X-Forwarded-Host")
 	if realHost == "" {
@@ -241,7 +238,7 @@ func proxyWithRedirect(c *gin.Context, u string, redirectCount int) {
 
 	if strings.HasSuffix(strings.ToLower(u), ".sh") {
 		isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
-		
+
 		processedBody, processedSize, err := ProcessSmart(resp.Body, isGzipCompressed, realHost)
 		if err != nil {
 			fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
@@ -322,19 +319,19 @@ func initHealthRoutes(router *gin.Engine) {
 			"service":   "hubproxy",
 		})
 	})
-	
+
 	// 就绪检查端点
 	router.GET("/ready", func(c *gin.Context) {
 		checks := make(map[string]string)
 		allReady := true
-		
+
 		if GetConfig() != nil {
 			checks["config"] = "ok"
 		} else {
 			checks["config"] = "failed"
 			allReady = false
 		}
-		
+
 		// 检查全局缓存状态
 		if globalCache != nil {
 			checks["cache"] = "ok"
@@ -342,7 +339,7 @@ func initHealthRoutes(router *gin.Engine) {
 			checks["cache"] = "failed"
 			allReady = false
 		}
-		
+
 		// 检查限流器状态
 		if globalLimiter != nil {
 			checks["ratelimiter"] = "ok"
@@ -350,7 +347,7 @@ func initHealthRoutes(router *gin.Engine) {
 			checks["ratelimiter"] = "failed"
 			allReady = false
 		}
-		
+
 		// 检查镜像下载器状态
 		if globalImageStreamer != nil {
 			checks["imagestreamer"] = "ok"
@@ -358,7 +355,7 @@ func initHealthRoutes(router *gin.Engine) {
 			checks["imagestreamer"] = "failed"
 			allReady = false
 		}
-		
+
 		// 检查HTTP客户端状态
 		if GetGlobalHTTPClient() != nil {
 			checks["httpclient"] = "ok"
@@ -366,12 +363,12 @@ func initHealthRoutes(router *gin.Engine) {
 			checks["httpclient"] = "failed"
 			allReady = false
 		}
-		
+
 		status := http.StatusOK
 		if !allReady {
 			status = http.StatusServiceUnavailable
 		}
-		
+
 		c.JSON(status, gin.H{
 			"ready":     allReady,
 			"checks":    checks,

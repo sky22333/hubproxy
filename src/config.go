@@ -37,11 +37,11 @@ type AppConfig struct {
 		BlackList []string `toml:"blackList"` // 黑名单IP/CIDR列表
 	} `toml:"security"`
 
-	Proxy struct {
+	Access struct {
 		WhiteList []string `toml:"whiteList"` // 代理白名单（仓库级别）
 		BlackList []string `toml:"blackList"` // 代理黑名单（仓库级别）
-		Socks5    string   `toml:"socks5"`    // SOCKS5代理地址: socks5://[user:pass@]host:port
-	} `toml:"proxy"`
+		Proxy     string   `toml:"proxy"`     // 代理地址: 支持 http/https/socks5/socks5h
+	} `toml:"access"`
 
 	Download struct {
 		MaxImages int `toml:"maxImages"` // 单次下载最大镜像数量限制
@@ -58,13 +58,14 @@ type AppConfig struct {
 var (
 	appConfig     *AppConfig
 	appConfigLock sync.RWMutex
-	
+
 	cachedConfig     *AppConfig
 	configCacheTime  time.Time
 	configCacheTTL   = 5 * time.Second
 	configCacheMutex sync.RWMutex
 )
 
+// todo:Refactoring is needed
 // DefaultConfig 返回默认配置
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
@@ -91,14 +92,14 @@ func DefaultConfig() *AppConfig {
 			WhiteList: []string{},
 			BlackList: []string{},
 		},
-		Proxy: struct {
+		Access: struct {
 			WhiteList []string `toml:"whiteList"`
 			BlackList []string `toml:"blackList"`
-			Socks5    string   `toml:"socks5"`
+			Proxy     string   `toml:"proxy"`
 		}{
 			WhiteList: []string{},
 			BlackList: []string{},
-			Socks5:    "", // 默认不使用代理
+			Proxy:     "", // 默认不使用代理
 		},
 		Download: struct {
 			MaxImages int `toml:"maxImages"`
@@ -150,16 +151,16 @@ func GetConfig() *AppConfig {
 		return config
 	}
 	configCacheMutex.RUnlock()
-	
+
 	// 缓存过期，重新生成配置
 	configCacheMutex.Lock()
 	defer configCacheMutex.Unlock()
-	
+
 	// 双重检查，防止重复生成
 	if cachedConfig != nil && time.Since(configCacheTime) < configCacheTTL {
 		return cachedConfig
 	}
-	
+
 	appConfigLock.RLock()
 	if appConfig == nil {
 		appConfigLock.RUnlock()
@@ -168,18 +169,18 @@ func GetConfig() *AppConfig {
 		configCacheTime = time.Now()
 		return defaultCfg
 	}
-	
+
 	// 生成新的配置深拷贝
 	configCopy := *appConfig
 	configCopy.Security.WhiteList = append([]string(nil), appConfig.Security.WhiteList...)
 	configCopy.Security.BlackList = append([]string(nil), appConfig.Security.BlackList...)
-	configCopy.Proxy.WhiteList = append([]string(nil), appConfig.Proxy.WhiteList...)
-	configCopy.Proxy.BlackList = append([]string(nil), appConfig.Proxy.BlackList...)
+	configCopy.Access.WhiteList = append([]string(nil), appConfig.Access.WhiteList...)
+	configCopy.Access.BlackList = append([]string(nil), appConfig.Access.BlackList...)
 	appConfigLock.RUnlock()
-	
+
 	cachedConfig = &configCopy
 	configCacheTime = time.Now()
-	
+
 	return cachedConfig
 }
 
@@ -188,7 +189,7 @@ func setConfig(cfg *AppConfig) {
 	appConfigLock.Lock()
 	defer appConfigLock.Unlock()
 	appConfig = cfg
-	
+
 	configCacheMutex.Lock()
 	cachedConfig = nil
 	configCacheMutex.Unlock()
@@ -198,7 +199,7 @@ func setConfig(cfg *AppConfig) {
 func LoadConfig() error {
 	// 首先使用默认配置
 	cfg := DefaultConfig()
-	
+
 	// 尝试加载TOML配置文件
 	if data, err := os.ReadFile("config.toml"); err == nil {
 		if err := toml.Unmarshal(data, cfg); err != nil {
@@ -207,13 +208,13 @@ func LoadConfig() error {
 	} else {
 		fmt.Println("未找到config.toml，使用默认配置")
 	}
-	
+
 	// 从环境变量覆盖配置
 	overrideFromEnv(cfg)
-	
+
 	// 设置配置
 	setConfig(cfg)
-	
+
 	return nil
 }
 
@@ -233,7 +234,7 @@ func overrideFromEnv(cfg *AppConfig) {
 			cfg.Server.FileSize = size
 		}
 	}
-	
+
 	// 限流配置
 	if val := os.Getenv("RATE_LIMIT"); val != "" {
 		if limit, err := strconv.Atoi(val); err == nil && limit > 0 {
@@ -245,7 +246,7 @@ func overrideFromEnv(cfg *AppConfig) {
 			cfg.RateLimit.PeriodHours = period
 		}
 	}
-	
+
 	// IP限制配置
 	if val := os.Getenv("IP_WHITELIST"); val != "" {
 		cfg.Security.WhiteList = append(cfg.Security.WhiteList, strings.Split(val, ",")...)
@@ -253,7 +254,7 @@ func overrideFromEnv(cfg *AppConfig) {
 	if val := os.Getenv("IP_BLACKLIST"); val != "" {
 		cfg.Security.BlackList = append(cfg.Security.BlackList, strings.Split(val, ",")...)
 	}
-	
+
 	// 下载限制配置
 	if val := os.Getenv("MAX_IMAGES"); val != "" {
 		if maxImages, err := strconv.Atoi(val); err == nil && maxImages > 0 {
@@ -265,11 +266,11 @@ func overrideFromEnv(cfg *AppConfig) {
 // CreateDefaultConfigFile 创建默认配置文件
 func CreateDefaultConfigFile() error {
 	cfg := DefaultConfig()
-	
+
 	data, err := toml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("序列化默认配置失败: %v", err)
 	}
-	
+
 	return os.WriteFile("config.toml", data, 0644)
-} 
+}
