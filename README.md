@@ -71,31 +71,18 @@ https://github.com/user/repo/releases/download/v1.0.0/file.tar.gz
 
 # 加速链接
 https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/file.tar.gz
+
+# 加速下载仓库
+git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 ```
-
-
 
 ## ⚙️ 配置
 
-容器内的配置文件位于 `/root/config.toml`
+<details>
+  <summary>config.toml配置说明</summary>
 
-脚本部署配置文件位于 `/opt/hubproxy/config.toml`
+此配置是默认配置
 
-为了IP限流能够正常运行，反向代理需要传递IP头用来获取访客真实IP，以caddy为例：
-```
-example.com {
-    reverse_proxy 127.0.0.1:5000 {
-        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-        header_up X-Forwarded-Proto https
-        header_up X-Forwarded-Host {host}
-    }
-}
-```
-
-### `config.toml`配置示例
-
-不配置也可以，程序内置有默认值
 ```
 [server]
 host = "0.0.0.0"
@@ -191,6 +178,35 @@ enabled = true
 enabled = true
 # 默认缓存时间(分钟)
 defaultTTL = "20m"
+```
+
+</details>
+
+容器内的配置文件位于 `/root/config.toml`
+
+脚本部署配置文件位于 `/opt/hubproxy/config.toml`
+
+为了IP限流能够正常运行，反向代理需要传递IP头用来获取访客真实IP，以caddy为例：
+```
+example.com {
+    reverse_proxy {
+        to 127.0.0.1:5000
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+```
+cloudflare CDN：
+```
+example.com {
+    reverse_proxy 127.0.0.1:5000 {
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+    }
+}
 ```
 
 
