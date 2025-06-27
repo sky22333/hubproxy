@@ -609,10 +609,10 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">
-                        ⚡ 快速生成加速链接
+                        ⚡ 快速转换加速链接
                     </h2>
                     <p class="card-description">
-                        输入GitHub文件或仓库链接，自动转换加速链接，可以直接在Github域名前面加上本站域名使用。
+                        输入GitHub文件链接，自动转换加速链接，可以直接在Github文件链接前加上本站域名使用。
                     </p>
                 </div>
 
@@ -622,7 +622,7 @@
                             type="text" 
                             class="input" 
                             id="githubLinkInput" 
-                            placeholder="请输入GitHub链接，例如：https://github.com/user/repo/releases/download/..."
+                            placeholder="请输入GitHub文件链接，例如：https://github.com/user/repo/releases/download/..."
                         >
                         <button class="button button-primary" id="formatButton">
                             获取加速链接
@@ -653,12 +653,12 @@
                         🐳 Docker 镜像加速
                     </h3>
                     <p class="card-description">
-                        支持多种Registry，在镜像名前添加本站域名即可加速下载。
+                        支持多种镜像仓库，在镜像名称前添加本站域名即可加速下载。
                     </p>
                 </div>
                 
                 <button class="docker-button" id="dockerButton">
-                    查看 Docker 镜像加速配置
+                    查看 Docker 镜像加速使用说明
                 </button>
             </div>
         </div>
@@ -669,23 +669,23 @@
             <button class="close-button" id="closeModal">&times;</button>
             <div class="modal-header">
                 <h2 class="modal-title">Docker 镜像加速</h2>
-                <p>支持多种Registry，在镜像名前添加本站域名即可加速下载。</p>
+                <p>支持多种镜像仓库，在镜像名称前添加本站域名即可加速下载。</p>
             </div>
             
             <div class="domain-examples">
-                <strong>Docker Hub 官方镜像：</strong>
+                <strong>Docker 官方镜像：</strong>
                 docker pull <span class="domain-base"></span>/nginx
 
-                <strong>Docker Hub 第三方镜像：</strong>
+                <strong>Docker 镜像：</strong>
                 docker pull <span class="domain-base"></span>/user/image
 
-                <strong>GitHub Container Registry：</strong>
+                <strong>ghcr.io 镜像：</strong>
                 docker pull <span class="domain-base"></span>/ghcr.io/user/image
 
-                <strong>Quay.io Registry：</strong>
+                <strong>Quay.io 镜像：</strong>
                 docker pull <span class="domain-base"></span>/quay.io/org/image
 
-                <strong>Kubernetes Registry：</strong>
+                <strong>K8s 镜像：</strong>
                 docker pull <span class="domain-base"></span>/registry.k8s.io/pause:3.8
             </div>
         </div>
