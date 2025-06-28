@@ -224,3 +224,7 @@ example.com {
 **⭐ 如果这个项目对你有帮助，请给个 Star！⭐**
 
 </div>
+
+
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sky22333/hubproxy&type=Date)](https://www.star-history.com/#sky22333/hubproxy&Date)
