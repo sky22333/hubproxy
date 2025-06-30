@@ -83,9 +83,9 @@ git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 ## ⚙️ 配置
 
 <details>
-  <summary>config.toml配置说明</summary>
+  <summary>config.toml 配置说明</summary>
 
-此配置是默认配置
+*此配置是默认配置，已经内置在程序中了，可以不用添加。*
 
 ```
 [server]
