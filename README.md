@@ -67,8 +67,8 @@ docker pull yourdomain.com/ghcr.io/sky22333/hubproxy
 # 符合Docker Registry API v2标准的仓库都支持
 ```
 
-还可以把服务作为 Docker 的镜像加速器使用。
-在主机上编辑（或新建）`/etc/docker/daemon.json`，
+当然也支持配置为全局镜像加速，在主机上新建（或编辑）`/etc/docker/daemon.json`
+
 在 `"registry-mirrors"` 中加入域名：
 
 ```json
@@ -80,7 +80,7 @@ docker pull yourdomain.com/ghcr.io/sky22333/hubproxy
 ```
 
 若已设置其他加速地址，直接并列添加后保存，
-再执行 `sudo systemctl restart docker` 让配置生效。
+再执行 `sudo systemctl restart docker` 重启docker服务让配置生效。
 
 ### GitHub 文件加速
 
