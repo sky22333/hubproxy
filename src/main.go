@@ -143,12 +143,18 @@ func handler(c *gin.Context) {
 	for strings.HasPrefix(rawPath, "/") {
 		rawPath = strings.TrimPrefix(rawPath, "/")
 	}
-
-	if !strings.HasPrefix(rawPath, "http") {
-		c.String(http.StatusForbidden, "无效输入")
-		return
+	// 自动补全协议头
+	if !strings.HasPrefix(rawPath, "https://") {
+		// 修复 http:/ 和 https:/ 的情况
+		if strings.HasPrefix(rawPath, "http:/") || strings.HasPrefix(rawPath, "https:/") {
+			rawPath = strings.Replace(rawPath, "http:/", "", 1)
+			rawPath = strings.Replace(rawPath, "https:/", "", 1)
+		} else if strings.HasPrefix(rawPath, "http://") {
+			rawPath = strings.TrimPrefix(rawPath, "http://")
+		}
+		rawPath = "https://" + rawPath
 	}
-
+	
 	matches := checkURL(rawPath)
 	if matches != nil {
 		// GitHub仓库访问控制检查
@@ -308,72 +314,50 @@ func checkURL(u string) []string {
 	return nil
 }
 
-// 初始化健康监控路由
+// 简单的健康检查
+func formatBeijingTime(t time.Time) string {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		loc = time.FixedZone("CST", 8*3600) // 兜底时区
+	}
+	return t.In(loc).Format("2006-01-02 15:04:05")
+}
+
+// 转换为可读时间
+func formatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return fmt.Sprintf("%d秒", int(d.Seconds()))
+	} else if d < time.Hour {
+		return fmt.Sprintf("%d分钟%d秒", int(d.Minutes()), int(d.Seconds())%60)
+	} else if d < 24*time.Hour {
+		return fmt.Sprintf("%d小时%d分钟", int(d.Hours()), int(d.Minutes())%60)
+	} else {
+		days := int(d.Hours()) / 24
+		hours := int(d.Hours()) % 24
+		return fmt.Sprintf("%d天%d小时", days, hours)
+	}
+}
+
 func initHealthRoutes(router *gin.Engine) {
-	// 健康检查端点
 	router.GET("/health", func(c *gin.Context) {
+		uptime := time.Since(serviceStartTime)
 		c.JSON(http.StatusOK, gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().Unix(),
-			"uptime":    time.Since(serviceStartTime).Seconds(),
-			"service":   "hubproxy",
+			"status":         "healthy",
+			"timestamp_unix": serviceStartTime.Unix(),
+			"uptime_sec":     uptime.Seconds(),
+			"service":        "hubproxy",
+			"start_time_bj":  formatBeijingTime(serviceStartTime),
+			"uptime_human":   formatDuration(uptime),
 		})
 	})
 
-	// 就绪检查端点
 	router.GET("/ready", func(c *gin.Context) {
-		checks := make(map[string]string)
-		allReady := true
-
-		if GetConfig() != nil {
-			checks["config"] = "ok"
-		} else {
-			checks["config"] = "failed"
-			allReady = false
-		}
-
-		// 检查全局缓存状态
-		if globalCache != nil {
-			checks["cache"] = "ok"
-		} else {
-			checks["cache"] = "failed"
-			allReady = false
-		}
-
-		// 检查限流器状态
-		if globalLimiter != nil {
-			checks["ratelimiter"] = "ok"
-		} else {
-			checks["ratelimiter"] = "failed"
-			allReady = false
-		}
-
-		// 检查镜像下载器状态
-		if globalImageStreamer != nil {
-			checks["imagestreamer"] = "ok"
-		} else {
-			checks["imagestreamer"] = "failed"
-			allReady = false
-		}
-
-		// 检查HTTP客户端状态
-		if GetGlobalHTTPClient() != nil {
-			checks["httpclient"] = "ok"
-		} else {
-			checks["httpclient"] = "failed"
-			allReady = false
-		}
-
-		status := http.StatusOK
-		if !allReady {
-			status = http.StatusServiceUnavailable
-		}
-
-		c.JSON(status, gin.H{
-			"ready":     allReady,
-			"checks":    checks,
-			"timestamp": time.Now().Unix(),
-			"uptime":    time.Since(serviceStartTime).Seconds(),
+		uptime := time.Since(serviceStartTime)
+		c.JSON(http.StatusOK, gin.H{
+			"ready":          true,
+			"timestamp_unix": time.Now().Unix(),
+			"uptime_sec":     uptime.Seconds(),
+			"uptime_human":   formatDuration(uptime),
 		})
 	})
 }
