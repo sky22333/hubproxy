@@ -246,4 +246,5 @@ example.com {
 
 
 
-[![Star History Chart](https://api.star-history.com/svg?repos=sky22333/hubproxy&type=Date)](https://www.star-history.com/#sky22333/hubproxy&Date)
+## Star 趋势
+[![Star 趋势](https://starchart.cc/sky22333/hubproxy.svg?variant=adaptive)](https://starchart.cc/sky22333/hubproxy)
