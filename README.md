@@ -132,7 +132,7 @@ blackList = [
     "192.168.100.0/24"
 ]
 
-[proxy]
+[access]
 # 代理服务白名单（支持GitHub仓库和Docker镜像，支持通配符）
 # 只允许访问白名单中的仓库/镜像，为空时不限制
 whiteList = []
