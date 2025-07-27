@@ -72,7 +72,7 @@ jobs:
           cp hubproxy.service build/hubproxy/
           
           # 复制安装脚本
-          cp install-service.sh build/hubproxy/
+          cp install.sh build/hubproxy/
          
           # 创建README文件
           cat > build/hubproxy/README.md << 'EOF'
@@ -88,13 +88,13 @@ jobs:
           # Linux AMD64 包
           mkdir -p linux-amd64/hubproxy
           cp hubproxy/hubproxy-linux-amd64 linux-amd64/hubproxy/hubproxy
-          cp hubproxy/config.toml hubproxy/hubproxy.service hubproxy/install-service.sh hubproxy/README.md linux-amd64/hubproxy/
+          cp hubproxy/config.toml hubproxy/hubproxy.service hubproxy/install.sh hubproxy/README.md linux-amd64/hubproxy/
           tar -czf hubproxy-${{ steps.version.outputs.version }}-linux-amd64.tar.gz -C linux-amd64 hubproxy
           
           # Linux ARM64 包
           mkdir -p linux-arm64/hubproxy
           cp hubproxy/hubproxy-linux-arm64 linux-arm64/hubproxy/hubproxy
-          cp hubproxy/config.toml hubproxy/hubproxy.service hubproxy/install-service.sh hubproxy/README.md linux-arm64/hubproxy/
+          cp hubproxy/config.toml hubproxy/hubproxy.service hubproxy/install.sh hubproxy/README.md linux-arm64/hubproxy/
           tar -czf hubproxy-${{ steps.version.outputs.version }}-linux-arm64.tar.gz -C linux-arm64 hubproxy
           
           # 列出生成的文件
