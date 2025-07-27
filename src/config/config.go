@@ -78,7 +78,7 @@ func DefaultConfig() *AppConfig {
 			Host:      "0.0.0.0",
 			Port:      5000,
 			FileSize:  2 * 1024 * 1024 * 1024, // 2GB
-			EnableH2C: false,                   // 默认关闭H2C
+			EnableH2C: false,                  // 默认关闭H2C
 		},
 		RateLimit: struct {
 			RequestLimit int     `toml:"requestLimit"`

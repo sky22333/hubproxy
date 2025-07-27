@@ -119,12 +119,12 @@ func main() {
 	fmt.Printf("🚀 HubProxy 启动成功\n")
 	fmt.Printf("📡 监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("⚡ 限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
-	
+
 	// 显示HTTP/2支持状态
 	if cfg.Server.EnableH2C {
 		fmt.Printf("H2c: 已启用\n")
 	}
-	
+
 	fmt.Printf("🔗 项目地址: https://github.com/sky22333/hubproxy\n")
 
 	// 创建HTTP2服务器
@@ -155,17 +155,7 @@ func main() {
 	}
 }
 
-
-
 // 简单的健康检查
-func formatBeijingTime(t time.Time) string {
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		loc = time.FixedZone("CST", 8*3600)
-	}
-	return t.In(loc).Format("2006-01-02 15:04:05")
-}
-
 func formatDuration(d time.Duration) string {
 	if d < time.Minute {
 		return fmt.Sprintf("%d秒", int(d.Seconds()))
@@ -180,26 +170,20 @@ func formatDuration(d time.Duration) string {
 	}
 }
 
-func initHealthRoutes(router *gin.Engine) {
-	router.GET("/health", func(c *gin.Context) {
-		uptime := time.Since(serviceStartTime)
-		c.JSON(http.StatusOK, gin.H{
-			"status":         "healthy",
-			"timestamp_unix": serviceStartTime.Unix(),
-			"uptime_sec":     uptime.Seconds(),
-			"service":        "hubproxy",
-			"start_time_bj":  formatBeijingTime(serviceStartTime),
-			"uptime_human":   formatDuration(uptime),
-		})
-	})
+func getUptimeInfo() (time.Duration, float64, string) {
+	uptime := time.Since(serviceStartTime)
+	return uptime, uptime.Seconds(), formatDuration(uptime)
+}
 
+func initHealthRoutes(router *gin.Engine) {
 	router.GET("/ready", func(c *gin.Context) {
-		uptime := time.Since(serviceStartTime)
+		_, uptimeSec, uptimeHuman := getUptimeInfo()
 		c.JSON(http.StatusOK, gin.H{
-			"ready":          true,
-			"timestamp_unix": time.Now().Unix(),
-			"uptime_sec":     uptime.Seconds(),
-			"uptime_human":   formatDuration(uptime),
+			"ready":           true,
+			"service":         "hubproxy",
+			"start_time_unix": serviceStartTime.Unix(),
+			"uptime_sec":      uptimeSec,
+			"uptime_human":    uptimeHuman,
 		})
 	})
 }

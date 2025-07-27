@@ -36,7 +36,7 @@ func GitHubProxyHandler(c *gin.Context) {
 	for strings.HasPrefix(rawPath, "/") {
 		rawPath = strings.TrimPrefix(rawPath, "/")
 	}
-	
+
 	// 自动补全协议头
 	if !strings.HasPrefix(rawPath, "https://") {
 		if strings.HasPrefix(rawPath, "http:/") || strings.HasPrefix(rawPath, "https:/") {
@@ -47,7 +47,7 @@ func GitHubProxyHandler(c *gin.Context) {
 		}
 		rawPath = "https://" + rawPath
 	}
-	
+
 	matches := CheckGitHubURL(rawPath)
 	if matches != nil {
 		if allowed, reason := utils.GlobalAccessController.CheckGitHubAccess(matches); !allowed {
@@ -96,7 +96,7 @@ func proxyGitHubWithRedirect(c *gin.Context, u string, redirectCount int) {
 		c.String(http.StatusLoopDetected, "重定向次数过多，可能存在循环重定向")
 		return
 	}
-	
+
 	req, err := http.NewRequest(c.Request.Method, u, c.Request.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("server error %v", err))
