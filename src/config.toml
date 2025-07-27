@@ -8,7 +8,7 @@ fileSize = 2147483648
 enableH2C = false
 
 [rateLimit]
-# 每个IP每小时允许的请求数(注意Docker镜像会有多个层，会消耗多个次数)
+# 每个IP每周期允许的请求数
 requestLimit = 500
 # 限流周期（小时）
 periodHours = 3.0
