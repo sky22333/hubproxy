@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"archive/tar"
@@ -23,6 +23,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+	"hubproxy/config"
+	"hubproxy/utils"
 )
 
 // DebounceEntry 防抖条目
@@ -58,17 +60,15 @@ func (d *DownloadDebouncer) ShouldAllow(userID, contentKey string) bool {
 
 	if entry, exists := d.entries[key]; exists {
 		if now.Sub(entry.LastRequest) < d.window {
-			return false // 在防抖窗口内，拒绝请求
+			return false
 		}
 	}
 
-	// 更新或创建条目
 	d.entries[key] = &DebounceEntry{
 		LastRequest: now,
 		UserID:      userID,
 	}
 
-	// 清理过期条目（每5分钟清理一次）
 	if time.Since(d.lastCleanup) > 5*time.Minute {
 		d.cleanup(now)
 		d.lastCleanup = now
@@ -88,50 +88,41 @@ func (d *DownloadDebouncer) cleanup(now time.Time) {
 
 // generateContentFingerprint 生成内容指纹
 func generateContentFingerprint(images []string, platform string) string {
-	// 对镜像列表排序确保顺序无关
 	sortedImages := make([]string, len(images))
 	copy(sortedImages, images)
 	sort.Strings(sortedImages)
 
-	// 组合内容：镜像列表 + 平台信息
 	content := strings.Join(sortedImages, "|") + ":" + platform
 
-	// 生成MD5哈希
 	hash := md5.Sum([]byte(content))
 	return hex.EncodeToString(hash[:])
 }
 
 // getUserID 获取用户标识
 func getUserID(c *gin.Context) string {
-	// 优先使用会话Cookie
 	if sessionID, err := c.Cookie("session_id"); err == nil && sessionID != "" {
 		return "session:" + sessionID
 	}
 
-	// 备用方案：IP + User-Agent组合
 	ip := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
 	if userAgent == "" {
 		userAgent = "unknown"
 	}
 
-	// 生成简短标识
 	combined := ip + ":" + userAgent
 	hash := md5.Sum([]byte(combined))
-	return "ip:" + hex.EncodeToString(hash[:8]) // 只取前8字节
+	return "ip:" + hex.EncodeToString(hash[:8])
 }
 
-// 全局防抖器实例
 var (
 	singleImageDebouncer *DownloadDebouncer
 	batchImageDebouncer  *DownloadDebouncer
 )
 
-// initDebouncer 初始化防抖器
-func initDebouncer() {
-	// 单个镜像：5秒防抖窗口
+// InitDebouncer 初始化防抖器
+func InitDebouncer() {
 	singleImageDebouncer = NewDownloadDebouncer(5 * time.Second)
-	// 批量镜像：60秒防抖窗口
 	batchImageDebouncer = NewDownloadDebouncer(60 * time.Second)
 }
 
@@ -147,15 +138,15 @@ type ImageStreamerConfig struct {
 }
 
 // NewImageStreamer 创建镜像下载器
-func NewImageStreamer(config *ImageStreamerConfig) *ImageStreamer {
-	if config == nil {
-		config = &ImageStreamerConfig{}
+func NewImageStreamer(cfg *ImageStreamerConfig) *ImageStreamer {
+	if cfg == nil {
+		cfg = &ImageStreamerConfig{}
 	}
 
-	concurrency := config.Concurrency
+	concurrency := cfg.Concurrency
 	if concurrency <= 0 {
-		cfg := GetConfig()
-		concurrency = cfg.Download.MaxImages
+		appCfg := config.GetConfig()
+		concurrency = appCfg.Download.MaxImages
 		if concurrency <= 0 {
 			concurrency = 10
 		}
@@ -163,7 +154,7 @@ func NewImageStreamer(config *ImageStreamerConfig) *ImageStreamer {
 
 	remoteOptions := []remote.Option{
 		remote.WithAuth(authn.Anonymous),
-		remote.WithTransport(GetGlobalHTTPClient().Transport),
+		remote.WithTransport(utils.GetGlobalHTTPClient().Transport),
 	}
 
 	return &ImageStreamer{
@@ -176,7 +167,7 @@ func NewImageStreamer(config *ImageStreamerConfig) *ImageStreamer {
 type StreamOptions struct {
 	Platform            string
 	Compression         bool
-	UseCompressedLayers bool // 是否保存原始压缩层，默认开启
+	UseCompressedLayers bool
 }
 
 // StreamImageToWriter 流式下载镜像到Writer
@@ -215,7 +206,6 @@ func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote
 
 // getImageDescriptorWithPlatform 获取指定平台的镜像描述符
 func (is *ImageStreamer) getImageDescriptorWithPlatform(ref name.Reference, options []remote.Option, platform string) (*remote.Descriptor, error) {
-	// 直接从网络获取完整的descriptor，确保对象完整性
 	return remote.Get(ref, options...)
 }
 
@@ -343,7 +333,6 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 			var layerSize int64
 			var layerReader io.ReadCloser
 
-			// 根据配置选择使用压缩层或未压缩层
 			if options != nil && options.UseCompressedLayers {
 				layerSize, err = layer.Size()
 				if err != nil {
@@ -385,7 +374,6 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 		log.Printf("已处理层 %d/%d", i+1, len(layers))
 	}
 
-	// 构建单个镜像的manifest信息
 	singleManifest := map[string]interface{}{
 		"Config":   configDigest.String() + ".json",
 		"RepoTags": []string{imageRef},
@@ -398,7 +386,6 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 		}(),
 	}
 
-	// 构建repositories信息
 	repositories := make(map[string]map[string]string)
 	parts := strings.Split(imageRef, ":")
 	if len(parts) == 2 {
@@ -407,14 +394,12 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 		repositories[repoName] = map[string]string{tag: configDigest.String()}
 	}
 
-	// 如果是批量下载，返回信息而不写入文件
 	if manifestOut != nil && repositoriesOut != nil {
 		*manifestOut = singleManifest
 		*repositoriesOut = repositories
 		return nil
 	}
 
-	// 单镜像下载，直接写入manifest.json
 	manifest := []map[string]interface{}{singleManifest}
 
 	manifestData, err := json.Marshal(manifest)
@@ -436,7 +421,6 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 		return err
 	}
 
-	// 写入repositories文件
 	repositoriesData, err := json.Marshal(repositories)
 	if err != nil {
 		return err
@@ -456,7 +440,7 @@ func (is *ImageStreamer) streamDockerFormatWithReturn(ctx context.Context, tarWr
 	return err
 }
 
-// processImageForBatch 处理镜像的公共逻辑，用于批量下载
+// processImageForBatch 处理镜像的公共逻辑
 func (is *ImageStreamer) processImageForBatch(ctx context.Context, img v1.Image, tarWriter *tar.Writer, imageRef string, options *StreamOptions) (map[string]interface{}, map[string]map[string]string, error) {
 	layers, err := img.Layers()
 	if err != nil {
@@ -498,7 +482,6 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 	switch desc.MediaType {
 	case types.OCIImageIndex, types.DockerManifestList:
-		// 处理多架构镜像
 		img, err = is.selectPlatformImage(desc, options)
 		if err != nil {
 			return nil, nil, fmt.Errorf("选择平台镜像失败: %w", err)
@@ -530,7 +513,6 @@ func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *S
 		return nil, fmt.Errorf("获取索引清单失败: %w", err)
 	}
 
-	// 选择合适的平台
 	var selectedDesc *v1.Descriptor
 	for _, m := range manifest.Manifests {
 		if m.Platform == nil {
@@ -578,8 +560,8 @@ func (is *ImageStreamer) selectPlatformImage(desc *remote.Descriptor, options *S
 
 var globalImageStreamer *ImageStreamer
 
-// initImageStreamer 初始化镜像下载器
-func initImageStreamer() {
+// InitImageStreamer 初始化镜像下载器
+func InitImageStreamer() {
 	globalImageStreamer = NewImageStreamer(nil)
 }
 
@@ -591,8 +573,8 @@ func formatPlatformText(platform string) string {
 	return platform
 }
 
-// initImageTarRoutes 初始化镜像下载路由
-func initImageTarRoutes(router *gin.Engine) {
+// InitImageTarRoutes 初始化镜像下载路由
+func InitImageTarRoutes(router *gin.Engine) {
 	imageAPI := router.Group("/api/image")
 	{
 		imageAPI.GET("/download/:image", handleDirectImageDownload)
@@ -625,7 +607,6 @@ func handleDirectImageDownload(c *gin.Context) {
 		return
 	}
 
-	// 防抖检查
 	userID := getUserID(c)
 	contentKey := generateContentFingerprint([]string{imageRef}, platform)
 
@@ -677,7 +658,7 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		}
 	}
 
-	cfg := GetConfig()
+	cfg := config.GetConfig()
 	if len(req.Images) > cfg.Download.MaxImages {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("镜像数量超过限制，最大允许: %d", cfg.Download.MaxImages),
@@ -685,7 +666,6 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		return
 	}
 
-	// 批量下载防抖检查
 	userID := getUserID(c)
 	contentKey := generateContentFingerprint(req.Images, req.Platform)
 
@@ -697,7 +677,7 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		return
 	}
 
-	useCompressed := true // 默认启用原始压缩层
+	useCompressed := true
 	if req.UseCompressedLayers != nil {
 		useCompressed = *req.UseCompressedLayers
 	}
@@ -801,7 +781,6 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 	var allManifests []map[string]interface{}
 	var allRepositories = make(map[string]map[string]string)
 
-	// 流式处理每个镜像
 	for i, imageRef := range imageRefs {
 		select {
 		case <-ctx.Done():
@@ -811,7 +790,6 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 
 		log.Printf("处理镜像 %d/%d: %s", i+1, len(imageRefs), imageRef)
 
-		// 防止单个镜像处理时间过长
 		timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 		manifest, repositories, err := is.streamSingleImageForBatch(timeoutCtx, tarWriter, imageRef, options)
 		cancel()
@@ -825,10 +803,8 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 			return fmt.Errorf("镜像 %s manifest数据为空", imageRef)
 		}
 
-		// 收集manifest信息
 		allManifests = append(allManifests, manifest)
 
-		// 合并repositories信息
 		for repo, tags := range repositories {
 			if allRepositories[repo] == nil {
 				allRepositories[repo] = make(map[string]string)
@@ -839,7 +815,6 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 		}
 	}
 
-	// 写入合并的manifest.json
 	manifestData, err := json.Marshal(allManifests)
 	if err != nil {
 		return fmt.Errorf("序列化manifest失败: %w", err)
@@ -859,7 +834,6 @@ func (is *ImageStreamer) StreamMultipleImages(ctx context.Context, imageRefs []s
 		return fmt.Errorf("写入manifest数据失败: %w", err)
 	}
 
-	// 写入合并的repositories文件
 	repositoriesData, err := json.Marshal(allRepositories)
 	if err != nil {
 		return fmt.Errorf("序列化repositories失败: %w", err)

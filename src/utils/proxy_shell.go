@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"bytes"
@@ -41,7 +41,6 @@ func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reade
 func readShellContent(input io.ReadCloser, isCompressed bool) (string, error) {
 	var reader io.Reader = input
 
-	// 处理gzip压缩
 	if isCompressed {
 		peek := make([]byte, 2)
 		n, err := input.Read(peek)

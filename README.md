@@ -37,7 +37,7 @@ docker run -d \
 ### 一键脚本安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install-service.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sudo bash
 ```
 
 也可以直接下载二进制文件执行`./hubproxy`使用，无需配置文件即可启动，内置默认配置，支持所有功能。初始内存占用约18M，二进制文件大小约12M
@@ -109,12 +109,14 @@ host = "0.0.0.0"
 port = 5000
 # Github文件大小限制（字节），默认2GB
 fileSize = 2147483648
+# HTTP/2 多路复用
+enableH2C = false
 
 [rateLimit]
 # 每个IP每小时允许的请求数(注意Docker镜像会有多个层，会消耗多个次数)
 requestLimit = 500
 # 限流周期（小时）
-periodHours = 1.0
+periodHours = 3.0
 
 [security]
 # IP白名单，支持单个IP或IP段
@@ -132,7 +134,7 @@ blackList = [
     "192.168.100.0/24"
 ]
 
-[proxy]
+[access]
 # 代理服务白名单（支持GitHub仓库和Docker镜像，支持通配符）
 # 只允许访问白名单中的仓库/镜像，为空时不限制
 whiteList = []
@@ -148,12 +150,6 @@ blackList = [
 # 代理配置，支持有用户名/密码认证和无认证模式
 # 无认证: socks5://127.0.0.1:1080
 # 有认证: socks5://username:password@127.0.0.1:1080
-# HTTP 代理示例
-# http://username:password@127.0.0.1:7890
-# SOCKS5 代理示例
-# socks5://username:password@127.0.0.1:1080
-# SOCKS5H 代理示例
-# socks5h://username:password@127.0.0.1:1080
 # 留空不使用代理
 proxy = "" 
 

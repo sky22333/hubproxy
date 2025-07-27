@@ -1,8 +1,10 @@
-package main
+package utils
 
 import (
 	"strings"
 	"sync"
+
+	"hubproxy/config"
 )
 
 // ResourceType 资源类型
@@ -26,7 +28,7 @@ type DockerImageInfo struct {
 	FullName   string
 }
 
-// 全局访问控制器实例
+// GlobalAccessController 全局访问控制器实例
 var GlobalAccessController = &AccessController{}
 
 // ParseDockerImage 解析Docker镜像名称
@@ -79,19 +81,16 @@ func (ac *AccessController) ParseDockerImage(image string) DockerImageInfo {
 
 // CheckDockerAccess 检查Docker镜像访问权限
 func (ac *AccessController) CheckDockerAccess(image string) (allowed bool, reason string) {
-	cfg := GetConfig()
+	cfg := config.GetConfig()
 
-	// 解析镜像名称
 	imageInfo := ac.ParseDockerImage(image)
 
-	// 检查白名单（如果配置了白名单，则只允许白名单中的镜像）
 	if len(cfg.Access.WhiteList) > 0 {
 		if !ac.matchImageInList(imageInfo, cfg.Access.WhiteList) {
 			return false, "不在Docker镜像白名单内"
 		}
 	}
 
-	// 检查黑名单
 	if len(cfg.Access.BlackList) > 0 {
 		if ac.matchImageInList(imageInfo, cfg.Access.BlackList) {
 			return false, "Docker镜像在黑名单内"
@@ -107,14 +106,12 @@ func (ac *AccessController) CheckGitHubAccess(matches []string) (allowed bool, r
 		return false, "无效的GitHub仓库格式"
 	}
 
-	cfg := GetConfig()
+	cfg := config.GetConfig()
 
-	// 检查白名单
 	if len(cfg.Access.WhiteList) > 0 && !ac.checkList(matches, cfg.Access.WhiteList) {
 		return false, "不在GitHub仓库白名单内"
 	}
 
-	// 检查黑名单
 	if len(cfg.Access.BlackList) > 0 && ac.checkList(matches, cfg.Access.BlackList) {
 		return false, "GitHub仓库在黑名单内"
 	}
@@ -185,17 +182,14 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 			continue
 		}
 
-		// 支持多种匹配模式
 		if fullRepo == item {
 			return true
 		}
 
-		// 用户级匹配
 		if item == username || item == username+"/*" {
 			return true
 		}
 
-		// 前缀匹配（支持通配符）
 		if strings.HasSuffix(item, "*") {
 			prefix := strings.TrimSuffix(item, "*")
 			if strings.HasPrefix(fullRepo, prefix) {
@@ -203,7 +197,6 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 			}
 		}
 
-		// 子仓库匹配（防止 user/repo 匹配到 user/repo-fork）
 		if strings.HasPrefix(fullRepo, item+"/") {
 			return true
 		}
