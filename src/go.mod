@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/go-containerregistry v0.20.5
 	github.com/pelletier/go-toml/v2 v2.2.3
+	golang.org/x/net v0.33.0
 	golang.org/x/time v0.11.0
 )
 

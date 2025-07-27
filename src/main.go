@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"hubproxy/config"
 	"hubproxy/handlers"
 	"hubproxy/utils"
@@ -117,9 +119,37 @@ func main() {
 	fmt.Printf("🚀 HubProxy 启动成功\n")
 	fmt.Printf("📡 监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 	fmt.Printf("⚡ 限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
+	
+	// 显示HTTP/2支持状态
+	if cfg.Server.EnableH2C {
+		fmt.Printf("H2c: 已启用\n")
+	}
+	
 	fmt.Printf("🔗 项目地址: https://github.com/sky22333/hubproxy\n")
 
-	err := router.Run(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port))
+	// 创建HTTP2服务器
+	server := &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 300 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	// 根据配置决定是否启用H2C
+	if cfg.Server.EnableH2C {
+		h2cHandler := h2c.NewHandler(router, &http2.Server{
+			MaxConcurrentStreams:         250,
+			IdleTimeout:                  300 * time.Second,
+			MaxReadFrameSize:             4 << 20,
+			MaxUploadBufferPerConnection: 8 << 20,
+			MaxUploadBufferPerStream:     2 << 20,
+		})
+		server.Handler = h2cHandler
+	} else {
+		server.Handler = router
+	}
+
+	err := server.ListenAndServe()
 	if err != nil {
 		fmt.Printf("启动服务失败: %v\n", err)
 	}
@@ -173,4 +203,3 @@ func initHealthRoutes(router *gin.Engine) {
 		})
 	})
 }
-
