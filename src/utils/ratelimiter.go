@@ -19,12 +19,13 @@ const (
 
 // IPRateLimiter IP限流器结构体
 type IPRateLimiter struct {
-	ips       map[string]*rateLimiterEntry
-	mu        *sync.RWMutex
-	r         rate.Limit
-	b         int
-	whitelist []*net.IPNet
-	blacklist []*net.IPNet
+	ips              map[string]*rateLimiterEntry
+	mu               *sync.RWMutex
+	r                rate.Limit
+	b                int
+	whitelist        []*net.IPNet
+	blacklist        []*net.IPNet
+	whitelistLimiter *rate.Limiter // 全局共享的白名单限流器
 }
 
 // rateLimiterEntry 限流器条目
@@ -75,12 +76,13 @@ func InitGlobalLimiter() *IPRateLimiter {
 	}
 
 	limiter := &IPRateLimiter{
-		ips:       make(map[string]*rateLimiterEntry),
-		mu:        &sync.RWMutex{},
-		r:         ratePerSecond,
-		b:         burstSize,
-		whitelist: whitelist,
-		blacklist: blacklist,
+		ips:              make(map[string]*rateLimiterEntry),
+		mu:               &sync.RWMutex{},
+		r:                ratePerSecond,
+		b:                burstSize,
+		whitelist:        whitelist,
+		blacklist:        blacklist,
+		whitelistLimiter: rate.NewLimiter(rate.Inf, burstSize),
 	}
 
 	go limiter.cleanupRoutine()
@@ -170,7 +172,7 @@ func (i *IPRateLimiter) GetLimiter(ip string) (*rate.Limiter, bool) {
 	}
 
 	if isIPInCIDRList(cleanIP, i.whitelist) {
-		return rate.NewLimiter(rate.Inf, i.b), true
+		return i.whitelistLimiter, true
 	}
 
 	normalizedIP := normalizeIPForRateLimit(cleanIP)
