@@ -116,16 +116,17 @@ func main() {
 	router.NoRoute(handlers.GitHubProxyHandler)
 
 	cfg := config.GetConfig()
-	fmt.Printf("🚀 HubProxy 启动成功\n")
-	fmt.Printf("📡 监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
-	fmt.Printf("⚡ 限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
+	fmt.Printf("HubProxy 启动成功\n")
+	fmt.Printf("监听地址: %s:%d\n", cfg.Server.Host, cfg.Server.Port)
+	fmt.Printf("限流配置: %d请求/%g小时\n", cfg.RateLimit.RequestLimit, cfg.RateLimit.PeriodHours)
 
 	// 显示HTTP/2支持状态
 	if cfg.Server.EnableH2C {
 		fmt.Printf("H2c: 已启用\n")
 	}
 
-	fmt.Printf("🔗 项目地址: https://github.com/sky22333/hubproxy\n")
+	fmt.Printf("版本号: v1.1.6\n")
+	fmt.Printf("项目地址: https://github.com/sky22333/hubproxy\n")
 
 	// 创建HTTP2服务器
 	server := &http.Server{
