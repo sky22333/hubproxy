@@ -71,9 +71,6 @@ func InitGlobalLimiter() *IPRateLimiter {
 	ratePerSecond := rate.Limit(float64(cfg.RateLimit.RequestLimit) / (cfg.RateLimit.PeriodHours * 3600))
 
 	burstSize := cfg.RateLimit.RequestLimit
-	if burstSize < 1 {
-		burstSize = 1
-	}
 
 	limiter := &IPRateLimiter{
 		ips:              make(map[string]*rateLimiterEntry),
