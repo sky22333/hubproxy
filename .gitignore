@@ -2,3 +2,4 @@
 .vscode
 .DS_Store
 hubproxy*
+!hubproxy.service
