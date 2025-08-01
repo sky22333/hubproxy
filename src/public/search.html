@@ -1353,6 +1353,7 @@
         }
 
         function renderTagsBatch(tags, fullRepoName, container, replaceContent = false) {
+             const proxyDomain = window.location.host;
             const tagsHtml = tags.map(tag => {
                 const vulnIndicators = Object.entries(tag.vulnerabilities || {})
                     .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
@@ -1364,6 +1365,8 @@
                     const size = formatUtils.formatSize(img.size);
                     return `<div class="arch-item" title="大小: ${size}">${arch}</div>`;
                 }).join('');
+                
+                const proxyCommand = `docker pull ${proxyDomain}/${fullRepoName}:${tag.name} && docker tag ${proxyDomain}/${fullRepoName}:${tag.name} ${fullRepoName}:${tag.name} && docker rmi ${proxyDomain}/${fullRepoName}:${tag.name}`;
 
                 return `
                     <div class="tag-item">
@@ -1379,6 +1382,10 @@
                         <div class="tag-pull-command">
                             docker pull ${fullRepoName}:${tag.name}
                             <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}:${tag.name}')">复制</button>
+                        </div>
+                        <div class="tag-pull-command">
+                            ${proxyCommand}
+                            <button class="copy-button" onclick="copyToClipboard('${proxyCommand.replace(/'/g, '\\\'')}')">复制</button>
                         </div>
                         ${architectures ? `<div class="tag-architectures">${architectures}</div>` : ''}
                     </div>
@@ -1488,4 +1495,4 @@
     </script>
     </main>
 </body>
-</html> 
+</html>
