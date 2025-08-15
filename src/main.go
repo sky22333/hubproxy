@@ -132,7 +132,7 @@ func main() {
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
 		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 300 * time.Second,
+		WriteTimeout: 30 * time.Minute,
 		IdleTimeout:  120 * time.Second,
 	}
 
