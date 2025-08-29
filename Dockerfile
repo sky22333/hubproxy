@@ -1,11 +1,14 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
+
+ARG TARGETARCH
 
 WORKDIR /app
 COPY src/go.mod src/go.sum ./
 RUN go mod download
 
 COPY src/ .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -trimpath -o hubproxy .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} GOEXPERIMENT=greenteagc go build -ldflags="-s -w" -trimpath -o hubproxy .
 
 FROM alpine
 

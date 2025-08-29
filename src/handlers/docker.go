@@ -598,6 +598,7 @@ func createUpstreamOptions(mapping config.RegistryMapping) []remote.Option {
 		remote.WithTransport(utils.GetGlobalHTTPClient().Transport),
 	}
 
+	// 预留将来不同Registry的差异化认证逻辑扩展点
 	switch mapping.AuthType {
 	case "github":
 	case "google":

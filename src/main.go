@@ -125,7 +125,7 @@ func main() {
 		fmt.Printf("H2c: 已启用\n")
 	}
 
-	fmt.Printf("版本号: v1.1.6\n")
+	fmt.Printf("版本号: v1.1.7\n")
 	fmt.Printf("项目地址: https://github.com/sky22333/hubproxy\n")
 
 	// 创建HTTP2服务器

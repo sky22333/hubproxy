@@ -21,9 +21,9 @@ jobs:
           fetch-depth: 0  # 获取完整历史，用于生成变更日志
           
       - name: 设置Go环境
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           
       - name: 获取版本号
         id: version
@@ -57,11 +57,11 @@ jobs:
         run: |
           cd src
           
-          # Linux AMD64
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
+          # Linux AMD64 (启用Green Tea GC)
+          GOOS=linux GOARCH=amd64 GOEXPERIMENT=greenteagc go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
           
-          # Linux ARM64
-          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
+          # Linux ARM64 (启用Green Tea GC)
+          GOOS=linux GOARCH=arm64 GOEXPERIMENT=greenteagc go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
           
       - name: 复制配置文件
         run: |
@@ -107,7 +107,7 @@ jobs:
           cat checksums.txt
           
       - name: 创建或更新Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: "HubProxy ${{ steps.version.outputs.version }}"
@@ -125,4 +125,4 @@ jobs:
             build/checksums.txt
           draft: false
           prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }} 
+          token: ${{ secrets.GITHUB_TOKEN }}
