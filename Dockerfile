@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY src/ .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} GOEXPERIMENT=greenteagc go build -ldflags="-s -w" -trimpath -o hubproxy .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -trimpath -o hubproxy .
 
 FROM alpine
 

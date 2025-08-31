@@ -57,11 +57,11 @@ jobs:
         run: |
           cd src
           
-          # Linux AMD64 (启用Green Tea GC)
-          GOOS=linux GOARCH=amd64 GOEXPERIMENT=greenteagc go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
+          # Linux AMD64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
           
-          # Linux ARM64 (启用Green Tea GC)
-          GOOS=linux GOARCH=arm64 GOEXPERIMENT=greenteagc go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
+          # Linux ARM64
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
           
       - name: 复制配置文件
         run: |
