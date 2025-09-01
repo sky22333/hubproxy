@@ -29,6 +29,14 @@ var (
 	}
 )
 
+// 全局变量：被阻止的内容类型
+var blockedContentTypes = map[string]bool{
+	"text/html":             true,
+	"application/xhtml+xml": true,
+	"text/xml":              true,
+	"application/xml":       true,
+}
+
 // GitHubProxyHandler GitHub代理处理器
 func GitHubProxyHandler(c *gin.Context) {
 	rawPath := strings.TrimPrefix(c.Request.URL.RequestURI(), "/")
@@ -121,12 +129,23 @@ func proxyGitHubWithRedirect(c *gin.Context, u string, redirectCount int) {
 			fmt.Printf("关闭响应体失败: %v\n", err)
 		}
 	}()
-
-	// 如果Github上游404，则返回错误信息
-	if resp.StatusCode == http.StatusNotFound {
-		c.String(http.StatusForbidden, "无效的GitHub地址")
-		return
+	
+	// 检查并处理被阻止的内容类型
+	if c.Request.Method == "GET" {
+		if contentType := resp.Header.Get("Content-Type"); blockedContentTypes[strings.ToLower(strings.Split(contentType, ";")[0])] {
+			c.JSON(http.StatusForbidden, map[string]string{
+				"error":   "Content type not allowed",
+				"message": "检测到网页内容，本服务不支持加速网页，仅支持加速资源下载。",
+			})
+			return
+		}
 	}
+	
+	// 如果Github上游404，则返回错误信息。这样处理是否会更好点？暂时先用检查内容类型的方式吧，防止返回网页内容。欢迎大佬们提供更好的方案。
+	// if resp.StatusCode == http.StatusNotFound {
+	// 	c.String(http.StatusForbidden, "无效的GitHub地址")
+	// 	return
+	// }
 
 	// 检查文件大小限制
 	cfg := config.GetConfig()
