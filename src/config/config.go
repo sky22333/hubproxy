@@ -133,6 +133,12 @@ func DefaultConfig() *AppConfig {
 				AuthType: "anonymous",
 				Enabled:  true,
 			},
+			"public.ecr.aws": {
+				Upstream: "public.ecr.aws",
+				AuthHost: "public.ecr.aws/token",
+				AuthType: "aws-ecr",
+				Enabled:  true,
+			},
 		},
 		TokenCache: struct {
 			Enabled    bool   `toml:"enabled"`

@@ -3,17 +3,17 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	jsoniter "github.com/json-iterator/go"
 	"hubproxy/config"
 	"hubproxy/utils"
+	"io"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // DockerProxy Docker代理配置
@@ -546,7 +546,7 @@ func handleUpstreamBlobRequest(c *gin.Context, imageRef, digest string, mapping 
 	if err != nil {
 		fmt.Printf("获取layer大小失败: %v\n", err)
 		c.String(http.StatusInternalServerError, "Failed to get layer size")
-		return
+		// return
 	}
 
 	reader, err := layer.Compressed()
@@ -593,17 +593,62 @@ func handleUpstreamTagsRequest(c *gin.Context, imageRef string, mapping config.R
 // createUpstreamOptions 创建上游Registry选项
 func createUpstreamOptions(mapping config.RegistryMapping) []remote.Option {
 	options := []remote.Option{
-		remote.WithAuth(authn.Anonymous),
 		remote.WithUserAgent("hubproxy/go-containerregistry"),
 		remote.WithTransport(utils.GetGlobalHTTPClient().Transport),
 	}
+
+	useAnonymous := true
 
 	// 预留将来不同Registry的差异化认证逻辑扩展点
 	switch mapping.AuthType {
 	case "github":
 	case "google":
 	case "quay":
+	case "aws-ecr":
+
+		// Step 1: Get anonymous token from https://public.ecr.aws/token/
+		client := &http.Client{
+			Timeout:   10 * time.Second,
+			Transport: utils.GetGlobalHTTPClient().Transport,
+		}
+		authUrl := fmt.Sprint("https://", mapping.AuthHost)
+		resp, err := client.Get(authUrl)
+		if err != nil {
+			fmt.Printf("%s: Failed to get token, fallback to anonymous: %v\n", mapping.AuthType, err)
+			break
+		}
+		defer resp.Body.Close()
+		c, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("%s: Failed to read token, fallback to anonymous: %v\n", mapping.AuthType, err)
+			break
+		}
+		var tokenRet map[string]string
+		if err := jsoniter.Unmarshal(c, &tokenRet); err != nil {
+			fmt.Printf("%s: Failed to read token, fallback to anonymous: %v\n", mapping.AuthType, err)
+			break
+		}
+
+		// Step 2: Successfully got token like:
+		/*
+			{"token":"[Token here]"}
+		*/
+		if token, ok := tokenRet["token"]; !ok {
+			fmt.Printf("%s: token is missing in response, fallback to anonymous: %v\n", mapping.AuthType, err)
+			break
+		} else {
+			// Step 3: Use the token fetched as Bearer auth
+			auth := &authn.Bearer{
+				Token: token,
+			}
+			options = append(options, remote.WithAuth(auth))
+			useAnonymous = false
+		}
+
 	}
 
+	if useAnonymous {
+		options = append(options, remote.WithAuth(authn.Anonymous))
+	}
 	return options
 }
