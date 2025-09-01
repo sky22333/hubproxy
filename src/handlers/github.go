@@ -171,8 +171,8 @@ func proxyGitHubWithRedirect(c *gin.Context, u string, redirectCount int) {
 		realHost = "https://" + realHost
 	}
 
-	// 处理.sh文件的智能处理
-	if strings.HasSuffix(strings.ToLower(u), ".sh") {
+	// 处理.sh和.ps1文件的智能处理
+	if strings.HasSuffix(strings.ToLower(u), ".sh") || strings.HasSuffix(strings.ToLower(u), ".ps1") {
 		isGzipCompressed := resp.Header.Get("Content-Encoding") == "gzip"
 
 		processedBody, processedSize, err := utils.ProcessSmart(resp.Body, isGzipCompressed, realHost)
