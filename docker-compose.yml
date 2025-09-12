@@ -5,8 +5,10 @@ services:
     restart: always
     ports:
       - "5000:5000"
+    volumes:
+      - ./src/config.toml:/root/config.toml
     logging:
       driver: json-file
       options:
         max-size: "1g"
-        max-file: "3"
+        max-file: "2"
