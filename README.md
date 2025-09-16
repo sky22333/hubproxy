@@ -2,13 +2,14 @@
 
 🚀 **Docker 和 GitHub 加速代理服务器**
 
-一个轻量级、高性能的多功能代理服务，提供 Docker 镜像加速、GitHub 文件加速、下载离线镜像、在线搜索 Docker 镜像等功能。
-
 <p align="center">
   <a href="https://deepwiki.com/sky22333/hubproxy">
     <img src="./.github/demo/deepwiki.svg" alt="DeepWiki">
   </a>
 </p>
+
+一个轻量级、高性能的多功能代理服务，提供 Docker 镜像加速、GitHub 文件加速、下载离线镜像、在线搜索 Docker 镜像等功能。
+
 
 <p align="center">
   <img src="https://count.getloli.com/get/@sky22333.hubproxy?theme=rule34" alt="Visitors">
@@ -251,11 +252,11 @@ example.com {
 
 ## 界面预览
 
-![1](./.github/demo/1.jpg)
+![1](./.github/demo/demo1.jpg)
 
-![2](./.github/demo/2.jpg)
+![2](./.github/demo/demo2.jpg)
 
-![3](./.github/demo/3.jpg)
+![3](./.github/demo/demo3.jpg)
 
 
 
