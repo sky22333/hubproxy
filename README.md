@@ -49,7 +49,7 @@ docker run -d \
 curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sudo bash
 ```
 
-也可以直接下载二进制文件执行`./hubproxy`使用，无需配置文件即可启动，内置默认配置，支持所有功能。
+支持单个二进制文件直接启动，无需其他配置，内置默认配置，支持所有功能。
 
 这个脚本会：
 - 🔍 自动检测系统架构（AMD64/ARM64）
