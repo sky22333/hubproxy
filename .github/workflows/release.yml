@@ -53,6 +53,11 @@ jobs:
         run: |
           mkdir -p build/hubproxy
           
+      - name: 安装 UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
       - name: 编译二进制文件
         run: |
           cd src
@@ -62,6 +67,10 @@ jobs:
           
           # Linux ARM64
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
+          
+          # 压缩二进制文件
+          upx -9 ../build/hubproxy/hubproxy-linux-amd64
+          upx -9 ../build/hubproxy/hubproxy-linux-arm64
           
       - name: 复制配置文件
         run: |
