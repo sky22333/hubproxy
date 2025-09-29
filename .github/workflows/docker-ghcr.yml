@@ -17,31 +17,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 设置Go环境
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: "src/go.mod"
-          cache-dependency-path: "src/go.sum"
-          
-      - name: 安装 UPX
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          install-only: true
-
-      - name: 编译二进制文件
-        run: |
-          cd src
-          
-          # Linux AMD64
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
-          
-          # Linux ARM64
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
-          
-          # 压缩二进制文件
-          upx -9 ../build/hubproxy/hubproxy-linux-amd64
-          upx -9 ../build/hubproxy/hubproxy-linux-arm64
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
