@@ -4,11 +4,11 @@ ARG TARGETARCH
 
 WORKDIR /app
 COPY src/go.mod src/go.sum ./
-RUN go mod download
+RUN go mod download && apk add upx
 
 COPY src/ .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -trimpath -o hubproxy .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -trimpath -o hubproxy . && upx -9 hubproxy
 
 FROM alpine
 

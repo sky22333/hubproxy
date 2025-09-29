@@ -23,7 +23,8 @@ jobs:
       - name: 设置Go环境
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version-file: "src/go.mod"
+          cache-dependency-path: "src/go.sum"
           
       - name: 获取版本号
         id: version
@@ -53,6 +54,11 @@ jobs:
         run: |
           mkdir -p build/hubproxy
           
+      - name: 安装 UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
       - name: 编译二进制文件
         run: |
           cd src
@@ -62,6 +68,10 @@ jobs:
           
           # Linux ARM64
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
+          
+          # 压缩二进制文件
+          upx -9 ../build/hubproxy/hubproxy-linux-amd64
+          upx -9 ../build/hubproxy/hubproxy-linux-arm64
           
       - name: 复制配置文件
         run: |
