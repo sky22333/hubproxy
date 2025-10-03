@@ -48,6 +48,11 @@ type AppConfig struct {
 		MaxImages int `toml:"maxImages"`
 	} `toml:"download"`
 
+	DockerHubAuth struct {
+		Username string `toml:"username"`
+		Token    string `toml:"token"`
+	} `toml:"dockerHubAuth"`
+
 	Registries map[string]RegistryMapping `toml:"registries"`
 
 	TokenCache struct {
