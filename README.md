@@ -2,7 +2,14 @@
 
 🚀 **Docker 和 GitHub 加速代理服务器**
 
+<p align="center">
+  <a href="https://deepwiki.com/sky22333/hubproxy">
+    <img src="./.github/demo/deepwiki.svg" alt="DeepWiki">
+  </a>
+</p>
+
 一个轻量级、高性能的多功能代理服务，提供 Docker 镜像加速、GitHub 文件加速、下载离线镜像、在线搜索 Docker 镜像等功能。
+
 
 <p align="center">
   <img src="https://count.getloli.com/get/@sky22333.hubproxy?theme=rule34" alt="Visitors">
@@ -42,7 +49,7 @@ docker run -d \
 curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sudo bash
 ```
 
-也可以直接下载二进制文件执行`./hubproxy`使用，无需配置文件即可启动，内置默认配置，支持所有功能。
+支持单个二进制文件直接启动，无需其他配置，内置默认配置，支持所有功能。
 
 这个脚本会：
 - 🔍 自动检测系统架构（AMD64/ARM64）
@@ -241,6 +248,15 @@ example.com {
 **⭐ 如果这个项目对你有帮助，请给个 Star！⭐**
 
 </div>
+
+
+## 界面预览
+
+![1](./.github/demo/demo1.jpg)
+
+![2](./.github/demo/demo2.jpg)
+
+![3](./.github/demo/demo3.jpg)
 
 
 

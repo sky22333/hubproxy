@@ -84,8 +84,8 @@ func DefaultConfig() *AppConfig {
 			RequestLimit int     `toml:"requestLimit"`
 			PeriodHours  float64 `toml:"periodHours"`
 		}{
-			RequestLimit: 200,
-			PeriodHours:  1.0,
+			RequestLimit: 500,
+			PeriodHours:  3.0,
 		},
 		Security: struct {
 			WhiteList []string `toml:"whiteList"`

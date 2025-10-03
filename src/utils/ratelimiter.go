@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	CleanupInterval = 10 * time.Minute
+	CleanupInterval = 20 * time.Minute
 	MaxIPCacheSize  = 10000
 )
 
@@ -98,7 +98,7 @@ func (i *IPRateLimiter) cleanupRoutine() {
 
 		i.mu.RLock()
 		for ip, entry := range i.ips {
-			if now.Sub(entry.lastAccess) > 1*time.Hour {
+			if now.Sub(entry.lastAccess) > 2*time.Hour {
 				expired = append(expired, ip)
 			}
 		}
