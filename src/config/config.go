@@ -113,6 +113,13 @@ func DefaultConfig() *AppConfig {
 		}{
 			MaxImages: 10,
 		},
+		DockerHubAuth: struct {
+			Username string `toml:"username"`
+			Token    string `toml:"token"`
+		}{
+			Username: "",
+			Token:    "",
+		},
 		Registries: map[string]RegistryMapping{
 			"ghcr.io": {
 				Upstream: "ghcr.io",
