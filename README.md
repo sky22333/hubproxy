@@ -240,16 +240,9 @@ example.com {
 
 </div>
 
-
 ## 界面预览
 
 ![1](./.github/demo/demo1.jpg)
-
-![2](./.github/demo/demo2.jpg)
-
-![3](./.github/demo/demo3.jpg)
-
-
 
 ## Star 趋势
 [![Star 趋势](https://starchart.cc/sky22333/hubproxy.svg?variant=adaptive)](https://starchart.cc/sky22333/hubproxy)
