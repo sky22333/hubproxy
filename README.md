@@ -1,12 +1,6 @@
 # HubProxy
 
-🚀 **Docker 和 GitHub 加速代理服务器**
-
-<p align="center">
-  <a href="https://deepwiki.com/sky22333/hubproxy">
-    <img src="./.github/demo/deepwiki.svg" alt="DeepWiki">
-  </a>
-</p>
+ **Docker 和 GitHub 加速代理服务器**
 
 一个轻量级、高性能的多功能代理服务，提供 Docker 镜像加速、GitHub 文件加速、下载离线镜像、在线搜索 Docker 镜像等功能。
 
@@ -15,7 +9,7 @@
   <img src="https://count.getloli.com/get/@sky22333.hubproxy?theme=rule34" alt="Visitors">
 </p>
 
-## ✨ 特性
+## 特性
 
 - 🐳 **Docker 镜像加速** - 支持 Docker Hub、GHCR、Quay 等多个镜像仓库加速，流式传输优化拉取速度。
 - 🐳 **离线镜像包** - 支持下载离线镜像包，流式传输加防抖设计。
@@ -29,8 +23,9 @@
 - 🛡️ **完全自托管** - 避免依赖免费第三方服务的不稳定性，例如`cloudflare`等等。
 - 🚀 **多服务统一加速** - 单个程序即可统一加速 Docker、GitHub、Hugging Face 等多种服务，简化部署与管理。
 
+## [详细文档](https://zread.ai/sky22333/hubproxy)
 
-## 🚀 快速开始
+## 快速开始
 
 ### Docker部署（推荐）
 ```
@@ -41,8 +36,6 @@ docker run -d \
   ghcr.io/sky22333/hubproxy
 ```
 
-
-
 ### 一键脚本安装
 
 ```bash
@@ -52,14 +45,12 @@ curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh |
 支持单个二进制文件直接启动，无需其他配置，内置默认配置，支持所有功能。
 
 这个脚本会：
-- 🔍 自动检测系统架构（AMD64/ARM64）
-- 📥 从 GitHub Releases 下载最新版本
-- ⚙️ 自动配置系统服务
-- 🔄 保留现有配置（升级时）
+- 自动检测系统架构（AMD64/ARM64）
+- 从 GitHub Releases 下载最新版本
+- 自动配置系统服务
+- 保留现有配置（升级时）
 
-
-
-## 📖 使用方法
+## 使用方法
 
 ### Docker 镜像加速
 
@@ -103,7 +94,7 @@ https://yourdomain.com/https://github.com/user/repo/releases/download/v1.0.0/fil
 git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 ```
 
-## ⚙️ 配置
+## 配置
 
 <details>
   <summary>config.toml 配置说明</summary>
