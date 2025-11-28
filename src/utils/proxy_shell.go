@@ -10,7 +10,7 @@ import (
 )
 
 // GitHub URL正则表达式
-var githubRegex = regexp.MustCompile(`https?://(?:github\.com|raw\.githubusercontent\.com|raw\.github\.com|gist\.githubusercontent\.com|gist\.github\.com|api\.github\.com)[^\s'"]+`)
+var githubRegex = regexp.MustCompile(`(?:^|[\s'"(=,\[{;|&<>])https?://(?:github\.com|raw\.githubusercontent\.com|raw\.github\.com|gist\.githubusercontent\.com|gist\.github\.com|api\.github\.com)[^\s'")]*`)
 
 // ProcessSmart Shell脚本智能处理函数
 func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reader, int64, error) {
@@ -70,28 +70,34 @@ func readShellContent(input io.ReadCloser, isCompressed bool) (string, error) {
 }
 
 func processGitHubURLs(content, host string) string {
-	return githubRegex.ReplaceAllStringFunc(content, func(url string) string {
-		return transformURL(url, host)
+	return githubRegex.ReplaceAllStringFunc(content, func(match string) string {
+		// 如果匹配包含前缀分隔符，保留它，防止出现重复转换
+		if len(match) > 0 && match[0] != 'h' {
+			prefix := match[0:1]
+			url := match[1:]
+			return prefix + transformURL(url, host)
+		}
+		return transformURL(match, host)
 	})
 }
 
 // transformURL URL转换函数
 func transformURL(url, host string) string {
-    if strings.Contains(url, host) {
-        return url
-    }
+	if strings.Contains(url, host) {
+		return url
+	}
 
-    if strings.HasPrefix(url, "http://") {
-        url = "https" + url[4:]
-    } else if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "//") {
-        url = "https://" + url
-    }
+	if strings.HasPrefix(url, "http://") {
+		url = "https" + url[4:]
+	} else if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "//") {
+		url = "https://" + url
+	}
 
-    // 确保 host 有协议头
-    if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
-        host = "https://" + host
-    }
-    host = strings.TrimSuffix(host, "/")
+	// 确保 host 有协议头
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		host = "https://" + host
+	}
+	host = strings.TrimSuffix(host, "/")
 
-    return host + "/" + url
+	return host + "/" + url
 }
