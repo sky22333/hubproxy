@@ -192,7 +192,7 @@ func (ac *AccessController) checkList(matches, list []string) bool {
 
 		if strings.HasSuffix(item, "*") {
 			prefix := strings.TrimSuffix(item, "*")
-			if strings.HasPrefix(fullRepo, prefix) {
+			if strings.HasPrefix(repoName, prefix) {
 				return true
 			}
 		}
