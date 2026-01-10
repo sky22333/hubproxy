@@ -49,6 +49,8 @@ type AppConfig struct {
 	} `toml:"download"`
 
 	Registries map[string]RegistryMapping `toml:"registries"`
+	
+	DefaultRegistry RegistryMapping `toml:"defaultRegistry"`
 
 	TokenCache struct {
 		Enabled    bool   `toml:"enabled"`

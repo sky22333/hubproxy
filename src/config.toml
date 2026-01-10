@@ -83,6 +83,12 @@ authHost = "registry.k8s.io"
 authType = "anonymous"
 enabled = true
 
+# Default Registry
+[defaultRegistry]
+upstream = "registry-1.docker.io"
+authHost = "auth.docker.io"
+enabled = true
+
 [tokenCache]
 # 是否启用缓存(同时控制Token和Manifest缓存)显著提升性能
 enabled = true

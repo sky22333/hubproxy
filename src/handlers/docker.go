@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	"hubproxy/config"
 	"hubproxy/utils"
 )
+
+var realmRegex = regexp.MustCompile(`realm="(https?://)([^/"]+)(/?[^"]*)"`)
 
 // DockerProxy Docker代理配置
 type DockerProxy struct {
@@ -68,7 +71,13 @@ var registryDetector = &RegistryDetector{}
 
 // InitDockerProxy 初始化Docker代理
 func InitDockerProxy() {
-	registry, err := name.NewRegistry("registry-1.docker.io")
+	cfg := config.GetConfig()
+	upstream := "registry-1.docker.io"
+	if cfg.DefaultRegistry.Upstream != "" {
+		upstream = cfg.DefaultRegistry.Upstream
+	}
+
+	registry, err := name.NewRegistry(upstream)
 	if err != nil {
 		fmt.Printf("创建Docker registry失败: %v\n", err)
 		return
@@ -353,16 +362,20 @@ func (r *ResponseRecorder) Write(data []byte) (int, error) {
 }
 
 func proxyDockerAuthOriginal(c *gin.Context) {
-	var authURL string
+	cfg := config.GetConfig()
+
+	authHost := "auth.docker.io"
+	if cfg.DefaultRegistry.AuthHost != "" {
+		authHost = cfg.DefaultRegistry.AuthHost
+	}
+
 	if targetDomain, exists := c.Get("target_registry_domain"); exists {
 		if mapping, found := registryDetector.getRegistryMapping(targetDomain.(string)); found {
-			authURL = "https://" + mapping.AuthHost + c.Request.URL.Path
-		} else {
-			authURL = "https://auth.docker.io" + c.Request.URL.Path
+			authHost = mapping.AuthHost
 		}
-	} else {
-		authURL = "https://auth.docker.io" + c.Request.URL.Path
 	}
+
+	authURL := "https://" + authHost + c.Request.URL.Path
 
 	if c.Request.URL.RawQuery != "" {
 		authURL += "?" + c.Request.URL.RawQuery
@@ -421,12 +434,7 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 
 // rewriteAuthHeader 重写认证头
 func rewriteAuthHeader(authHeader, proxyHost string) string {
-	authHeader = strings.ReplaceAll(authHeader, "https://auth.docker.io", "http://"+proxyHost)
-	authHeader = strings.ReplaceAll(authHeader, "https://ghcr.io", "http://"+proxyHost)
-	authHeader = strings.ReplaceAll(authHeader, "https://gcr.io", "http://"+proxyHost)
-	authHeader = strings.ReplaceAll(authHeader, "https://quay.io", "http://"+proxyHost)
-
-	return authHeader
+	return realmRegex.ReplaceAllString(authHeader, fmt.Sprintf(`realm="http://%s$3"`, proxyHost))
 }
 
 // handleMultiRegistryRequest 处理多Registry请求
@@ -603,13 +611,6 @@ func createUpstreamOptions(mapping config.RegistryMapping) []remote.Option {
 		remote.WithAuth(authn.Anonymous),
 		remote.WithUserAgent("hubproxy/go-containerregistry"),
 		remote.WithTransport(utils.GetGlobalHTTPClient().Transport),
-	}
-
-	// 预留将来不同Registry的差异化认证逻辑扩展点
-	switch mapping.AuthType {
-	case "github":
-	case "google":
-	case "quay":
 	}
 
 	return options
