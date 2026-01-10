@@ -12,47 +12,44 @@ import (
 // GitHub URL正则表达式
 var githubRegex = regexp.MustCompile(`(?:^|[\s'"(=,\[{;|&<>])https?://(?:github\.com|raw\.githubusercontent\.com|raw\.github\.com|gist\.githubusercontent\.com|gist\.github\.com|api\.github\.com)[^\s'")]*`)
 
-// ProcessSmart Shell脚本智能处理函数
-func ProcessSmart(input io.ReadCloser, isCompressed bool, host string) (io.Reader, int64, error) {
-	defer input.Close()
+// MaxShellSize 限制最大处理大小为 10MB
+const MaxShellSize = 10 * 1024 * 1024
 
+// ProcessSmart Shell脚本智能处理函数
+func ProcessSmart(input io.Reader, isCompressed bool, host string) (io.Reader, int64, error) {
 	content, err := readShellContent(input, isCompressed)
 	if err != nil {
-		return nil, 0, fmt.Errorf("内容读取失败: %v", err)
+		return nil, 0, err
 	}
 
 	if len(content) == 0 {
 		return strings.NewReader(""), 0, nil
 	}
 
-	if len(content) > 10*1024*1024 {
-		return strings.NewReader(content), int64(len(content)), nil
+	if !bytes.Contains(content, []byte("github.com")) && !bytes.Contains(content, []byte("githubusercontent.com")) {
+		return bytes.NewReader(content), int64(len(content)), nil
 	}
 
-	if !strings.Contains(content, "github.com") && !strings.Contains(content, "githubusercontent.com") {
-		return strings.NewReader(content), int64(len(content)), nil
-	}
-
-	processed := processGitHubURLs(content, host)
+	processed := processGitHubURLs(string(content), host)
 
 	return strings.NewReader(processed), int64(len(processed)), nil
 }
 
-func readShellContent(input io.ReadCloser, isCompressed bool) (string, error) {
+func readShellContent(input io.Reader, isCompressed bool) ([]byte, error) {
 	var reader io.Reader = input
 
 	if isCompressed {
 		peek := make([]byte, 2)
 		n, err := input.Read(peek)
 		if err != nil && err != io.EOF {
-			return "", fmt.Errorf("读取数据失败: %v", err)
+			return nil, fmt.Errorf("读取数据失败: %v", err)
 		}
 
 		if n >= 2 && peek[0] == 0x1f && peek[1] == 0x8b {
 			combinedReader := io.MultiReader(bytes.NewReader(peek[:n]), input)
 			gzReader, err := gzip.NewReader(combinedReader)
 			if err != nil {
-				return "", fmt.Errorf("gzip解压失败: %v", err)
+				return nil, fmt.Errorf("gzip解压失败: %v", err)
 			}
 			defer gzReader.Close()
 			reader = gzReader
@@ -61,12 +58,19 @@ func readShellContent(input io.ReadCloser, isCompressed bool) (string, error) {
 		}
 	}
 
-	data, err := io.ReadAll(reader)
+	limit := int64(MaxShellSize + 1)
+	limitedReader := io.LimitReader(reader, limit)
+
+	data, err := io.ReadAll(limitedReader)
 	if err != nil {
-		return "", fmt.Errorf("读取内容失败: %v", err)
+		return nil, fmt.Errorf("读取内容失败: %v", err)
 	}
 
-	return string(data), nil
+	if int64(len(data)) > MaxShellSize {
+		return nil, fmt.Errorf("脚本文件过大，超过 %d MB 限制", MaxShellSize/1024/1024)
+	}
+
+	return data, nil
 }
 
 func processGitHubURLs(content, host string) string {
