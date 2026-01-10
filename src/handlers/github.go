@@ -171,9 +171,9 @@ func proxyGitHubWithRedirect(c *gin.Context, u string, redirectCount int) {
 
 		processedBody, processedSize, err := utils.ProcessSmart(resp.Body, isGzipCompressed, realHost)
 		if err != nil {
-			fmt.Printf("智能处理失败，回退到直接代理: %v\n", err)
-			processedBody = resp.Body
-			processedSize = 0
+			fmt.Printf("脚本处理失败: %v\n", err)
+			c.String(http.StatusBadGateway, "Script processing failed: %v", err)
+			return
 		}
 
 		// 智能设置响应头
