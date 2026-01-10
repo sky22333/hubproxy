@@ -419,10 +419,15 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 		}
 	}
 
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+
 	for key, values := range resp.Header {
 		for _, value := range values {
 			if key == "Www-Authenticate" {
-				value = rewriteAuthHeader(value, proxyHost)
+				value = rewriteAuthHeader(value, scheme, proxyHost)
 			}
 			c.Header(key, value)
 		}
@@ -433,8 +438,8 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 }
 
 // rewriteAuthHeader 重写认证头
-func rewriteAuthHeader(authHeader, proxyHost string) string {
-	return realmRegex.ReplaceAllString(authHeader, fmt.Sprintf(`realm="http://%s$3"`, proxyHost))
+func rewriteAuthHeader(authHeader, scheme, proxyHost string) string {
+	return realmRegex.ReplaceAllString(authHeader, fmt.Sprintf(`realm="%s://%s$3"`, scheme, proxyHost))
 }
 
 // handleMultiRegistryRequest 处理多Registry请求
