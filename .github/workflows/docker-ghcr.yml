@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number'
+        description: '版本号 (例如: v1.0.0)'
         required: true
-        default: 'latest'
+        default: 'v1.0.0'
 
 jobs:
   build:
@@ -36,7 +36,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Set version from input
-        run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          if [[ $VERSION == v* ]]; then
+            VERSION=${VERSION:1}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Convert repository name to lowercase
         run: |
@@ -53,4 +58,4 @@ jobs:
             --build-arg VERSION=${{ env.VERSION }} \
             -f Dockerfile .
         env:
-          GHCR_PUBLIC: true  # 将镜像设置为公开
+          GHCR_PUBLIC: true

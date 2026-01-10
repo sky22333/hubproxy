@@ -1,7 +1,7 @@
 name: 发布二进制文件
 
 on:
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:
     inputs:
       version:
         description: '版本号 (例如: v1.0.0)'
@@ -18,7 +18,7 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取完整历史，用于生成变更日志
+          fetch-depth: 0
           
       - name: 设置Go环境
         uses: actions/setup-go@v5
