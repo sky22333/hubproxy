@@ -28,8 +28,15 @@ var dockerProxy *DockerProxy
 type RegistryDetector struct{}
 
 // detectRegistryDomain 检测Registry域名并返回域名和剩余路径
-func (rd *RegistryDetector) detectRegistryDomain(path string) (string, string) {
+func (rd *RegistryDetector) detectRegistryDomain(c *gin.Context, path string) (string, string) {
 	cfg := config.GetConfig()
+
+	// 兼容Containerd的ns参数
+	if ns := c.Query("ns"); ns != "" {
+		if mapping, exists := cfg.Registries[ns]; exists && mapping.Enabled {
+			return ns, path
+		}
+	}
 
 	for domain := range cfg.Registries {
 		if strings.HasPrefix(path, domain+"/") {
@@ -99,7 +106,7 @@ func ProxyDockerRegistryGin(c *gin.Context) {
 func handleRegistryRequest(c *gin.Context, path string) {
 	pathWithoutV2 := strings.TrimPrefix(path, "/v2/")
 
-	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(pathWithoutV2); registryDomain != "" {
+	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(c, pathWithoutV2); registryDomain != "" {
 		if registryDetector.isRegistryEnabled(registryDomain) {
 			c.Set("target_registry_domain", registryDomain)
 			c.Set("target_path", remainingPath)
