@@ -52,9 +52,8 @@ jobs:
       - name: Build and push Docker image
         run: |
           docker buildx build --push \
-            --platform linux/amd64,linux/arm64 \
+            --platform linux/amd64 \
             --tag ghcr.io/${{ env.REPO_LOWER }}:${{ env.VERSION }} \
-            --tag ghcr.io/${{ env.REPO_LOWER }}:latest \
             --build-arg VERSION=${{ env.VERSION }} \
             -f Dockerfile .
         env:
