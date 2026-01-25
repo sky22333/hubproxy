@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -158,51 +157,6 @@ func init() {
 			searchCache.Cleanup()
 		}
 	}()
-}
-
-func filterSearchResults(results []Repository, query string) []Repository {
-	searchTerm := strings.ToLower(strings.TrimPrefix(query, "library/"))
-	filtered := make([]Repository, 0)
-
-	for _, repo := range results {
-		repoName := strings.ToLower(repo.Name)
-		repoDesc := strings.ToLower(repo.Description)
-
-		score := 0
-
-		if repoName == searchTerm {
-			score += 100
-		}
-
-		if strings.HasPrefix(repoName, searchTerm) {
-			score += 50
-		}
-
-		if strings.Contains(repoName, searchTerm) {
-			score += 30
-		}
-
-		if strings.Contains(repoDesc, searchTerm) {
-			score += 10
-		}
-
-		if repo.IsOfficial {
-			score += 20
-		}
-
-		if score > 0 {
-			filtered = append(filtered, repo)
-		}
-	}
-
-	sort.Slice(filtered, func(i, j int) bool {
-		if filtered[i].IsOfficial != filtered[j].IsOfficial {
-			return filtered[i].IsOfficial
-		}
-		return filtered[i].PullCount > filtered[j].PullCount
-	})
-
-	return filtered
 }
 
 // normalizeRepository 统一规范化仓库信息
@@ -487,10 +441,14 @@ func parsePaginationParams(c *gin.Context, defaultPageSize int) (page, pageSize 
 	pageSize = defaultPageSize
 
 	if p := c.Query("page"); p != "" {
-		fmt.Sscanf(p, "%d", &page)
+		if _, err := fmt.Sscanf(p, "%d", &page); err != nil {
+			fmt.Printf("解析page参数失败: %v\n", err)
+		}
 	}
 	if ps := c.Query("page_size"); ps != "" {
-		fmt.Sscanf(ps, "%d", &pageSize)
+		if _, err := fmt.Sscanf(ps, "%d", &pageSize); err != nil {
+			fmt.Printf("解析page_size参数失败: %v\n", err)
+		}
 	}
 
 	return page, pageSize

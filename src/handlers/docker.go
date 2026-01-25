@@ -274,7 +274,9 @@ func handleBlobRequest(c *gin.Context, imageRef, digest string) {
 	c.Header("Docker-Content-Digest", digest)
 
 	c.Status(http.StatusOK)
-	io.Copy(c.Writer, reader)
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		fmt.Printf("复制layer内容失败: %v\n", err)
+	}
 }
 
 // handleTagsRequest 处理tags列表请求
@@ -416,7 +418,9 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 	}
 
 	c.Status(resp.StatusCode)
-	io.Copy(c.Writer, resp.Body)
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		fmt.Printf("复制认证响应失败: %v\n", err)
+	}
 }
 
 // rewriteAuthHeader 重写认证头
@@ -569,7 +573,9 @@ func handleUpstreamBlobRequest(c *gin.Context, imageRef, digest string, mapping 
 	c.Header("Docker-Content-Digest", digest)
 
 	c.Status(http.StatusOK)
-	io.Copy(c.Writer, reader)
+	if _, err := io.Copy(c.Writer, reader); err != nil {
+		fmt.Printf("复制layer内容失败: %v\n", err)
+	}
 }
 
 // handleUpstreamTagsRequest 处理上游Registry的tags请求

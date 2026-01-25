@@ -227,6 +227,8 @@ func proxyGitHubWithRedirect(c *gin.Context, u string, redirectCount int) {
 		c.Status(resp.StatusCode)
 
 		// 直接流式转发
-		io.Copy(c.Writer, resp.Body)
+		if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+			fmt.Printf("转发响应体失败: %v\n", err)
+		}
 	}
 }

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"strings"
-	"sync"
 
 	"hubproxy/config"
 )
@@ -17,7 +16,6 @@ const (
 
 // AccessController 统一访问控制器
 type AccessController struct {
-	mu sync.RWMutex
 }
 
 // DockerImageInfo Docker镜像信息

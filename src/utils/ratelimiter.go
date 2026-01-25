@@ -176,8 +176,9 @@ func (i *IPRateLimiter) GetLimiter(ip string) (*rate.Limiter, bool) {
 
 	now := time.Now()
 
+	var entry *rateLimiterEntry
 	i.mu.RLock()
-	entry, exists := i.ips[normalizedIP]
+	_, exists := i.ips[normalizedIP]
 	i.mu.RUnlock()
 
 	if exists {
