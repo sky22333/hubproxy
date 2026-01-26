@@ -6,6 +6,7 @@ port = 5000
 fileSize = 2147483648
 # HTTP/2 多路复用
 enableH2C = false
+enableFrontend = true
 
 [rateLimit]
 # 每个IP每周期允许的请求数

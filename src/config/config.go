@@ -22,10 +22,11 @@ type RegistryMapping struct {
 // AppConfig 应用配置结构体
 type AppConfig struct {
 	Server struct {
-		Host      string `toml:"host"`
-		Port      int    `toml:"port"`
-		FileSize  int64  `toml:"fileSize"`
-		EnableH2C bool   `toml:"enableH2C"`
+		Host           string `toml:"host"`
+		Port           int    `toml:"port"`
+		FileSize       int64  `toml:"fileSize"`
+		EnableH2C      bool   `toml:"enableH2C"`
+		EnableFrontend bool   `toml:"enableFrontend"`
 	} `toml:"server"`
 
 	RateLimit struct {
@@ -70,15 +71,17 @@ var (
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		Server: struct {
-			Host      string `toml:"host"`
-			Port      int    `toml:"port"`
-			FileSize  int64  `toml:"fileSize"`
-			EnableH2C bool   `toml:"enableH2C"`
+			Host           string `toml:"host"`
+			Port           int    `toml:"port"`
+			FileSize       int64  `toml:"fileSize"`
+			EnableH2C      bool   `toml:"enableH2C"`
+			EnableFrontend bool   `toml:"enableFrontend"`
 		}{
-			Host:      "0.0.0.0",
-			Port:      5000,
-			FileSize:  2 * 1024 * 1024 * 1024, // 2GB
-			EnableH2C: false,                  // 默认关闭H2C
+			Host:           "0.0.0.0",
+			Port:           5000,
+			FileSize:       2 * 1024 * 1024 * 1024,
+			EnableH2C:      false,
+			EnableFrontend: true,
 		},
 		RateLimit: struct {
 			RequestLimit int     `toml:"requestLimit"`
@@ -225,6 +228,11 @@ func overrideFromEnv(cfg *AppConfig) {
 	if val := os.Getenv("ENABLE_H2C"); val != "" {
 		if enable, err := strconv.ParseBool(val); err == nil {
 			cfg.Server.EnableH2C = enable
+		}
+	}
+	if val := os.Getenv("ENABLE_FRONTEND"); val != "" {
+		if enable, err := strconv.ParseBool(val); err == nil {
+			cfg.Server.EnableFrontend = enable
 		}
 	}
 	if val := os.Getenv("MAX_FILE_SIZE"); val != "" {
