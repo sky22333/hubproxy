@@ -114,6 +114,8 @@ port = 5000
 fileSize = 2147483648
 # HTTP/2 多路复用，提升下载速度
 enableH2C = false
+# 是否启用前端静态页面
+enableFrontend = true
 
 [rateLimit]
 # 每个IP每周期允许的请求数(注意Docker镜像会有多个层，会消耗多个次数)
@@ -203,6 +205,23 @@ defaultTTL = "20m"
 容器内的配置文件位于 `/root/config.toml`
 
 脚本部署配置文件位于 `/opt/hubproxy/config.toml`
+
+### 环境变量（可选）
+
+支持通过环境变量覆盖部分配置，优先级高于`config.toml`，以下是默认值：
+
+```
+SERVER_HOST=0.0.0.0             # 监听地址
+SERVER_PORT=5000                # 监听端口
+ENABLE_H2C=false                # 是否启用 H2C
+ENABLE_FRONTEND=true            # 是否启用前端静态页面
+MAX_FILE_SIZE=2147483648        # GitHub 文件大小限制（字节）
+RATE_LIMIT=500                  # 每周期请求数
+RATE_PERIOD_HOURS=3             # 限流周期（小时）
+IP_WHITELIST=127.0.0.1,192.168.1.0/24   # IP 白名单（逗号分隔）
+IP_BLACKLIST=192.168.100.1,192.168.100.0/24 # IP 黑名单（逗号分隔）
+MAX_IMAGES=10                   # 批量下载镜像数量限制
+```
 
 为了IP限流能够正常运行，反向代理需要传递IP头用来获取访客真实IP，以caddy为例：
 ```
