@@ -62,12 +62,13 @@ jobs:
       - name: 编译二进制文件
         run: |
           cd src
+          VERSION=${{ steps.version.outputs.version }}
           
           # Linux AMD64
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-amd64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o ../build/hubproxy/hubproxy-linux-amd64 .
           
           # Linux ARM64
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../build/hubproxy/hubproxy-linux-arm64 .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o ../build/hubproxy/hubproxy-linux-arm64 .
           
           # 压缩二进制文件
           upx -9 ../build/hubproxy/hubproxy-linux-amd64

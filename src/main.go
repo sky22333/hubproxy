@@ -40,6 +40,8 @@ var (
 	serviceStartTime = time.Now()
 )
 
+var Version = "dev"
+
 func buildRouter(cfg *config.AppConfig) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
@@ -148,7 +150,7 @@ func main() {
 		fmt.Printf("H2c: 已启用\n")
 	}
 
-	fmt.Printf("版本号: v1.2.1\n")
+	fmt.Printf("版本号: %s\n", Version)
 	fmt.Printf("项目地址: https://github.com/sky22333/hubproxy\n")
 
 	// 创建HTTP2服务器
@@ -205,6 +207,7 @@ func initHealthRoutes(router *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{
 			"ready":           true,
 			"service":         "hubproxy",
+			"version":         Version,
 			"start_time_unix": serviceStartTime.Unix(),
 			"uptime_sec":      uptimeSec,
 			"uptime_human":    uptimeHuman,
