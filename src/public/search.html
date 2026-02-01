@@ -778,16 +778,10 @@
             </div>
         </div>
 
-        <div class="tag-list" id="tagList">
-            <div class="pagination" id="tagPagination" style="display: none;">
-                <button id="tagPrevPage" disabled>上一页</button>
-                <button id="tagNextPage" disabled>下一页</button>
-            </div>
-        </div>
+        <div class="tag-list" id="tagList"></div>
     </div>
 
     <div id="toast"></div>
-
     <script>
         const formatUtils = {
             formatNumber(num) {
@@ -1047,7 +1041,6 @@
         }
 
         // 分页更新函数
-        const updateSearchPagination = () => updatePagination();
         const updateTagPagination = () => updatePagination({
             currentPage: currentTagPage,
             totalPages: totalTagPages,
@@ -1216,9 +1209,6 @@
                 const repoInfo = parseRepositoryInfo(currentRepo);
                 const currentNamespace = namespace || repoInfo.namespace;
                 const currentName = name || repoInfo.name;
-                
-                // 调试日志
-                console.log(`loadTagPage: namespace=${currentNamespace}, name=${currentName}, page=${currentTagPage}`);
                 
                 if (!currentNamespace || !currentName) {
                     showToast('命名空间和镜像名称不能为空');

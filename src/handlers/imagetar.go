@@ -5,12 +5,15 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/md5"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -115,6 +118,15 @@ func getUserID(c *gin.Context) string {
 	return "ip:" + hex.EncodeToString(hash[:8])
 }
 
+func getClientIdentity(c *gin.Context) (string, string) {
+	ip := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+	if userAgent == "" {
+		userAgent = "unknown"
+	}
+	return ip, userAgent
+}
+
 var (
 	singleImageDebouncer *DownloadDebouncer
 	batchImageDebouncer  *DownloadDebouncer
@@ -125,6 +137,98 @@ func InitDebouncer() {
 	singleImageDebouncer = NewDownloadDebouncer(5 * time.Second)
 	batchImageDebouncer = NewDownloadDebouncer(60 * time.Second)
 }
+
+type BatchDownloadRequest struct {
+	Images              []string
+	Platform            string
+	UseCompressedLayers bool
+}
+
+type SingleDownloadRequest struct {
+	Image               string
+	Platform            string
+	UseCompressedLayers bool
+}
+
+type tokenEntry[T any] struct {
+	Request   T
+	ExpiresAt time.Time
+	IP        string
+	UserAgent string
+}
+
+type tokenStore[T any] struct {
+	mu      sync.RWMutex
+	entries map[string]tokenEntry[T]
+}
+
+const downloadTokenTTL = 2 * time.Minute
+const downloadTokenMaxEntries = 2000
+
+func newTokenStore[T any]() *tokenStore[T] {
+	return &tokenStore[T]{
+		entries: make(map[string]tokenEntry[T]),
+	}
+}
+
+func (s *tokenStore[T]) create(req T, ip, userAgent string) (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	token := base64.RawURLEncoding.EncodeToString(tokenBytes)
+	now := time.Now()
+	entry := tokenEntry[T]{
+		Request:   req,
+		ExpiresAt: now.Add(downloadTokenTTL),
+		IP:        ip,
+		UserAgent: userAgent,
+	}
+
+	s.mu.Lock()
+	s.cleanup(now)
+	if len(s.entries) >= downloadTokenMaxEntries {
+		s.mu.Unlock()
+		return "", fmt.Errorf("令牌过多，请稍后再试")
+	}
+	s.entries[token] = entry
+	s.mu.Unlock()
+
+	return token, nil
+}
+
+func (s *tokenStore[T]) consume(token, ip, userAgent string) (T, bool) {
+	var empty T
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, exists := s.entries[token]
+	if !exists {
+		return empty, false
+	}
+	if now.After(entry.ExpiresAt) {
+		delete(s.entries, token)
+		return empty, false
+	}
+	if entry.IP != ip || entry.UserAgent != userAgent {
+		delete(s.entries, token)
+		return empty, false
+	}
+	delete(s.entries, token)
+	return entry.Request, true
+}
+
+func (s *tokenStore[T]) cleanup(now time.Time) {
+	for token, entry := range s.entries {
+		if now.After(entry.ExpiresAt) {
+			delete(s.entries, token)
+		}
+	}
+}
+
+var batchDownloadTokens = newTokenStore[BatchDownloadRequest]()
+var singleDownloadTokens = newTokenStore[SingleDownloadRequest]()
 
 // ImageStreamer 镜像流式下载器
 type ImageStreamer struct {
@@ -209,6 +313,17 @@ func (is *ImageStreamer) getImageDescriptorWithPlatform(ref name.Reference, opti
 	return remote.Get(ref, options...)
 }
 
+func setDownloadHeaders(c *gin.Context, filename string, compressed bool) {
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+	if compressed {
+		c.Header("Content-Encoding", "gzip")
+	}
+}
+
 // StreamImageToGin 流式响应到Gin
 func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, c *gin.Context, options *StreamOptions) error {
 	if options == nil {
@@ -216,12 +331,7 @@ func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, 
 	}
 
 	filename := strings.ReplaceAll(imageRef, "/", "_") + ".tar"
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-
-	if options.Compression {
-		c.Header("Content-Encoding", "gzip")
-	}
+	setDownloadHeaders(c, filename, options.Compression)
 
 	return is.StreamImageToWriter(ctx, imageRef, c.Writer, options)
 }
@@ -579,6 +689,7 @@ func InitImageTarRoutes(router *gin.Engine) {
 	{
 		imageAPI.GET("/download/:image", handleDirectImageDownload)
 		imageAPI.GET("/info/:image", handleImageInfo)
+		imageAPI.GET("/batch", handleSimpleBatchDownload)
 		imageAPI.POST("/batch", handleSimpleBatchDownload)
 	}
 }
@@ -607,27 +718,64 @@ func handleDirectImageDownload(c *gin.Context) {
 		return
 	}
 
-	userID := getUserID(c)
-	contentKey := generateContentFingerprint([]string{imageRef}, platform)
+	if c.Query("mode") == "prepare" {
+		userID := getUserID(c)
+		contentKey := generateContentFingerprint([]string{imageRef}, platform)
 
-	if !singleImageDebouncer.ShouldAllow(userID, contentKey) {
-		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error":       "请求过于频繁，请稍后再试",
-			"retry_after": 5,
-		})
+		if !singleImageDebouncer.ShouldAllow(userID, contentKey) {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "请求过于频繁，请稍后再试",
+				"retry_after": 5,
+			})
+			return
+		}
+
+		ip, userAgent := getClientIdentity(c)
+		token, err := singleDownloadTokens.create(SingleDownloadRequest{
+			Image:               imageRef,
+			Platform:            platform,
+			UseCompressedLayers: useCompressed,
+		}, ip, userAgent)
+		if err != nil {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+			return
+		}
+
+		downloadURL := fmt.Sprintf("/api/image/download/%s?token=%s", imageParam, token)
+		if tag != "" {
+			downloadURL = downloadURL + "&tag=" + url.QueryEscape(tag)
+		}
+		c.JSON(http.StatusOK, gin.H{"download_url": downloadURL})
+		return
+	}
+
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少下载令牌"})
+		return
+	}
+
+	ip, userAgent := getClientIdentity(c)
+	req, ok := singleDownloadTokens.consume(token, ip, userAgent)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效或过期的下载令牌"})
+		return
+	}
+	if req.Image != imageRef {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "下载令牌与镜像不匹配"})
 		return
 	}
 
 	options := &StreamOptions{
-		Platform:            platform,
+		Platform:            req.Platform,
 		Compression:         false,
-		UseCompressedLayers: useCompressed,
+		UseCompressedLayers: req.UseCompressedLayers,
 	}
 
 	ctx := c.Request.Context()
-	log.Printf("下载镜像: %s (平台: %s)", imageRef, formatPlatformText(platform))
+	log.Printf("下载镜像: %s (平台: %s)", req.Image, formatPlatformText(req.Platform))
 
-	if err := globalImageStreamer.StreamImageToGin(ctx, imageRef, c, options); err != nil {
+	if err := globalImageStreamer.StreamImageToGin(ctx, req.Image, c, options); err != nil {
 		log.Printf("镜像下载失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "镜像下载失败: " + err.Error()})
 		return
@@ -636,6 +784,51 @@ func handleDirectImageDownload(c *gin.Context) {
 
 // handleSimpleBatchDownload 处理批量下载
 func handleSimpleBatchDownload(c *gin.Context) {
+	if c.Request.Method == http.MethodGet {
+		token := c.Query("token")
+		if token == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "缺少下载令牌"})
+			return
+		}
+
+		ip, userAgent := getClientIdentity(c)
+		req, ok := batchDownloadTokens.consume(token, ip, userAgent)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "无效或过期的下载令牌"})
+			return
+		}
+
+		if len(req.Images) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "镜像列表不能为空"})
+			return
+		}
+
+		options := &StreamOptions{
+			Platform:            req.Platform,
+			Compression:         false,
+			UseCompressedLayers: req.UseCompressedLayers,
+		}
+
+		ctx := c.Request.Context()
+		log.Printf("批量下载 %d 个镜像 (平台: %s)", len(req.Images), formatPlatformText(req.Platform))
+
+		filename := fmt.Sprintf("batch_%d_images.tar", len(req.Images))
+
+		setDownloadHeaders(c, filename, options.Compression)
+
+		if err := globalImageStreamer.StreamMultipleImages(ctx, req.Images, c.Writer, options); err != nil {
+			log.Printf("批量镜像下载失败: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "批量镜像下载失败: " + err.Error()})
+			return
+		}
+		return
+	}
+
+	if c.Query("mode") != "prepare" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "只支持prepare模式"})
+		return
+	}
+
 	var req struct {
 		Images              []string `json:"images" binding:"required"`
 		Platform            string   `json:"platform"`
@@ -682,25 +875,19 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		useCompressed = *req.UseCompressedLayers
 	}
 
-	options := &StreamOptions{
+	batchReq := BatchDownloadRequest{
+		Images:              req.Images,
 		Platform:            req.Platform,
-		Compression:         false,
 		UseCompressedLayers: useCompressed,
 	}
 
-	ctx := c.Request.Context()
-	log.Printf("批量下载 %d 个镜像 (平台: %s)", len(req.Images), formatPlatformText(req.Platform))
-
-	filename := fmt.Sprintf("batch_%d_images.tar", len(req.Images))
-
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-
-	if err := globalImageStreamer.StreamMultipleImages(ctx, req.Images, c.Writer, options); err != nil {
-		log.Printf("批量镜像下载失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "批量镜像下载失败: " + err.Error()})
+	ip, userAgent := getClientIdentity(c)
+	token, err := batchDownloadTokens.create(batchReq, ip, userAgent)
+	if err != nil {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{"download_url": fmt.Sprintf("/api/image/batch?token=%s", token)})
 }
 
 // handleImageInfo 处理镜像信息查询

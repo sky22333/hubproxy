@@ -251,7 +251,7 @@ func searchDockerHubWithDepth(ctx context.Context, query string, page, pageSize 
 			}
 			return nil, fmt.Errorf("未找到相关镜像")
 		case http.StatusBadGateway, http.StatusServiceUnavailable:
-			return nil, fmt.Errorf("Docker Hub服务暂时不可用，请稍后重试")
+			return nil, fmt.Errorf("docker hub 服务暂时不可用，请稍后重试")
 		default:
 			return nil, fmt.Errorf("请求失败: 状态码=%d, 响应=%s", resp.StatusCode, string(body))
 		}

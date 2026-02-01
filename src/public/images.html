@@ -728,7 +728,7 @@
             }
         }
 
-        function buildDownloadUrl(imageName, platform = '', useCompressed = true) {
+        function buildDownloadUrl(imageName, platform = '', useCompressed = true, mode = '') {
             const encodedImage = imageName.replace(/\//g, '_');
             let url = `/api/image/download/${encodedImage}`;
             
@@ -737,6 +737,9 @@
                 params.append('platform', platform.trim());
             }
             params.append('compressed', useCompressed.toString());
+            if (mode) {
+                params.append('mode', mode);
+            }
             
             if (params.toString()) {
                 url += '?' + params.toString();
@@ -745,7 +748,65 @@
             return url;
         }
 
-        document.getElementById('singleForm').addEventListener('submit', function(e) {
+        function buildInfoUrl(imageName) {
+            const encodedImage = imageName.replace(/\//g, '_');
+            return `/api/image/info/${encodedImage}`;
+        }
+
+        async function preflightImageDownload(imageName) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            try {
+                const response = await fetch(buildInfoUrl(imageName), {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    cache: 'no-store',
+                    signal: controller.signal
+                });
+
+                const contentType = response.headers.get('Content-Type') || '';
+                let payload = null;
+                if (contentType.includes('application/json')) {
+                    payload = await response.json();
+                }
+
+                if (!response.ok) {
+                    return { ok: false, error: (payload && payload.error) ? payload.error : '镜像预检失败' };
+                }
+
+                if (payload && payload.success === false) {
+                    return { ok: false, error: payload.error || '镜像预检失败' };
+                }
+
+                return { ok: true };
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return { ok: false, error: '预检超时，请稍后重试' };
+                }
+                return { ok: false, error: '网络错误: ' + error.message };
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        async function preflightImages(images) {
+            const uniqueImages = Array.from(new Set(images));
+            const results = await Promise.allSettled(uniqueImages.map((imageName) => preflightImageDownload(imageName)));
+            for (let i = 0; i < results.length; i++) {
+                const result = results[i];
+                if (result.status === 'rejected') {
+                    return { ok: false, error: '预检失败，请稍后重试' };
+                }
+                if (!result.value.ok) {
+                    return { ok: false, error: result.value.error || '预检失败' };
+                }
+            }
+            return { ok: true };
+        }
+
+        document.getElementById('singleForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const imageName = document.getElementById('imageInput').value.trim();
@@ -760,20 +821,50 @@
             hideStatus('singleStatus');
             setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', true);
             
-            const downloadUrl = buildDownloadUrl(imageName, platform, useCompressed);
-            
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = '';
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            
-            link.click();
-            document.body.removeChild(link);
-            
-            const platformText = platform ? ` (${platform})` : '';
-            showStatus('singleStatus', `开始下载 ${imageName}${platformText}`, 'success');
-            setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', false);
+            showStatus('singleStatus', '正在准备下载...', 'success');
+            const preflightResult = await preflightImages([imageName]);
+            if (!preflightResult.ok) {
+                showStatus('singleStatus', preflightResult.error, 'error');
+                setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', false);
+                return;
+            }
+
+            const prepareUrl = buildDownloadUrl(imageName, platform, useCompressed, 'prepare');
+            try {
+                const response = await fetch(prepareUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    cache: 'no-store'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data || !data.download_url) {
+                        showStatus('singleStatus', '下载地址生成失败', 'error');
+                        return;
+                    }
+
+                    const link = document.createElement('a');
+                    link.href = data.download_url;
+                    link.download = '';
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    const platformText = platform ? ` (${platform})` : '';
+                    showStatus('singleStatus', `开始下载 ${imageName}${platformText}`, 'success');
+                } else {
+                    const error = await response.json();
+                    showStatus('singleStatus', error.error || '下载失败', 'error');
+                }
+            } catch (error) {
+                showStatus('singleStatus', '网络错误: ' + error.message, 'error');
+            } finally {
+                setButtonLoading('downloadBtn', 'downloadText', 'downloadLoading', false);
+            }
         });
 
         document.getElementById('batchForm').addEventListener('submit', async function(e) {
@@ -808,9 +899,16 @@
             
             hideStatus('batchStatus');
             setButtonLoading('batchDownloadBtn', 'batchDownloadText', 'batchDownloadLoading', true);
+            showStatus('batchStatus', '正在准备下载...', 'success');
+            const preflightResult = await preflightImages(images);
+            if (!preflightResult.ok) {
+                showStatus('batchStatus', preflightResult.error, 'error');
+                setButtonLoading('batchDownloadBtn', 'batchDownloadText', 'batchDownloadLoading', false);
+                return;
+            }
             
             try {
-                const response = await fetch('/api/image/batch', {
+                const response = await fetch('/api/image/batch?mode=prepare', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -819,24 +917,19 @@
                 });
                 
                 if (response.ok) {
-                    const contentDisposition = response.headers.get('Content-Disposition');
-                    let filename = `batch_${images.length}_images.tar`;
-                    
-                    if (contentDisposition) {
-                        const matches = contentDisposition.match(/filename="(.+)"/);
-                        if (matches) filename = matches[1];
+                    const data = await response.json();
+                    if (!data || !data.download_url) {
+                        showStatus('batchStatus', '下载地址生成失败', 'error');
+                        return;
                     }
-                    
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
+
+                    const url = data.download_url;
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = filename;
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
                     
                     const platformText = platform ? ` (${platform})` : '';
                     showStatus('batchStatus', `开始下载 ${images.length} 个镜像${platformText}`, 'success');
