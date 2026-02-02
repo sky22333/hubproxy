@@ -717,6 +717,10 @@ func handleDirectImageDownload(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "镜像引用格式错误: " + err.Error()})
 		return
 	}
+	if allowed, reason := utils.GlobalAccessController.CheckDockerAccess(imageRef); !allowed {
+		c.JSON(http.StatusForbidden, gin.H{"error": reason})
+		return
+	}
 
 	if c.Query("mode") == "prepare" {
 		userID := getUserID(c)
@@ -763,6 +767,10 @@ func handleDirectImageDownload(c *gin.Context) {
 	}
 	if req.Image != imageRef {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "下载令牌与镜像不匹配"})
+		return
+	}
+	if allowed, reason := utils.GlobalAccessController.CheckDockerAccess(req.Image); !allowed {
+		c.JSON(http.StatusForbidden, gin.H{"error": reason})
 		return
 	}
 
@@ -844,10 +852,22 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "镜像列表不能为空"})
 		return
 	}
+	for _, imageRef := range req.Images {
+		if allowed, reason := utils.GlobalAccessController.CheckDockerAccess(imageRef); !allowed {
+			c.JSON(http.StatusForbidden, gin.H{"error": reason})
+			return
+		}
+	}
 
 	for i, imageRef := range req.Images {
 		if !strings.Contains(imageRef, ":") && !strings.Contains(imageRef, "@") {
 			req.Images[i] = imageRef + ":latest"
+		}
+	}
+	for _, imageRef := range req.Images {
+		if allowed, reason := utils.GlobalAccessController.CheckDockerAccess(imageRef); !allowed {
+			c.JSON(http.StatusForbidden, gin.H{"error": reason})
+			return
 		}
 	}
 
@@ -908,6 +928,10 @@ func handleImageInfo(c *gin.Context) {
 	ref, err := name.ParseReference(imageRef)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "镜像引用格式错误: " + err.Error()})
+		return
+	}
+	if allowed, reason := utils.GlobalAccessController.CheckDockerAccess(imageRef); !allowed {
+		c.JSON(http.StatusForbidden, gin.H{"error": reason})
 		return
 	}
 
