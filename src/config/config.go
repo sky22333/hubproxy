@@ -49,6 +49,11 @@ type AppConfig struct {
 		MaxImages int `toml:"maxImages"`
 	} `toml:"download"`
 
+	DockerHubAuth struct {
+		Username string `toml:"username"`
+		Token    string `toml:"token"`
+	} `toml:"dockerHubAuth"`
+
 	Registries map[string]RegistryMapping `toml:"registries"`
 
 	TokenCache struct {
@@ -110,6 +115,13 @@ func DefaultConfig() *AppConfig {
 			MaxImages int `toml:"maxImages"`
 		}{
 			MaxImages: 10,
+		},
+		DockerHubAuth: struct {
+			Username string `toml:"username"`
+			Token    string `toml:"token"`
+		}{
+			Username: "",
+			Token:    "",
 		},
 		Registries: map[string]RegistryMapping{
 			"ghcr.io": {

@@ -47,11 +47,16 @@ blackList = [
 # 无认证: socks5://127.0.0.1:1080
 # 有认证: socks5://username:password@127.0.0.1:1080
 # 留空不使用代理
-proxy = "" 
+proxy = ""
 
 [download]
 # 批量下载离线镜像数量限制
 maxImages = 10
+
+# Docker Hub 认证信息，留空则匿名拉取
+[dockerHubAuth]
+username = "" # e.g., user1
+token = "" # e.g., dckr_pat_***
 
 # Registry映射配置，支持多种镜像仓库上游
 [registries]
@@ -59,7 +64,7 @@ maxImages = 10
 # GitHub Container Registry
 [registries."ghcr.io"]
 upstream = "ghcr.io"
-authHost = "ghcr.io/token" 
+authHost = "ghcr.io/token"
 authType = "github"
 enabled = true
 

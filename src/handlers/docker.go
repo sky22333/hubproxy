@@ -75,9 +75,17 @@ func InitDockerProxy() {
 	}
 
 	options := []remote.Option{
-		remote.WithAuth(authn.Anonymous),
 		remote.WithUserAgent("hubproxy/go-containerregistry"),
 		remote.WithTransport(utils.GetGlobalHTTPClient().Transport),
+	}
+	dockerHubAuth := config.GetConfig().DockerHubAuth
+	if dockerHubAuth.Token != "" && dockerHubAuth.Username != "" {
+		options = append(options, remote.WithAuth(&authn.Basic{
+			Username: dockerHubAuth.Username,
+			Password: dockerHubAuth.Token,
+		}))
+	} else {
+		options = append(options, remote.WithAuth(authn.Anonymous))
 	}
 
 	dockerProxy = &DockerProxy{
