@@ -1,0 +1,26 @@
+name: hubproxy
+services:
+  hubproxy:
+    image: ghcr.io/sky22333/hubproxy:latest
+    container_name: hubproxy
+    restart: unless-stopped
+    ports:
+      - 5555:5000
+    volumes:
+      - ./src/config.toml:/root/config.toml
+
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO-
+        - http://127.0.0.1:5000/ready
+      start_period: 20s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: 3
