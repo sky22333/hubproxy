@@ -55,6 +55,8 @@ type AppConfig struct {
 		Enabled    bool   `toml:"enabled"`
 		DefaultTTL string `toml:"defaultTTL"`
 	} `toml:"tokenCache"`
+
+	Auth AuthConfig `toml:"auth"`
 }
 
 var (
@@ -144,6 +146,7 @@ func DefaultConfig() *AppConfig {
 			Enabled:    true,
 			DefaultTTL: "20m",
 		},
+		Auth: DefaultAuthConfig(),
 	}
 }
 
@@ -262,6 +265,26 @@ func overrideFromEnv(cfg *AppConfig) {
 	if val := os.Getenv("MAX_IMAGES"); val != "" {
 		if maxImages, err := strconv.Atoi(val); err == nil && maxImages > 0 {
 			cfg.Download.MaxImages = maxImages
+		}
+	}
+
+	if val := os.Getenv("ENABLE_AUTH"); val != "" {
+		if enable, err := strconv.ParseBool(val); err == nil {
+			cfg.Auth.Enabled = enable
+		}
+	}
+	if val := os.Getenv("AUTH_USERNAME"); val != "" {
+		cfg.Auth.Username = val
+	}
+	if val := os.Getenv("AUTH_PASSWORD"); val != "" {
+		cfg.Auth.Password = val
+	}
+	if val := os.Getenv("AUTH_JWT_SECRET"); val != "" {
+		cfg.Auth.JWTSecret = val
+	}
+	if val := os.Getenv("AUTH_TOKEN_EXPIRE_HOURS"); val != "" {
+		if hours, err := strconv.Atoi(val); err == nil && hours > 0 {
+			cfg.Auth.TokenExpireHours = hours
 		}
 	}
 }
