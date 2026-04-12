@@ -41,7 +41,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		path := c.Request.URL.Path
 
 		// 白名单路径，无需认证
-		whitelistPaths := []string{"/login", "/api/login", "/api/logout"}
+		whitelistPaths := []string{"/login", "/api/login", "/api/logout", "/ready"}
 		for _, wp := range whitelistPaths {
 			if path == wp {
 				c.Next()

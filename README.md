@@ -221,7 +221,72 @@ RATE_PERIOD_HOURS=3             # 限流周期（小时）
 IP_WHITELIST=127.0.0.1,192.168.1.0/24   # IP 白名单（逗号分隔）
 IP_BLACKLIST=192.168.100.1,192.168.100.0/24 # IP 黑名单（逗号分隔）
 MAX_IMAGES=10                   # 批量下载镜像数量限制
+# 认证相关（可选）
+ENABLE_AUTH=false               # 是否启用认证功能
+AUTH_USERNAME=admin             # 认证用户名
+AUTH_PASSWORD=change-me         # 认证密码
+AUTH_JWT_SECRET=change-me       # JWT签名密钥（建议用 openssl rand -base64 32 生成）
+AUTH_TOKEN_EXPIRE_HOURS=24      # Token有效期（小时）
 ```
+
+## 认证功能
+
+启用认证后，所有代理功能（Web页面、Docker镜像拉取、GitHub加速）均需要登录才能使用。
+
+### 启用认证
+
+通过环境变量启用（推荐）：
+
+```bash
+docker run -d \
+  --name hubproxy \
+  -p 5000:5000 \
+  -e ENABLE_AUTH=true \
+  -e AUTH_USERNAME=admin \
+  -e AUTH_PASSWORD=your-secure-password \
+  -e AUTH_JWT_SECRET=$(openssl rand -base64 32) \
+  --restart always \
+  ghcr.io/sky22333/hubproxy
+```
+
+或在 `config.toml` 中配置：
+
+```toml
+[auth]
+enabled = true
+username = "admin"
+password = "your-secure-password"
+jwtSecret = "your-random-secret-key"  # 请务必修改
+tokenExpireHours = 24
+```
+
+### Web 页面登录
+
+启用认证后，浏览器访问任何页面会自动跳转到登录页：
+
+1. 浏览器访问 `https://yourdomain.com` → 自动重定向到 `/login`
+2. 输入用户名和密码
+3. 登录成功后正常使用所有功能
+4. 点击退出登录（POST `/api/logout`）可清除会话
+
+### Docker CLI 认证
+
+```bash
+# 先登录
+docker login yourdomain.com
+# 输入用户名和密码
+
+# 然后正常拉取镜像
+docker pull yourdomain.com/nginx:latest
+docker pull yourdomain.com/ghcr.io/sky22333/hubproxy:latest
+```
+
+### 安全建议
+
+- 使用强密码
+- 使用随机的 JWT 密钥：`openssl rand -base64 32`
+- 必须通过 HTTPS 部署（nginx 反向代理），确保密码传输安全
+- 配置文件请设置合适的文件权限：`chmod 600 config.toml`
 
 为了IP限流能够正常运行，反向代理需要传递IP头用来获取访客真实IP，以caddy为例：
 ```
