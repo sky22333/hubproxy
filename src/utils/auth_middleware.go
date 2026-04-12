@@ -49,6 +49,12 @@ func AuthMiddleware() gin.HandlerFunc {
 			}
 		}
 
+		// /token 端点由 Docker token handler 自行处理认证（Basic Auth）
+		if path == "/token" || strings.HasPrefix(path, "/token/") {
+			c.Next()
+			return
+		}
+
 		// 尝试从Cookie获取token
 		token, err := c.Cookie("token")
 		if err != nil || token == "" {
