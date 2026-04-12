@@ -58,6 +58,14 @@ func buildRouter(cfg *config.AppConfig) *gin.Engine {
 	// 全局限流中间件
 	router.Use(utils.RateLimitMiddleware(globalLimiter))
 
+	// 全局认证中间件
+	router.Use(utils.AuthMiddleware())
+
+	// 注册认证路由（白名单路径，无需认证）
+	router.GET("/login", handlers.LoginPageHandler)
+	router.POST("/api/login", handlers.LoginAPIHandler)
+	router.POST("/api/logout", handlers.LogoutAPIHandler)
+
 	// 初始化监控端点
 	initHealthRoutes(router)
 
@@ -128,6 +136,9 @@ func main() {
 
 	// 初始化限流器
 	globalLimiter = utils.InitGlobalLimiter()
+
+	// 初始化JWT管理器
+	utils.InitJWTManager()
 
 	// 初始化Docker流式代理
 	handlers.InitDockerProxy()
