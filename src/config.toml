@@ -89,3 +89,15 @@ enabled = true
 enabled = true
 # 默认缓存时间(分钟)
 defaultTTL = "20m"
+
+[auth]
+# 是否启用认证功能（启用后所有请求需要登录）
+enabled = false
+# 用户名
+username = "admin"
+# 密码（明文，仅供个人使用）
+password = "change-me-please"
+# JWT签名密钥（重要：请修改为随机字符串，可用 openssl rand -base64 32 生成）
+jwtSecret = "CHANGE-THIS-TO-A-RANDOM-SECRET-KEY"
+# Token有效期（小时），默认24小时
+tokenExpireHours = 24
