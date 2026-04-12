@@ -305,6 +305,42 @@ func handleTagsRequest(c *gin.Context, imageRef string) {
 
 // ProxyDockerAuthGin Docker认证代理
 func ProxyDockerAuthGin(c *gin.Context) {
+	cfg := config.GetConfig()
+
+	// 如果认证已启用，拦截token端点处理Docker CLI认证
+	if cfg.Auth.Enabled {
+		// 尝试从Basic Auth获取凭证
+		username, password, hasAuth := c.Request.BasicAuth()
+
+		if !hasAuth || username != cfg.Auth.Username || password != cfg.Auth.Password {
+			c.Header("WWW-Authenticate", `Bearer realm="https://`+c.Request.Host+`/token",service="registry"`)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "认证失败: 用户名或密码错误",
+			})
+			return
+		}
+
+		// 凭证正确，签发JWT token
+		jm := utils.GetJWTManager()
+		token, err := jm.SignToken(username)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Token生成失败",
+			})
+			return
+		}
+
+		// 返回Docker Registry v2格式的token响应
+		c.JSON(http.StatusOK, gin.H{
+			"token":        token,
+			"access_token": token,
+			"expires_in":   cfg.Auth.TokenExpireHours * 3600,
+			"issued_at":    time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	// 认证未启用时走原有缓存代理逻辑
 	if utils.IsTokenCacheEnabled() {
 		proxyDockerAuthWithCache(c)
 	} else {
