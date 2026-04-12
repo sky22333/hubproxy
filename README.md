@@ -332,5 +332,3 @@ example.com {
 
 ![1](./.github/demo/demo1.jpg)
 
-## Star 趋势
-[![Star 趋势](https://starchart.cc/sky22333/hubproxy.svg?variant=adaptive)](https://starchart.cc/sky22333/hubproxy)

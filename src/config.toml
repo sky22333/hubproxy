@@ -1,7 +1,7 @@
 [server]
 host = "0.0.0.0"
 # 监听端口
-port = 5000
+port = 15000
 # Github文件大小限制（字节），默认2GB
 fileSize = 2147483648
 # HTTP/2 多路复用
@@ -92,7 +92,7 @@ defaultTTL = "20m"
 
 [auth]
 # 是否启用认证功能（启用后所有请求需要登录）
-enabled = false
+enabled = true
 # 用户名
 username = "admin"
 # 密码（明文，仅供个人使用）

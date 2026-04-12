@@ -1,6 +1,6 @@
 services:
   hubproxy:
-    image: ghcr.io/sky22333/hubproxy
+    image: hubproxy
     container_name: hubproxy
     restart: always
     ports:
