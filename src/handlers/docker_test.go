@@ -245,6 +245,45 @@ enabled = true
 	}
 }
 
+func TestDockerV2BaseProxiesUpstreamChallenge(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/" {
+			t.Fatalf("upstream path = %q", r.URL.Path)
+		}
+		w.Header().Set("WWW-Authenticate", `Bearer realm="https://registry.example/token",service="registry.example"`)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer upstream.Close()
+
+	initDockerProxyTest(t, `
+[registries."docker.io"]
+upstream = "`+upstream.URL+`"
+authHost = "https://auth.example/token"
+authType = "docker"
+enabled = true
+`)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Any("/v2/", ProxyDockerRegistryGin)
+
+	req := httptest.NewRequest(http.MethodGet, "/v2/", nil)
+	req.Host = "hub.example.com"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401; body=%s", w.Code, w.Body.String())
+	}
+
+	wantChallenge := `Bearer realm="https://hub.example.com/token/docker.io",service="registry.docker.io"`
+	if got := w.Header().Get("WWW-Authenticate"); got != wantChallenge {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, wantChallenge)
+	}
+}
+
 func TestProxyDockerAuthForwardsBasicCredentials(t *testing.T) {
 	authServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Basic dXNlcjpwYXNz" {

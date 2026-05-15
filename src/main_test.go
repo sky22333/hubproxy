@@ -140,15 +140,10 @@ func TestGitHubNoRouteRejectsUnsupportedHost(t *testing.T) {
 	}
 }
 
-func TestDockerV2PingAndInvalidPath(t *testing.T) {
+func TestDockerV2InvalidPath(t *testing.T) {
 	router := newTestRouter(t, "")
 
-	w := performRequest(router, http.MethodGet, "/v2/", "")
-	if w.Code != http.StatusOK {
-		t.Fatalf("/v2/ status = %d, want 200; body=%s", w.Code, w.Body.String())
-	}
-
-	w = performRequest(router, http.MethodGet, "/v2/library/nginx/unknown/latest", "")
+	w := performRequest(router, http.MethodGet, "/v2/library/nginx/unknown/latest", "")
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("invalid v2 status = %d, want 400; body=%s", w.Code, w.Body.String())
 	}

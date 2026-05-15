@@ -49,8 +49,7 @@ var forwardedRequestHeaders = []string{
 	"If-Unmodified-Since",
 }
 
-// InitDockerProxy is kept as the Docker proxy initialization hook. The online
-// registry proxy is intentionally stateless and uses the shared HTTP client.
+// 保留初始化入口，在线代理无状态。
 func InitDockerProxy() {}
 
 func defaultRegistryTarget() registryTarget {
@@ -136,12 +135,13 @@ func resolveTokenTarget(c *gin.Context) (registryTarget, bool) {
 	return registryTarget{}, false
 }
 
-// ProxyDockerRegistryGin proxies Docker Registry API v2 requests transparently.
+// 透明代理 Docker Registry API v2 请求。
 func ProxyDockerRegistryGin(c *gin.Context) {
 	path := c.Request.URL.Path
 
 	if path == "/v2/" {
-		c.JSON(http.StatusOK, gin.H{})
+		target, _ := resolveRegistryTarget(c, "")
+		proxyRegistryHTTP(c, target, "/v2/")
 		return
 	}
 
@@ -182,7 +182,7 @@ func handleRegistryRequest(c *gin.Context, path string) {
 	proxyRegistryHTTP(c, target, "/v2/"+targetPath)
 }
 
-// parseRegistryPath parses a Docker Registry v2 path without the leading /v2/.
+// 解析去掉 /v2/ 前缀后的 Registry 路径。
 func parseRegistryPath(path string) (imageName, apiType, reference string) {
 	if idx := strings.Index(path, "/manifests/"); idx != -1 {
 		return path[:idx], "manifests", path[idx+len("/manifests/"):]
@@ -196,8 +196,7 @@ func parseRegistryPath(path string) (imageName, apiType, reference string) {
 	return "", "", ""
 }
 
-// ProxyDockerAuthGin forwards Docker token requests, including client Basic
-// credentials, to the selected upstream auth service.
+// 代理 Docker token 请求，并透传客户端认证头。
 func ProxyDockerAuthGin(c *gin.Context) {
 	target, ok := resolveTokenTarget(c)
 	if !ok {
