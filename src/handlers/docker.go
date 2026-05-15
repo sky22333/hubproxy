@@ -1,11 +1,16 @@
 package handlers
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"hubproxy/config"
@@ -26,6 +31,7 @@ const (
 	dockerHubAuthRealm    = "https://auth.docker.io/token"
 	dockerHubAuthService  = "registry.docker.io"
 	maxCachedManifestSize = 4 << 20
+	maxAnonymousTokens    = 4096
 )
 
 var hopByHopHeaders = map[string]struct{}{
@@ -49,6 +55,13 @@ var forwardedRequestHeaders = []string{
 	"If-Modified-Since",
 	"If-Unmodified-Since",
 }
+
+type anonymousTokenStore struct {
+	mu      sync.Mutex
+	entries map[string]time.Time
+}
+
+var anonymousTokens = &anonymousTokenStore{entries: make(map[string]time.Time)}
 
 // 保留初始化入口，在线代理无状态。
 func InitDockerProxy() {}
@@ -276,10 +289,81 @@ func ProxyDockerAuthGin(c *gin.Context) {
 
 	copyResponseHeaders(c, resp.Header, target)
 	if cacheable && resp.StatusCode == http.StatusOK && len(body) > 0 {
-		utils.GlobalCache.SetToken(cacheKey, string(body), utils.ExtractTTLFromResponse(body))
+		ttl := utils.ExtractTTLFromResponse(body)
+		utils.GlobalCache.SetToken(cacheKey, string(body), ttl)
+		anonymousTokens.RememberFromResponse(body, ttl)
 	}
 
 	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+}
+
+func (s *anonymousTokenStore) RememberFromResponse(body []byte, ttl time.Duration) {
+	token := tokenFromAuthResponse(body)
+	if token == "" || ttl <= 0 {
+		return
+	}
+
+	now := time.Now()
+	expiresAt := now.Add(ttl)
+	key := tokenHash(token)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cleanupLocked(now)
+	if len(s.entries) >= maxAnonymousTokens {
+		return
+	}
+	s.entries[key] = expiresAt
+}
+
+func (s *anonymousTokenStore) IsKnown(token string) bool {
+	if token == "" {
+		return false
+	}
+
+	key := tokenHash(token)
+	now := time.Now()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	expiresAt, ok := s.entries[key]
+	if !ok {
+		return false
+	}
+	if now.After(expiresAt) {
+		delete(s.entries, key)
+		return false
+	}
+	return true
+}
+
+func (s *anonymousTokenStore) cleanupLocked(now time.Time) {
+	for key, expiresAt := range s.entries {
+		if now.After(expiresAt) {
+			delete(s.entries, key)
+		}
+	}
+}
+
+func tokenFromAuthResponse(body []byte) string {
+	var tokenResp struct {
+		Token       string `json:"token"`
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return ""
+	}
+	if tokenResp.Token != "" {
+		return tokenResp.Token
+	}
+	return tokenResp.AccessToken
+}
+
+func tokenHash(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 func buildAuthURL(target registryTarget, rawQuery string) (string, error) {
@@ -401,7 +485,7 @@ func proxyRegistryHTTP(c *gin.Context, target registryTarget, upstreamPath strin
 }
 
 func manifestCacheKey(c *gin.Context, target registryTarget, upstreamPath string) (string, bool) {
-	if c.Request.Method != http.MethodGet || c.GetHeader("Authorization") != "" || !utils.IsCacheEnabled() {
+	if c.Request.Method != http.MethodGet || !utils.IsCacheEnabled() || !isAnonymousManifestRequest(c) {
 		return "", false
 	}
 	if !strings.Contains(upstreamPath, "/manifests/") {
@@ -415,6 +499,21 @@ func manifestCacheKey(c *gin.Context, target registryTarget, upstreamPath string
 		strings.Join(c.Request.Header.Values("Accept"), ","),
 	}, "|")
 	return utils.BuildCacheKey("manifest", key), true
+}
+
+func isAnonymousManifestRequest(c *gin.Context) bool {
+	authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
+	if authHeader == "" {
+		return true
+	}
+
+	const bearerPrefix = "bearer "
+	if len(authHeader) <= len(bearerPrefix) || !strings.EqualFold(authHeader[:len(bearerPrefix)], bearerPrefix) {
+		return false
+	}
+
+	token := strings.TrimSpace(authHeader[len(bearerPrefix):])
+	return anonymousTokens.IsKnown(token)
 }
 
 func canCacheManifestResponse(resp *http.Response) bool {
