@@ -119,12 +119,8 @@ func resolveRegistryTarget(c *gin.Context, pathWithoutV2 string) (registryTarget
 
 func resolveTokenTarget(c *gin.Context) (registryTarget, bool) {
 	name := strings.Trim(strings.TrimSpace(c.Param("path")), "/")
-	if name == "" {
-		return defaultRegistryTarget(), true
-	}
-
-	if name == dockerHubName || name == "dockerhub" || name == "registry-1.docker.io" {
-		return defaultRegistryTarget(), true
+	if name == "" || isDockerHubAlias(name) {
+		return inferTokenTargetFromScope(c.Query("scope"))
 	}
 
 	cfg := config.GetConfig()
@@ -133,6 +129,44 @@ func resolveTokenTarget(c *gin.Context) (registryTarget, bool) {
 	}
 
 	return registryTarget{}, false
+}
+
+func inferTokenTargetFromScope(scope string) (registryTarget, bool) {
+	if registryName, ok := registryNameFromScope(scope); ok {
+		if isDockerHubAlias(registryName) {
+			return defaultRegistryTarget(), true
+		}
+
+		cfg := config.GetConfig()
+		if mapping, exists := cfg.Registries[registryName]; exists && mapping.Enabled {
+			return registryTargetFromMapping(registryName, mapping), true
+		}
+	}
+
+	return defaultRegistryTarget(), true
+}
+
+func registryNameFromScope(scope string) (string, bool) {
+	parts := strings.Split(scope, ":")
+	if len(parts) != 3 || parts[0] != "repository" {
+		return "", false
+	}
+
+	repo := parts[1]
+	slash := strings.Index(repo, "/")
+	if slash == -1 {
+		return "", false
+	}
+
+	registryName := repo[:slash]
+	if strings.Contains(registryName, ".") || strings.Contains(registryName, ":") || registryName == "localhost" {
+		return registryName, true
+	}
+	return "", false
+}
+
+func isDockerHubAlias(name string) bool {
+	return name == dockerHubName || name == "dockerhub" || name == "registry-1.docker.io"
 }
 
 // 透明代理 Docker Registry API v2 请求。
@@ -266,8 +300,8 @@ func buildAuthURL(target registryTarget, rawQuery string) (string, error) {
 				continue
 			}
 			for _, value := range values {
-				if strings.EqualFold(key, "scope") && target.AutoLibraryPrefix {
-					value = addLibraryPrefixToScope(value)
+				if strings.EqualFold(key, "scope") {
+					value = normalizeScopeForTarget(value, target)
 				}
 				query.Add(key, value)
 			}
@@ -276,6 +310,34 @@ func buildAuthURL(target registryTarget, rawQuery string) (string, error) {
 
 	authURL.RawQuery = query.Encode()
 	return authURL.String(), nil
+}
+
+func normalizeScopeForTarget(scope string, target registryTarget) string {
+	scope = stripTargetRegistryFromScope(scope, target)
+	if target.AutoLibraryPrefix {
+		return addLibraryPrefixToScope(scope)
+	}
+	return scope
+}
+
+func stripTargetRegistryFromScope(scope string, target registryTarget) string {
+	parts := strings.Split(scope, ":")
+	if len(parts) != 3 || parts[0] != "repository" {
+		return scope
+	}
+
+	prefixes := []string{target.Name + "/"}
+	if target.Name == dockerHubName {
+		prefixes = append(prefixes, "dockerhub/", "registry-1.docker.io/")
+	}
+
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(parts[1], prefix) {
+			parts[1] = strings.TrimPrefix(parts[1], prefix)
+			return strings.Join(parts, ":")
+		}
+	}
+	return scope
 }
 
 func addLibraryPrefixToScope(scope string) string {

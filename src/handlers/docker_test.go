@@ -139,6 +139,60 @@ func TestBuildAuthURLForDockerHubAddsLibraryScopeAndService(t *testing.T) {
 	}
 }
 
+func TestTokenTargetIsInferredFromPathBasedRegistryScope(t *testing.T) {
+	initDockerProxyTest(t, `
+[registries."ghcr.io"]
+upstream = "ghcr.io"
+authHost = "ghcr.io/token"
+authType = "github"
+enabled = true
+`)
+
+	gin.SetMode(gin.TestMode)
+	req := httptest.NewRequest(http.MethodGet, "/token/docker.io?scope=repository:ghcr.io/jeessy2/ddns-go:pull&service=registry.docker.io", nil)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	c.Params = gin.Params{{Key: "path", Value: "/docker.io"}}
+
+	target, ok := resolveTokenTarget(c)
+	if !ok {
+		t.Fatal("resolveTokenTarget returned false")
+	}
+	if target.Name != "ghcr.io" {
+		t.Fatalf("target.Name = %q, want ghcr.io", target.Name)
+	}
+	if target.AuthService != "ghcr.io" {
+		t.Fatalf("AuthService = %q, want ghcr.io", target.AuthService)
+	}
+}
+
+func TestBuildAuthURLStripsPathBasedRegistryPrefixForGHCR(t *testing.T) {
+	target := registryTarget{
+		Name:        "ghcr.io",
+		AuthRealm:   "https://ghcr.io/token",
+		AuthService: "ghcr.io",
+	}
+
+	got, err := buildAuthURL(
+		target,
+		"scope=repository%3Aghcr.io%2Fjeessy2%2Fddns-go%3Apull&service=registry.docker.io",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(got, "service=ghcr.io") {
+		t.Fatalf("auth URL missing ghcr service: %q", got)
+	}
+	if !strings.Contains(got, "scope=repository%3Ajeessy2%2Fddns-go%3Apull") {
+		t.Fatalf("auth URL missing stripped scope: %q", got)
+	}
+	if strings.Contains(got, "registry.docker.io") {
+		t.Fatalf("auth URL leaked Docker Hub service: %q", got)
+	}
+}
+
 func TestDockerIODefaultTargetUsesBuiltInWhenUnconfigured(t *testing.T) {
 	initDockerProxyTest(t, "")
 
@@ -323,6 +377,46 @@ enabled = true
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
 	if got := w.Body.String(); !strings.Contains(got, `"token":"secret"`) {
+		t.Fatalf("body = %q", got)
+	}
+}
+
+func TestProxyDockerAuthRoutesPathBasedGHCRScopeToGHCRAuth(t *testing.T) {
+	authServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("service"); got != "ghcr.io" {
+			t.Fatalf("service = %q, want ghcr.io", got)
+		}
+		if got := r.URL.Query().Get("scope"); got != "repository:jeessy2/ddns-go:pull" {
+			t.Fatalf("scope = %q, want repository:jeessy2/ddns-go:pull", got)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"token":"ghcr-token","expires_in":3600}`))
+	}))
+	defer authServer.Close()
+
+	initDockerProxyTest(t, `
+[registries."ghcr.io"]
+upstream = "ghcr.io"
+authHost = "`+authServer.URL+`"
+authType = "github"
+enabled = true
+`)
+	utils.GlobalCache = &utils.UniversalCache{}
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Any("/token/*path", ProxyDockerAuthGin)
+
+	req := httptest.NewRequest(http.MethodGet, "/token/docker.io?scope=repository%3Aghcr.io%2Fjeessy2%2Fddns-go%3Apull&service=registry.docker.io", nil)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Body.String(); !strings.Contains(got, `"token":"ghcr-token"`) {
 		t.Fatalf("body = %q", got)
 	}
 }
