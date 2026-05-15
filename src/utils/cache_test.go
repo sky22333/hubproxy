@@ -34,6 +34,10 @@ func TestExtractTTLFromResponse(t *testing.T) {
 		t.Fatalf("TTL = %s, want 55m", ttl)
 	}
 
+	if ttl := ExtractTTLFromResponse([]byte(`{"expires_in":300}`)); ttl != 270*time.Second {
+		t.Fatalf("short TTL = %s, want 270s", ttl)
+	}
+
 	if ttl := ExtractTTLFromResponse([]byte(`{}`)); ttl != 30*time.Minute {
 		t.Fatalf("default TTL = %s", ttl)
 	}

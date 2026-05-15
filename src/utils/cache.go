@@ -102,10 +102,18 @@ func ExtractTTLFromResponse(responseBody []byte) time.Duration {
 	defaultTTL := 30 * time.Minute
 
 	if json.Unmarshal(responseBody, &tokenResp) == nil && tokenResp.ExpiresIn > 0 {
-		safeTTL := time.Duration(tokenResp.ExpiresIn-300) * time.Second
-		if safeTTL > 5*time.Minute {
-			return safeTTL
+		expires := time.Duration(tokenResp.ExpiresIn) * time.Second
+		skew := expires / 10
+		if skew > 5*time.Minute {
+			skew = 5 * time.Minute
 		}
+		if skew < 10*time.Second {
+			skew = 10 * time.Second
+		}
+		if expires > skew {
+			return expires - skew
+		}
+		return expires / 2
 	}
 
 	return defaultTTL
