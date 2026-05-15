@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +17,8 @@ const (
 	CleanupInterval = 20 * time.Minute
 	MaxIPCacheSize  = 10000
 )
+
+var debugRateLimitLog = strings.EqualFold(os.Getenv("DEBUG_RATE_LIMIT_LOG"), "true")
 
 // IPRateLimiter IP限流器结构体
 type IPRateLimiter struct {
@@ -234,17 +237,20 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 
 		cleanIP := extractIPFromAddress(ip)
 
-		normalizedIP := normalizeIPForRateLimit(cleanIP)
-		if cleanIP != normalizedIP {
-			fmt.Printf("请求IP: %s (提纯后: %s, 限流段: %s), X-Forwarded-For: %s, X-Real-IP: %s\n",
-				ip, cleanIP, normalizedIP,
-				c.GetHeader("X-Forwarded-For"),
-				c.GetHeader("X-Real-IP"))
-		} else {
-			fmt.Printf("请求IP: %s (提纯后: %s), X-Forwarded-For: %s, X-Real-IP: %s\n",
-				ip, cleanIP,
-				c.GetHeader("X-Forwarded-For"),
-				c.GetHeader("X-Real-IP"))
+		if debugRateLimitLog {
+			normalizedIP := normalizeIPForRateLimit(cleanIP)
+			if cleanIP != normalizedIP {
+				fmt.Printf("请求IP: %s (提纯后: %s, 限流段: %s), X-Forwarded-For: %s, X-Real-IP: %s\n",
+					ip, cleanIP, normalizedIP,
+					c.GetHeader("X-Forwarded-For"),
+					c.GetHeader("X-Real-IP"))
+			} else {
+				fmt.Printf("请求IP: %s (提纯后: %s), X-Forwarded-For: %s, X-Real-IP: %s\n",
+					ip, cleanIP,
+					c.GetHeader("X-Forwarded-For"),
+					c.GetHeader("X-Real-IP"))
+			}
+
 		}
 
 		ipLimiter, allowed := limiter.GetLimiter(cleanIP)

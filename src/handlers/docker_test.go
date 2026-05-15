@@ -528,6 +528,99 @@ enabled = true
 	}
 }
 
+func TestProxyDockerRegistryCachesAnonymousManifestByAccept(t *testing.T) {
+	var hits int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&hits, 1)
+		body := fmt.Sprintf(`{"schemaVersion":2,"hit":%d}`, count)
+		w.Header().Set("Content-Type", r.Header.Get("Accept"))
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
+		_, _ = w.Write([]byte(body))
+	}))
+	defer upstream.Close()
+
+	initDockerProxyTest(t, `
+[registries."test.local"]
+upstream = "`+upstream.URL+`"
+authHost = "https://auth.test.local/token"
+authType = "anonymous"
+enabled = true
+`)
+	utils.GlobalCache = &utils.UniversalCache{}
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Any("/v2/*path", ProxyDockerRegistryGin)
+
+	for i := 0; i < 2; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/v2/test.local/team/app/manifests/latest", nil)
+		req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("request %d status = %d; body=%s", i, w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), `"hit":1`) {
+			t.Fatalf("request %d body = %q", i, w.Body.String())
+		}
+	}
+	if got := atomic.LoadInt32(&hits); got != 1 {
+		t.Fatalf("hits = %d, want 1", got)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/v2/test.local/team/app/manifests/latest", nil)
+	req.Header.Set("Accept", "application/vnd.oci.image.index.v1+json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("second accept status = %d; body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"hit":2`) {
+		t.Fatalf("second accept body = %q", w.Body.String())
+	}
+}
+
+func TestProxyDockerRegistryDoesNotCacheAuthenticatedManifest(t *testing.T) {
+	var hits int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&hits, 1)
+		body := fmt.Sprintf(`{"schemaVersion":2,"hit":%d}`, count)
+		w.Header().Set("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
+		_, _ = w.Write([]byte(body))
+	}))
+	defer upstream.Close()
+
+	initDockerProxyTest(t, `
+[registries."test.local"]
+upstream = "`+upstream.URL+`"
+authHost = "https://auth.test.local/token"
+authType = "anonymous"
+enabled = true
+`)
+	utils.GlobalCache = &utils.UniversalCache{}
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Any("/v2/*path", ProxyDockerRegistryGin)
+
+	for i := 1; i <= 2; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/v2/test.local/team/app/manifests/latest", nil)
+		req.Header.Set("Authorization", "Bearer token")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("request %d status = %d; body=%s", i, w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), fmt.Sprintf(`"hit":%d`, i)) {
+			t.Fatalf("request %d body = %q", i, w.Body.String())
+		}
+	}
+	if got := atomic.LoadInt32(&hits); got != 2 {
+		t.Fatalf("hits = %d, want 2", got)
+	}
+}
+
 func TestProxyDockerRegistryUsesNsQueryForContainerd(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v2/team/app/manifests/latest" {

@@ -21,10 +21,11 @@ type registryTarget struct {
 }
 
 const (
-	dockerHubName        = "docker.io"
-	dockerHubUpstream    = "https://registry-1.docker.io"
-	dockerHubAuthRealm   = "https://auth.docker.io/token"
-	dockerHubAuthService = "registry.docker.io"
+	dockerHubName         = "docker.io"
+	dockerHubUpstream     = "https://registry-1.docker.io"
+	dockerHubAuthRealm    = "https://auth.docker.io/token"
+	dockerHubAuthService  = "registry.docker.io"
+	maxCachedManifestSize = 4 << 20
 )
 
 var hopByHopHeaders = map[string]struct{}{
@@ -349,6 +350,13 @@ func addLibraryPrefixToScope(scope string) string {
 }
 
 func proxyRegistryHTTP(c *gin.Context, target registryTarget, upstreamPath string) {
+	if cacheKey, ok := manifestCacheKey(c, target, upstreamPath); ok {
+		if cachedItem := utils.GlobalCache.Get(cacheKey); cachedItem != nil {
+			utils.WriteCachedResponse(c, cachedItem)
+			return
+		}
+	}
+
 	targetURL := target.Upstream + upstreamPath
 	if c.Request.URL.RawQuery != "" {
 		targetURL += "?" + c.Request.URL.RawQuery
@@ -374,9 +382,61 @@ func proxyRegistryHTTP(c *gin.Context, target registryTarget, upstreamPath strin
 	if c.Request.Method == http.MethodHead {
 		return
 	}
+
+	if cacheKey, ok := manifestCacheKey(c, target, upstreamPath); ok && canCacheManifestResponse(resp) {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("Failed to read manifest response: %v\n", err)
+			return
+		}
+		contentType := resp.Header.Get("Content-Type")
+		utils.GlobalCache.Set(cacheKey, body, contentType, cacheHeaders(resp.Header), utils.GetManifestTTL(manifestReference(upstreamPath)))
+		c.Data(resp.StatusCode, contentType, body)
+		return
+	}
+
 	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
 		fmt.Printf("Failed to stream registry response: %v\n", err)
 	}
+}
+
+func manifestCacheKey(c *gin.Context, target registryTarget, upstreamPath string) (string, bool) {
+	if c.Request.Method != http.MethodGet || c.GetHeader("Authorization") != "" || !utils.IsCacheEnabled() {
+		return "", false
+	}
+	if !strings.Contains(upstreamPath, "/manifests/") {
+		return "", false
+	}
+
+	key := strings.Join([]string{
+		target.Name,
+		upstreamPath,
+		c.Request.URL.RawQuery,
+		strings.Join(c.Request.Header.Values("Accept"), ","),
+	}, "|")
+	return utils.BuildCacheKey("manifest", key), true
+}
+
+func canCacheManifestResponse(resp *http.Response) bool {
+	return resp.StatusCode == http.StatusOK &&
+		resp.ContentLength > 0 &&
+		resp.ContentLength <= maxCachedManifestSize
+}
+
+func manifestReference(upstreamPath string) string {
+	_, _, reference := parseRegistryPath(strings.TrimPrefix(upstreamPath, "/v2/"))
+	return reference
+}
+
+func cacheHeaders(headers http.Header) map[string]string {
+	cached := make(map[string]string)
+	for name, values := range headers {
+		if shouldSkipResponseHeader(name) || strings.EqualFold(name, "WWW-Authenticate") || len(values) == 0 {
+			continue
+		}
+		cached[name] = values[0]
+	}
+	return cached
 }
 
 func forwardSelectedRequestHeaders(dst http.Header, src http.Header) {
