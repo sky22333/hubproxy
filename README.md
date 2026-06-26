@@ -316,5 +316,6 @@ example.com {
 
 ![1](./.github/demo/demo1.jpg)
 
-## Star 趋势
-[![Star 趋势](https://starchart.cc/sky22333/hubproxy.svg?variant=adaptive)](https://starchart.cc/sky22333/hubproxy)
+## Star History
+
+[![Star History Chart](https://api.star-history.com/chart?repos=sky22333/hubproxy&type=date&legend=top-left)](https://www.star-history.com/?repos=sky22333%2Fhubproxy&type=date&legend=top-left)
