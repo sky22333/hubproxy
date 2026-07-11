@@ -71,7 +71,7 @@ func TestFrontendDisabledRoutesReturnNotFound(t *testing.T) {
 enableFrontend = false
 `)
 
-	for _, path := range []string{"/", "/images", "/search", "/favicon.svg"} {
+	for _, path := range []string{"/", "/images", "/search", "/favicon.ico"} {
 		w := performRequest(router, http.MethodGet, path, "")
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("%s status = %d, want 404", path, w.Code)

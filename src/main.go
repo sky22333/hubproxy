@@ -67,15 +67,15 @@ func registerFrontendRoutes(router *gin.Engine, enabled bool) {
 		router.GET("/images", notFound)
 		router.GET("/search", notFound)
 		router.GET("/assets/*filepath", notFound)
-		router.GET("/favicon.svg", notFound)
+		router.GET("/favicon.ico", notFound)
 		return
 	}
 
 	router.GET("/", serveSPA)
 	router.GET("/images", serveSPA)
 	router.GET("/search", serveSPA)
-	router.GET("/favicon.svg", func(c *gin.Context) {
-		serveEmbedFile(c, "dist/favicon.svg")
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		serveEmbedFile(c, "dist/favicon.ico")
 	})
 	router.GET("/assets/*filepath", func(c *gin.Context) {
 		filepath := strings.TrimPrefix(c.Param("filepath"), "/")
