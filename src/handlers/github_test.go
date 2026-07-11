@@ -29,4 +29,7 @@ func TestCheckGitHubURLRejectsOtherHosts(t *testing.T) {
 	if got := CheckGitHubURL("https://example.com/user/repo/file"); got != nil {
 		t.Fatalf("unexpected match: %#v", got)
 	}
+	if got := CheckGitHubURL("https://download.docker.com/linux/static/stable/x86_64/docker.tgz"); got != nil {
+		t.Fatalf("download.docker.com should be rejected: %#v", got)
+	}
 }

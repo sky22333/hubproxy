@@ -108,9 +108,6 @@ func handleRegistryRequest(c *gin.Context, path string) {
 
 	if registryDomain, remainingPath := registryDetector.detectRegistryDomain(c, pathWithoutV2); registryDomain != "" {
 		if registryDetector.isRegistryEnabled(registryDomain) {
-			c.Set("target_registry_domain", registryDomain)
-			c.Set("target_path", remainingPath)
-
 			handleMultiRegistryRequest(c, registryDomain, remainingPath)
 			return
 		}
@@ -355,20 +352,7 @@ func (r *ResponseRecorder) Write(data []byte) (int, error) {
 }
 
 func proxyDockerAuthOriginal(c *gin.Context) {
-	var authURL string
-	if targetDomain, exists := c.Get("target_registry_domain"); exists {
-		if mapping, found := registryDetector.getRegistryMapping(targetDomain.(string)); found {
-			authURL = "https://" + mapping.AuthHost + c.Request.URL.Path
-		} else {
-			authURL = "https://auth.docker.io" + c.Request.URL.Path
-		}
-	} else {
-		authURL = "https://auth.docker.io" + c.Request.URL.Path
-	}
-
-	if c.Request.URL.RawQuery != "" {
-		authURL += "?" + c.Request.URL.RawQuery
-	}
+	authURL := buildDockerAuthURL(c)
 
 	client := &http.Client{
 		Timeout:   30 * time.Second,
@@ -423,12 +407,53 @@ func proxyDockerAuthOriginal(c *gin.Context) {
 	}
 }
 
-// rewriteAuthHeader 重写认证头
+// buildDockerAuthURL 根据 token 请求的 service 参数选择上游认证地址。
+// AuthHost 已包含路径（如 ghcr.io/token、quay.io/v2/auth），不再拼接本机 Path，避免 /token/token。
+func buildDockerAuthURL(c *gin.Context) string {
+	authHost := resolveAuthHost(c.Query("service"))
+	var authURL string
+	if authHost != "" {
+		authURL = "https://" + authHost
+	} else {
+		authURL = "https://auth.docker.io" + c.Request.URL.Path
+	}
+	if c.Request.URL.RawQuery != "" {
+		authURL += "?" + c.Request.URL.RawQuery
+	}
+	return authURL
+}
+
+// resolveAuthHost 用 service 匹配已启用 Registry 的 AuthHost；Docker Hub 返回空串走默认路径。
+func resolveAuthHost(service string) string {
+	if service == "" || service == "registry.docker.io" || service == "docker.io" {
+		return ""
+	}
+
+	cfg := config.GetConfig()
+	for domain, mapping := range cfg.Registries {
+		if !mapping.Enabled || mapping.AuthHost == "" {
+			continue
+		}
+		if service == domain || service == mapping.Upstream {
+			return mapping.AuthHost
+		}
+	}
+	return ""
+}
+
+// rewriteAuthHeader 将上游认证 realm 统一改写到本机 /token，避免 quay 等变成 /v2/auth 误入 Registry 路由。
 func rewriteAuthHeader(authHeader, proxyHost string) string {
+	proxyToken := "http://" + proxyHost + "/token"
+
+	cfg := config.GetConfig()
+	for _, mapping := range cfg.Registries {
+		if mapping.AuthHost == "" {
+			continue
+		}
+		authHeader = strings.ReplaceAll(authHeader, "https://"+mapping.AuthHost, proxyToken)
+	}
+	authHeader = strings.ReplaceAll(authHeader, "https://auth.docker.io/token", proxyToken)
 	authHeader = strings.ReplaceAll(authHeader, "https://auth.docker.io", "http://"+proxyHost)
-	authHeader = strings.ReplaceAll(authHeader, "https://ghcr.io", "http://"+proxyHost)
-	authHeader = strings.ReplaceAll(authHeader, "https://gcr.io", "http://"+proxyHost)
-	authHeader = strings.ReplaceAll(authHeader, "https://quay.io", "http://"+proxyHost)
 
 	return authHeader
 }

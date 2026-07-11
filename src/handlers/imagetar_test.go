@@ -1,8 +1,14 @@
 package handlers
 
 import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestDownloadDebouncer(t *testing.T) {
@@ -57,4 +63,33 @@ func TestGenerateContentFingerprintStable(t *testing.T) {
 	if a != b || a == c {
 		t.Fatalf("unexpected fingerprints: %q %q %q", a, b, c)
 	}
+}
+
+func TestWriteDownloadErrorSkipsJSONAfterBodyStarted(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("before write returns json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		writeDownloadError(c, errors.New("boom"), "镜像下载失败")
+		if w.Code != http.StatusInternalServerError {
+			t.Fatalf("status = %d", w.Code)
+		}
+		body := w.Body.String()
+		if !strings.Contains(body, "镜像下载失败") || !strings.Contains(body, "boom") {
+			t.Fatalf("body = %q", body)
+		}
+	})
+
+	t.Run("after write skips json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		if _, err := c.Writer.Write([]byte("tar-bytes")); err != nil {
+			t.Fatal(err)
+		}
+		writeDownloadError(c, errors.New("boom"), "镜像下载失败")
+		if got := w.Body.String(); got != "tar-bytes" {
+			t.Fatalf("body corrupted: %q", got)
+		}
+	})
 }

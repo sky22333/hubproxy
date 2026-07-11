@@ -752,8 +752,7 @@
                 link.startsWith("raw.githubusercontent.com/") || 
                 link.startsWith("gist.githubusercontent.com/") ||
                 link.startsWith("huggingface.co/") ||
-                link.startsWith("cdn-lfs.hf.co/") ||
-                link.startsWith("download.docker.com/")
+                link.startsWith("cdn-lfs.hf.co/")
             ) {
                 formattedLink = "https://" + currentHost + "/https://" + link;
             } else {

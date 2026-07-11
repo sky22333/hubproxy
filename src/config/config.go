@@ -276,15 +276,3 @@ func overrideFromEnv(cfg *AppConfig) {
 		}
 	}
 }
-
-// CreateDefaultConfigFile 创建默认配置文件
-func CreateDefaultConfigFile() error {
-	cfg := DefaultConfig()
-
-	data, err := toml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("序列化默认配置失败: %v", err)
-	}
-
-	return os.WriteFile("config.toml", data, 0644)
-}

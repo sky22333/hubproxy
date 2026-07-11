@@ -289,27 +289,22 @@ func (is *ImageStreamer) StreamImageToWriter(ctx context.Context, imageRef strin
 
 	contextOptions := append(is.remoteOptions, remote.WithContext(ctx))
 
-	desc, err := is.getImageDescriptorWithPlatform(ref, contextOptions, options.Platform)
+	desc, err := is.getImageDescriptor(ref, contextOptions)
 	if err != nil {
 		return fmt.Errorf("获取镜像描述失败: %w", err)
 	}
 	switch desc.MediaType {
 	case types.OCIImageIndex, types.DockerManifestList:
-		return is.streamMultiArchImage(ctx, desc, writer, options, contextOptions, imageRef)
+		return is.streamMultiArchImage(ctx, desc, writer, options, imageRef)
 	case types.OCIManifestSchema1, types.DockerManifestSchema2:
-		return is.streamSingleImage(ctx, desc, writer, options, contextOptions, imageRef)
+		return is.streamSingleImage(ctx, desc, writer, options, imageRef)
 	default:
-		return is.streamSingleImage(ctx, desc, writer, options, contextOptions, imageRef)
+		return is.streamSingleImage(ctx, desc, writer, options, imageRef)
 	}
 }
 
 // getImageDescriptor 获取镜像描述符
 func (is *ImageStreamer) getImageDescriptor(ref name.Reference, options []remote.Option) (*remote.Descriptor, error) {
-	return is.getImageDescriptorWithPlatform(ref, options, "")
-}
-
-// getImageDescriptorWithPlatform 获取指定平台的镜像描述符
-func (is *ImageStreamer) getImageDescriptorWithPlatform(ref name.Reference, options []remote.Option, platform string) (*remote.Descriptor, error) {
 	return remote.Get(ref, options...)
 }
 
@@ -324,20 +319,47 @@ func setDownloadHeaders(c *gin.Context, filename string, compressed bool) {
 	}
 }
 
+// writeDownloadError 仅在尚未写出响应体时返回 JSON；流已开始则只记日志，避免损坏 tar。
+func writeDownloadError(c *gin.Context, err error, message string) {
+	if c.Writer.Written() {
+		log.Printf("%s: %v", message, err)
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": message + ": " + err.Error()})
+}
+
 // StreamImageToGin 流式响应到Gin
 func (is *ImageStreamer) StreamImageToGin(ctx context.Context, imageRef string, c *gin.Context, options *StreamOptions) error {
 	if options == nil {
 		options = &StreamOptions{UseCompressedLayers: true}
 	}
 
+	ref, err := name.ParseReference(imageRef)
+	if err != nil {
+		return fmt.Errorf("解析镜像引用失败: %w", err)
+	}
+
+	contextOptions := append(is.remoteOptions, remote.WithContext(ctx))
+	desc, err := is.getImageDescriptor(ref, contextOptions)
+	if err != nil {
+		return fmt.Errorf("获取镜像描述失败: %w", err)
+	}
+
 	filename := strings.ReplaceAll(imageRef, "/", "_") + ".tar"
 	setDownloadHeaders(c, filename, options.Compression)
 
-	return is.StreamImageToWriter(ctx, imageRef, c.Writer, options)
+	switch desc.MediaType {
+	case types.OCIImageIndex, types.DockerManifestList:
+		return is.streamMultiArchImage(ctx, desc, c.Writer, options, imageRef)
+	case types.OCIManifestSchema1, types.DockerManifestSchema2:
+		return is.streamSingleImage(ctx, desc, c.Writer, options, imageRef)
+	default:
+		return is.streamSingleImage(ctx, desc, c.Writer, options, imageRef)
+	}
 }
 
 // streamMultiArchImage 处理多架构镜像
-func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option, imageRef string) error {
+func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, imageRef string) error {
 	img, err := is.selectPlatformImage(desc, options)
 	if err != nil {
 		return err
@@ -347,7 +369,7 @@ func (is *ImageStreamer) streamMultiArchImage(ctx context.Context, desc *remote.
 }
 
 // streamSingleImage 处理单架构镜像
-func (is *ImageStreamer) streamSingleImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, remoteOptions []remote.Option, imageRef string) error {
+func (is *ImageStreamer) streamSingleImage(ctx context.Context, desc *remote.Descriptor, writer io.Writer, options *StreamOptions, imageRef string) error {
 	img, err := desc.Image()
 	if err != nil {
 		return fmt.Errorf("获取镜像失败: %w", err)
@@ -583,7 +605,7 @@ func (is *ImageStreamer) streamSingleImageForBatch(ctx context.Context, tarWrite
 
 	contextOptions := append(is.remoteOptions, remote.WithContext(ctx))
 
-	desc, err := is.getImageDescriptorWithPlatform(ref, contextOptions, options.Platform)
+	desc, err := is.getImageDescriptor(ref, contextOptions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("获取镜像描述失败: %w", err)
 	}
@@ -784,8 +806,7 @@ func handleDirectImageDownload(c *gin.Context) {
 	log.Printf("下载镜像: %s (平台: %s)", req.Image, formatPlatformText(req.Platform))
 
 	if err := globalImageStreamer.StreamImageToGin(ctx, req.Image, c, options); err != nil {
-		log.Printf("镜像下载失败: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "镜像下载失败: " + err.Error()})
+		writeDownloadError(c, err, "镜像下载失败")
 		return
 	}
 }
@@ -821,12 +842,10 @@ func handleSimpleBatchDownload(c *gin.Context) {
 		log.Printf("批量下载 %d 个镜像 (平台: %s)", len(req.Images), formatPlatformText(req.Platform))
 
 		filename := fmt.Sprintf("batch_%d_images.tar", len(req.Images))
-
 		setDownloadHeaders(c, filename, options.Compression)
 
 		if err := globalImageStreamer.StreamMultipleImages(ctx, req.Images, c.Writer, options); err != nil {
-			log.Printf("批量镜像下载失败: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "批量镜像下载失败: " + err.Error()})
+			writeDownloadError(c, err, "批量镜像下载失败")
 			return
 		}
 		return
