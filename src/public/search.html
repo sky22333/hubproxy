@@ -740,7 +740,6 @@
                 <a href="/" class="nav-link">🚀 GitHub加速</a>
                 <a href="/images.html" class="nav-link">🐳 离线镜像下载</a>
                 <a href="/search.html" class="nav-link active">🔍 镜像搜索</a>
-                <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="nav-link">📄 Hosts</a>
                 
                 <button class="theme-toggle" id="themeToggle">
                     🌙
@@ -850,12 +849,21 @@
 
         let currentPage = 1;
         let totalPages = 1;
-        let currentQuery = '';
         let currentRepo = null;
         
         // 标签分页相关变量
         let currentTagPage = 1;
         let totalTagPages = 1;
+
+        function escapeHtml(text) {
+            if (text == null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         document.getElementById('searchButton').addEventListener('click', () => {
             currentPage = 1;
@@ -887,8 +895,14 @@
             showSearchResults();
         });
 
-        // 使用事件委托处理分页按钮点击（避免DOM重建导致事件丢失）
+        // 使用事件委托处理分页按钮与复制按钮（避免 DOM 重建丢事件 / 避免 inline onclick XSS）
         document.addEventListener('click', (e) => {
+            const copyBtn = e.target.closest('button.copy-button[data-copy]');
+            if (copyBtn) {
+                e.preventDefault();
+                copyToClipboard(copyBtn.getAttribute('data-copy') || '');
+                return;
+            }
             if (e.target.id === 'tagPrevPage') {
                 if (currentTagPage > 1) {
                     currentTagPage--;
@@ -1068,7 +1082,6 @@
                 return;
             }
 
-            currentQuery = query;
             showLoading();
 
             try {
@@ -1147,27 +1160,27 @@
 
                 const badges = [];
                 if (result.is_official) badges.push('<span class="badge badge-official">官方</span>');
-                if (organization) badges.push(`<span class="badge badge-organization">By ${organization}</span>`);
+                if (organization) badges.push(`<span class="badge badge-organization">By ${escapeHtml(organization)}</span>`);
 
                 const stats = [];
-                if (starCount > 0) stats.push(`<span class="meta-item">⭐ ${formatUtils.formatNumber(starCount)}</span>`);
-                if (pullCount > 0) stats.push(`<span class="meta-item">⬇️ ${formatUtils.formatNumber(pullCount)}+</span>`);
+                if (starCount > 0) stats.push(`<span class="meta-item">⭐ ${escapeHtml(formatUtils.formatNumber(starCount))}</span>`);
+                if (pullCount > 0) stats.push(`<span class="meta-item">⬇️ ${escapeHtml(formatUtils.formatNumber(pullCount))}+</span>`);
 
                 card.innerHTML = `
                     <div class="result-title">
-                        ${displayName}
+                        ${escapeHtml(displayName)}
                         ${badges.join(' ')}
                     </div>
-                    <div class="result-description">${description}</div>
+                    <div class="result-description">${escapeHtml(description)}</div>
                     <div class="result-meta">
                         <div class="meta-stats">
                             ${stats.join(' ')}
-                            ${lastUpdated ? `<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(lastUpdated)}</span>` : ''}
+                            ${lastUpdated ? `<span class="meta-item">更新于 ${escapeHtml(formatUtils.formatTimeAgo(lastUpdated))}</span>` : ''}
                         </div>
                         ${pullsLastWeek > 0 ? `
                         <div class="meta-pulls">
                             <div>本周拉取次数</div>
-                            <div class="pulls-count">${formatUtils.formatNumber(pullsLastWeek)}</div>
+                            <div class="pulls-count">${escapeHtml(formatUtils.formatNumber(pullsLastWeek))}</div>
                         </div>
                         ` : ''}
                     </div>
@@ -1232,7 +1245,7 @@
                     totalTagPages = currentTagPage;
                 }
                 
-                displayTags(data.tags, data.has_more);
+                displayTags(data.tags);
                 updateTagPagination();
                 
                 if (namespace && name) {
@@ -1260,39 +1273,40 @@
             }
         }
 
-        function displayTags(tags, hasMore = false) {
+        function displayTags(tags) {
             const tagList = document.getElementById('tagList');
             const repoInfo = parseRepositoryInfo(currentRepo);
             const { fullRepoName } = repoInfo;
+            const pullCommand = `docker pull ${fullRepoName}`;
             
             let header = `
                 <div class="tag-header">
                     <div class="tag-info">
                         <div class="tag-title">
-                            ${fullRepoName}
+                            ${escapeHtml(fullRepoName)}
                             ${currentRepo.is_official ? '<span class="badge badge-official">官方</span>' : ''}
-                            ${currentRepo.affiliation ? `<span class="badge badge-organization">By ${currentRepo.affiliation}</span>` : ''}
+                            ${currentRepo.affiliation ? `<span class="badge badge-organization">By ${escapeHtml(currentRepo.affiliation)}</span>` : ''}
                         </div>
-                        <div class="tag-description">${currentRepo.short_description || '暂无描述'}</div>
+                        <div class="tag-description">${escapeHtml(currentRepo.short_description || '暂无描述')}</div>
                         <div class="tag-meta">
-                            ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${formatUtils.formatNumber(currentRepo.star_count)}</span>` : ''}
-                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${formatUtils.formatNumber(currentRepo.pull_count)}+</span>` : ''}
-                            ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${formatUtils.formatTimeAgo(currentRepo.last_updated)}</span>` : ''}
+                            ${currentRepo.star_count > 0 ? `<span class="meta-item">⭐ ${escapeHtml(formatUtils.formatNumber(currentRepo.star_count))}</span>` : ''}
+                            ${currentRepo.pull_count > 0 ? `<span class="meta-item">⬇️ ${escapeHtml(formatUtils.formatNumber(currentRepo.pull_count))}+</span>` : ''}
+                            ${currentRepo.last_updated ? `<span class="meta-item">更新于 ${escapeHtml(formatUtils.formatTimeAgo(currentRepo.last_updated))}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
-                            docker pull ${fullRepoName}
-                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}')">复制</button>
+                            ${escapeHtml(pullCommand)}
+                            <button type="button" class="copy-button" data-copy="${escapeHtml(pullCommand)}">复制</button>
                         </div>
                     </div>
                 </div>
                 <div class="tag-search-container">
                     <input type="text" class="tag-search-input" placeholder="输入关键词搜索标签，支持模糊匹配..." oninput="filterTags(this.value)">
-                    <button class="tag-search-clear" onclick="clearTagSearch()">×</button>
+                    <button type="button" class="tag-search-clear" onclick="clearTagSearch()">×</button>
                 </div>
                 <div id="tagsContainer"></div>
                 <div class="pagination" id="tagPagination" style="display: none;">
-                    <button id="tagPrevPage" disabled>上一页</button>
-                    <button id="tagNextPage" disabled>下一页</button>
+                    <button type="button" id="tagPrevPage" disabled>上一页</button>
+                    <button type="button" id="tagNextPage" disabled>下一页</button>
                 </div>
             `;
 
@@ -1345,30 +1359,36 @@
         function renderTagsBatch(tags, fullRepoName, container, replaceContent = false) {
             const tagsHtml = tags.map(tag => {
                 const vulnIndicators = Object.entries(tag.vulnerabilities || {})
-                    .map(([level, count]) => count > 0 ? `<span class="vulnerability-dot vulnerability-${level.toLowerCase()}" title="${level}: ${count}"></span>` : '')
+                    .map(([level, count]) => {
+                        if (!(count > 0)) return '';
+                        const safeLevel = String(level).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                        if (!safeLevel) return '';
+                        return `<span class="vulnerability-dot vulnerability-${safeLevel}" title="${escapeHtml(level)}: ${escapeHtml(count)}"></span>`;
+                    })
                     .join('');
 
                 const images = tag.images || [];
                 const architectures = images.map(img => {
-                    const arch = `${img.os}/${img.architecture}${img.variant ? '/' + img.variant : ''}`;
+                    const arch = `${img.os || ''}/${img.architecture || ''}${img.variant ? '/' + img.variant : ''}`;
                     const size = formatUtils.formatSize(img.size);
-                    return `<div class="arch-item" title="大小: ${size}">${arch}</div>`;
+                    return `<div class="arch-item" title="大小: ${escapeHtml(size)}">${escapeHtml(arch)}</div>`;
                 }).join('');
 
+                const pullCommand = `docker pull ${fullRepoName}:${tag.name || ''}`;
                 return `
                     <div class="tag-item">
                         <div class="tag-name">
-                            ${tag.name}
+                            ${escapeHtml(tag.name)}
                             ${vulnIndicators ? `<div class="vulnerability-indicator">${vulnIndicators}</div>` : ''}
                         </div>
                         <div class="tag-meta">
-                            <span>最后更新: ${formatUtils.formatTimeAgo(tag.last_updated)}</span>
-                            ${tag.last_pusher ? `<span>由 ${tag.last_pusher} 推送</span>` : ''}
-                            ${tag.full_size ? `<span>大小: ${formatUtils.formatSize(tag.full_size)}</span>` : ''}
+                            <span>最后更新: ${escapeHtml(formatUtils.formatTimeAgo(tag.last_updated))}</span>
+                            ${tag.last_pusher ? `<span>由 ${escapeHtml(tag.last_pusher)} 推送</span>` : ''}
+                            ${tag.full_size ? `<span>大小: ${escapeHtml(formatUtils.formatSize(tag.full_size))}</span>` : ''}
                         </div>
                         <div class="tag-pull-command">
-                            docker pull ${fullRepoName}:${tag.name}
-                            <button class="copy-button" onclick="copyToClipboard('docker pull ${fullRepoName}:${tag.name}')">复制</button>
+                            ${escapeHtml(pullCommand)}
+                            <button type="button" class="copy-button" data-copy="${escapeHtml(pullCommand)}">复制</button>
                         </div>
                         ${architectures ? `<div class="tag-architectures">${architectures}</div>` : ''}
                     </div>

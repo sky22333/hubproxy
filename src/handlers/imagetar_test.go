@@ -65,6 +65,26 @@ func TestGenerateContentFingerprintStable(t *testing.T) {
 	}
 }
 
+func TestResolveImageRef(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	t.Run("query preserves underscores", func(t *testing.T) {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodGet, "/api/image/download?image=user/my_app:v1", nil)
+		if got := resolveImageRef(c); got != "user/my_app:v1" {
+			t.Fatalf("got %q", got)
+		}
+	})
+
+	t.Run("missing image is empty", func(t *testing.T) {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest(http.MethodGet, "/api/image/download", nil)
+		if got := resolveImageRef(c); got != "" {
+			t.Fatalf("got %q", got)
+		}
+	})
+}
+
 func TestWriteDownloadErrorSkipsJSONAfterBodyStarted(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

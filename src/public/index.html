@@ -587,7 +587,6 @@
                 <a href="/" class="nav-link active">🚀 GitHub加速</a>
                 <a href="/images.html" class="nav-link">🐳 离线镜像下载</a>
                 <a href="/search.html" class="nav-link">🔍 镜像搜索</a>
-                <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="nav-link">📄 Hosts</a>
                 
                 <button class="theme-toggle" id="themeToggle">
                     🌙
@@ -774,6 +773,8 @@
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(text).then(() => {
                     showToast('链接已复制到剪贴板');
+                }).catch(() => {
+                    showToast('复制失败');
                 });
                          } else {
                  const range = document.createRange();

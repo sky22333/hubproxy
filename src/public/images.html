@@ -555,7 +555,6 @@
                 <a href="/" class="nav-link">🚀 GitHub加速</a>
                 <a href="/images.html" class="nav-link active">🐳 离线镜像下载</a>
                 <a href="/search.html" class="nav-link">🔍 镜像搜索</a>
-                <a href="https://gitee.com/if-the-wind/github-hosts/raw/main/hosts" target="_blank" class="nav-link">📄 Hosts</a>
                 
                 <button class="theme-toggle" id="themeToggle">
                     🌙
@@ -729,28 +728,22 @@
         }
 
         function buildDownloadUrl(imageName, platform = '', useCompressed = true, mode = '') {
-            const encodedImage = imageName.replace(/\//g, '_');
-            let url = `/api/image/download/${encodedImage}`;
-            
             const params = new URLSearchParams();
+            params.set('image', imageName);
             if (platform && platform.trim()) {
-                params.append('platform', platform.trim());
+                params.set('platform', platform.trim());
             }
-            params.append('compressed', useCompressed.toString());
+            params.set('compressed', useCompressed.toString());
             if (mode) {
-                params.append('mode', mode);
+                params.set('mode', mode);
             }
-            
-            if (params.toString()) {
-                url += '?' + params.toString();
-            }
-            
-            return url;
+            return '/api/image/download?' + params.toString();
         }
 
         function buildInfoUrl(imageName) {
-            const encodedImage = imageName.replace(/\//g, '_');
-            return `/api/image/info/${encodedImage}`;
+            const params = new URLSearchParams();
+            params.set('image', imageName);
+            return '/api/image/info?' + params.toString();
         }
 
         async function preflightImageDownload(imageName) {

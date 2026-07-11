@@ -709,22 +709,26 @@ func formatPlatformText(platform string) string {
 func InitImageTarRoutes(router *gin.Engine) {
 	imageAPI := router.Group("/api/image")
 	{
-		imageAPI.GET("/download/:image", handleDirectImageDownload)
-		imageAPI.GET("/info/:image", handleImageInfo)
+		imageAPI.GET("/download", handleDirectImageDownload)
+		imageAPI.GET("/info", handleImageInfo)
 		imageAPI.GET("/batch", handleSimpleBatchDownload)
 		imageAPI.POST("/batch", handleSimpleBatchDownload)
 	}
 }
 
+// resolveImageRef 从 query image 读取镜像引用，避免 path 段用 _ 代替 / 导致下划线歧义。
+func resolveImageRef(c *gin.Context) string {
+	return strings.TrimSpace(c.Query("image"))
+}
+
 // handleDirectImageDownload 处理单镜像下载
 func handleDirectImageDownload(c *gin.Context) {
-	imageParam := c.Param("image")
-	if imageParam == "" {
+	imageRef := resolveImageRef(c)
+	if imageRef == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少镜像参数"})
 		return
 	}
 
-	imageRef := strings.ReplaceAll(imageParam, "_", "/")
 	platform := c.Query("platform")
 	tag := c.DefaultQuery("tag", "")
 	useCompressed := c.DefaultQuery("compressed", "true") == "true"
@@ -767,11 +771,10 @@ func handleDirectImageDownload(c *gin.Context) {
 			return
 		}
 
-		downloadURL := fmt.Sprintf("/api/image/download/%s?token=%s", imageParam, token)
-		if tag != "" {
-			downloadURL = downloadURL + "&tag=" + url.QueryEscape(tag)
-		}
-		c.JSON(http.StatusOK, gin.H{"download_url": downloadURL})
+		q := url.Values{}
+		q.Set("image", imageRef)
+		q.Set("token", token)
+		c.JSON(http.StatusOK, gin.H{"download_url": "/api/image/download?" + q.Encode()})
 		return
 	}
 
@@ -931,13 +934,12 @@ func handleSimpleBatchDownload(c *gin.Context) {
 
 // handleImageInfo 处理镜像信息查询
 func handleImageInfo(c *gin.Context) {
-	imageParam := c.Param("image")
-	if imageParam == "" {
+	imageRef := resolveImageRef(c)
+	if imageRef == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少镜像参数"})
 		return
 	}
 
-	imageRef := strings.ReplaceAll(imageParam, "_", "/")
 	tag := c.DefaultQuery("tag", "latest")
 
 	if !strings.Contains(imageRef, ":") && !strings.Contains(imageRef, "@") {

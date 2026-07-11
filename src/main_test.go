@@ -82,7 +82,7 @@ enableFrontend = false
 func TestSingleImageDownloadPrepareReturnsURL(t *testing.T) {
 	router := newTestRouter(t, "")
 
-	w := performRequest(router, http.MethodGet, "/api/image/download/nginx?mode=prepare", "")
+	w := performRequest(router, http.MethodGet, "/api/image/download?image=nginx&mode=prepare", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
@@ -93,7 +93,10 @@ func TestSingleImageDownloadPrepareReturnsURL(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(got.DownloadURL, "/api/image/download/nginx?token=") {
+	if !strings.Contains(got.DownloadURL, "image=nginx") || !strings.Contains(got.DownloadURL, "token=") {
+		t.Fatalf("download_url = %q", got.DownloadURL)
+	}
+	if !strings.HasPrefix(got.DownloadURL, "/api/image/download?") {
 		t.Fatalf("download_url = %q", got.DownloadURL)
 	}
 }
