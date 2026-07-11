@@ -165,7 +165,7 @@ port = 5000
 fileSize = 2147483648
 # HTTP/2 多路复用，提升下载速度
 enableH2C = false
-# 是否启用前端静态页面
+# 是否启用前端页面（Vue SPA）
 enableFrontend = true
 
 [rateLimit]
@@ -262,7 +262,7 @@ CONFIG_PATH=config.toml          # 配置文件路径
 SERVER_HOST=0.0.0.0             # 监听地址
 SERVER_PORT=5000                # 监听端口
 ENABLE_H2C=false                # 是否启用 H2C
-ENABLE_FRONTEND=true            # 是否启用前端静态页面
+ENABLE_FRONTEND=true            # 是否启用前端页面（Vue SPA）
 MAX_FILE_SIZE=2147483648        # GitHub 文件大小限制（字节）
 RATE_LIMIT=500                  # 每周期请求数
 RATE_PERIOD_HOURS=3             # 限流周期（小时）
@@ -314,8 +314,4 @@ example.com {
 
 ## 界面预览
 
-![1](./.github/demo/demo1.jpg)
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/chart?repos=sky22333/hubproxy&type=date&legend=top-left)](https://www.star-history.com/?repos=sky22333%2Fhubproxy&type=date&legend=top-left)
+![demo](.github/demo/demo.png)

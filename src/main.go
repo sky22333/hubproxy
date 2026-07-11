@@ -4,7 +4,9 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -16,7 +18,7 @@ import (
 	"hubproxy/utils"
 )
 
-//go:embed public/*
+//go:embed all:dist
 var staticFiles embed.FS
 
 var (
@@ -26,18 +28,63 @@ var (
 
 var Version = "dev"
 
+func init() {
+	for ext, typ := range map[string]string{
+		".js":    "application/javascript; charset=utf-8",
+		".mjs":   "application/javascript; charset=utf-8",
+		".woff":  "font/woff",
+		".woff2": "font/woff2",
+		".map":   "application/json",
+	} {
+		_ = mime.AddExtensionType(ext, typ)
+	}
+}
+
+func contentTypeFor(filename string) string {
+	if ct := mime.TypeByExtension(path.Ext(filename)); ct != "" {
+		return ct
+	}
+	return "application/octet-stream"
+}
+
 func serveEmbedFile(c *gin.Context, filename string) {
 	data, err := staticFiles.ReadFile(filename)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
+	c.Data(http.StatusOK, contentTypeFor(filename), data)
+}
 
-	contentType := "text/html; charset=utf-8"
-	if strings.HasSuffix(filename, ".ico") {
-		contentType = "image/x-icon"
+func serveSPA(c *gin.Context) {
+	serveEmbedFile(c, "dist/index.html")
+}
+
+func registerFrontendRoutes(router *gin.Engine, enabled bool) {
+	if !enabled {
+		notFound := func(c *gin.Context) { c.Status(http.StatusNotFound) }
+		router.GET("/", notFound)
+		router.GET("/images", notFound)
+		router.GET("/search", notFound)
+		router.GET("/assets/*filepath", notFound)
+		router.GET("/favicon.svg", notFound)
+		return
 	}
-	c.Data(http.StatusOK, contentType, data)
+
+	router.GET("/", serveSPA)
+	router.GET("/images", serveSPA)
+	router.GET("/search", serveSPA)
+	router.GET("/favicon.svg", func(c *gin.Context) {
+		serveEmbedFile(c, "dist/favicon.svg")
+	})
+	router.GET("/assets/*filepath", func(c *gin.Context) {
+		filepath := strings.TrimPrefix(c.Param("filepath"), "/")
+		if filepath == "" || strings.Contains(filepath, "..") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		serveEmbedFile(c, path.Join("dist/assets", filepath))
+	})
 }
 
 func buildRouter(cfg *config.AppConfig) *gin.Engine {
@@ -56,32 +103,7 @@ func buildRouter(cfg *config.AppConfig) *gin.Engine {
 
 	initHealthRoutes(router)
 	handlers.InitImageTarRoutes(router)
-
-	if cfg.Server.EnableFrontend {
-		router.GET("/", func(c *gin.Context) {
-			serveEmbedFile(c, "public/index.html")
-		})
-		router.GET("/public/*filepath", func(c *gin.Context) {
-			filepath := strings.TrimPrefix(c.Param("filepath"), "/")
-			serveEmbedFile(c, "public/"+filepath)
-		})
-		router.GET("/images.html", func(c *gin.Context) {
-			serveEmbedFile(c, "public/images.html")
-		})
-		router.GET("/search.html", func(c *gin.Context) {
-			serveEmbedFile(c, "public/search.html")
-		})
-		router.GET("/favicon.ico", func(c *gin.Context) {
-			serveEmbedFile(c, "public/favicon.ico")
-		})
-	} else {
-		router.GET("/", func(c *gin.Context) { c.Status(http.StatusNotFound) })
-		router.GET("/public/*filepath", func(c *gin.Context) { c.Status(http.StatusNotFound) })
-		router.GET("/images.html", func(c *gin.Context) { c.Status(http.StatusNotFound) })
-		router.GET("/search.html", func(c *gin.Context) { c.Status(http.StatusNotFound) })
-		router.GET("/favicon.ico", func(c *gin.Context) { c.Status(http.StatusNotFound) })
-	}
-
+	registerFrontendRoutes(router, cfg.Server.EnableFrontend)
 	handlers.RegisterSearchRoute(router)
 
 	router.Any("/token", handlers.ProxyDockerAuthGin)

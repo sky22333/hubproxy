@@ -1,5 +1,26 @@
-.idea
-.vscode
+# IDE / OS
+.idea/
+.vscode/
 .DS_Store
+
+# Go build artifacts
 /hubproxy*
 *.exe
+build/
+
+# Frontend (web/)
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/.tmp/
+web/*.local
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
+web/pnpm-debug.log*
+
+# Frontend build output embedded by Go
+src/dist/
+
+# Logs
+*.log

@@ -25,6 +25,18 @@ jobs:
         with:
           go-version-file: "src/go.mod"
           cache-dependency-path: "src/go.sum"
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: web/package.json
+          cache-dependency-path: web/package-lock.json
+
+      - name: 构建前端
+        run: |
+          cd web
+          npm ci
+          npm run build
           
       - name: 获取版本号
         id: version

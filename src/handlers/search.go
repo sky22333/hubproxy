@@ -466,9 +466,9 @@ func sendErrorResponse(c *gin.Context, message string) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": message})
 }
 
-// RegisterSearchRoute 注册搜索相关路由
+// RegisterSearchRoute 注册搜索与标签相关 API 路由。
 func RegisterSearchRoute(r *gin.Engine) {
-	r.GET("/search", func(c *gin.Context) {
+	r.GET("/api/search", func(c *gin.Context) {
 		query := c.Query("q")
 		if query == "" {
 			sendErrorResponse(c, "搜索关键词不能为空")
@@ -486,7 +486,7 @@ func RegisterSearchRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, result)
 	})
 
-	r.GET("/tags/:namespace/:name", func(c *gin.Context) {
+	r.GET("/api/tags/:namespace/:name", func(c *gin.Context) {
 		namespace := c.Param("namespace")
 		name := c.Param("name")
 
@@ -503,15 +503,9 @@ func RegisterSearchRoute(r *gin.Engine) {
 			return
 		}
 
-		if c.Query("page") != "" || c.Query("page_size") != "" {
-			c.JSON(http.StatusOK, gin.H{
-				"tags":      tags,
-				"has_more":  hasMore,
-				"page":      page,
-				"page_size": pageSize,
-			})
-		} else {
-			c.JSON(http.StatusOK, tags)
-		}
+		c.JSON(http.StatusOK, TagPageResult{
+			Tags:    tags,
+			HasMore: hasMore,
+		})
 	})
 }

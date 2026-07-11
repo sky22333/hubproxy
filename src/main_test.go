@@ -71,7 +71,7 @@ func TestFrontendDisabledRoutesReturnNotFound(t *testing.T) {
 enableFrontend = false
 `)
 
-	for _, path := range []string{"/", "/images.html", "/search.html", "/favicon.ico"} {
+	for _, path := range []string{"/", "/images", "/search", "/favicon.svg"} {
 		w := performRequest(router, http.MethodGet, path, "")
 		if w.Code != http.StatusNotFound {
 			t.Fatalf("%s status = %d, want 404", path, w.Code)
@@ -157,10 +157,13 @@ func TestDockerV2PingAndInvalidPath(t *testing.T) {
 	}
 }
 
-func TestSearchRouteRejectsMissingQuery(t *testing.T) {
-	router := newTestRouter(t, "")
+func TestSearchAPIRejectsMissingQuery(t *testing.T) {
+	router := newTestRouter(t, `
+[server]
+enableFrontend = false
+`)
 
-	w := performRequest(router, http.MethodGet, "/search", "")
+	w := performRequest(router, http.MethodGet, "/api/search", "")
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%s", w.Code, w.Body.String())
 	}
@@ -171,5 +174,23 @@ func TestSearchRouteRejectsMissingQuery(t *testing.T) {
 	}
 	if got["error"] == "" {
 		t.Fatalf("missing error response: %#v", got)
+	}
+}
+
+func TestSearchServesSPAWhenFrontendEnabled(t *testing.T) {
+	router := newTestRouter(t, `
+[server]
+enableFrontend = true
+`)
+
+	w := performRequest(router, http.MethodGet, "/search?q=nginx", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("content-type = %q, want text/html", w.Header().Get("Content-Type"))
+	}
+	if !strings.Contains(w.Body.String(), `<div id="app">`) {
+		t.Fatalf("SPA shell missing: %s", w.Body.String())
 	}
 }
