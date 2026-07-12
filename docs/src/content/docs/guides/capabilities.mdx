@@ -1,0 +1,68 @@
+---
+title: 传输特性
+description: HubProxy 在 Docker 拉取与 GitHub 下载场景下的能力边界说明。
+---
+
+本文基于当前代码实现（`src/handlers/docker.go`、`src/handlers/github.go`），说明各场景的传输行为。
+
+## Docker 镜像拉取
+
+HubProxy 通过 go-containerregistry 向上游拉取 manifest 与 blob，再以 HTTP 响应形式返回客户端。
+
+| 能力 | 支持 | 说明 |
+|------|------|------|
+| Manifest 缓存 | ✅ | GET manifest 可缓存；digest 24h，`latest` 等 10 分钟 |
+| Token 缓存 | ✅ | 上游 `expires_in` 驱动 |
+| 多 Registry 路径 | ✅ | 如 `example.com/ghcr.io/owner/image:tag` |
+| containerd `ns` 参数 | ✅ | 识别 `[registries]` 中的 registry |
+| 认证 realm 改写 | ✅ | 上游 token 地址改写到 HubProxy `/token` |
+| HTTP Range / layer 内续传 | ❌ | blob 始终整层读取后转发，不读取客户端 `Range` |
+| layer 级重试 | ✅ | Docker/containerd 拉取失败会重试整个 layer |
+
+:::note
+每个 layer 对应至少一次 blob 请求，均计入 IP 限流。HubProxy 对 blob **不做** Range 分片，但客户端可并行拉取**不同 layer**（多连接）。
+:::
+
+### 与标准 Registry 的差异
+
+- blob 非透明透传，由 HubProxy 从上游完整拉取后再 `io.Copy` 转发
+- 不支持 PATCH/PUT 上传（仅拉取）
+- HEAD / GET manifest 支持
+
+## GitHub / Hugging Face 下载
+
+GitHub 代理（`proxyGitHubWithRedirect`）会将客户端**全部请求头**（含 `Range`）转发上游，并将上游**状态码与响应头**（含 `Content-Range`、`Accept-Ranges`）原样返回，再流式转发 body。
+
+| 能力 | 支持 | 说明 |
+|------|------|------|
+| 流式转发 | ✅ | 普通文件直接 `io.Copy` |
+| HTTP Range / 断点续传 | ✅ | `wget -c`、`curl -C -` 可用；上游返回 206 时原样透传 |
+| 多连接 Range 分片 | ✅ | aria2 等多线程分片下载可用（依赖上游支持 Range） |
+| 重定向跟随 | ✅ | 最多 20 次；GitHub URL 的 Location 自动改写 |
+| 网页类型拦截 | ✅ | `text/html` 等返回 403 |
+| 文件大小限制 | ✅ | `[server].fileSize`，默认 2GB（按响应头 `Content-Length` 校验） |
+| `.sh` / `.ps1` 脚本改写 | ⚠️ | 脚本会完整下载并改写内容后 chunked 输出，**不支持** Range 续传 |
+
+### wget 断点续传示例
+
+```bash
+# 首次下载（中断后可续传）
+wget -c "https://example.com/https://github.com/owner/repo/releases/download/v1.0.0/large.bin"
+```
+
+实现位置：`src/handlers/github.go` 第 113–118 行（转发请求头）、第 209–231 行（透传响应）。
+
+## 离线镜像 tar
+
+| 能力 | 支持 |
+|------|------|
+| 流式打包 tar | ✅ |
+| 一次性 token（2 分钟） | ✅ |
+| Range / 断点续传 | ❌ |
+| `Cache-Control: no-store` | ✅ |
+
+## 相关文档
+
+- [Docker 镜像加速](/guides/docker-mirror/)
+- [GitHub 加速](/guides/github-proxy/)
+- [离线镜像包](/guides/offline-images/)

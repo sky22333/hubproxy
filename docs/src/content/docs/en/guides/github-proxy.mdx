@@ -1,0 +1,77 @@
+﻿---
+title: GitHub Acceleration
+description: Accelerate GitHub Release, Raw, Clone, API, and Hugging Face downloads with HubProxy.
+---
+
+HubProxy forwards unmatched routes to its GitHub proxy handler, which relays the **full original URL** to GitHub, Hugging Face, and other upstreams.
+
+## How to Accelerate
+
+Prefix your original URL with the HubProxy host. Two formats are supported.
+
+### Full URL (Recommended)
+
+```bash
+# Release download
+curl -L -O "https://example.com/https://github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
+
+# Git clone
+git clone https://example.com/https://github.com/owner/repo.git
+
+# API
+curl "https://example.com/https://api.github.com/repos/owner/repo/releases/latest"
+```
+
+### Omit `https://`
+
+HubProxy auto-prepends the scheme:
+
+```bash
+curl -L -O "https://example.com/github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
+```
+
+:::caution
+**Not supported:** path-prefix rewrites like `https://example.com/github/owner/repo/...` or `/raw/owner/...` — these return "invalid input".
+:::
+
+## Supported URL Types
+
+| Type | Path pattern |
+|------|-------------|
+| Release / Archive | `github.com/{owner}/{repo}/releases/...`, `/archive/...` |
+| Raw / Blob | `github.com/{owner}/{repo}/raw/...` (`/blob/` auto-converted to `/raw/`) |
+| Git protocol | `github.com/{owner}/{repo}/info/...`, `/git-...` |
+| Raw domains | `raw.githubusercontent.com/...`, `raw.github.com/...` |
+| API | `api.github.com/repos/{owner}/{repo}/...` |
+| Gist | `gist.github.com/...`, `gist.githubusercontent.com/...` |
+| Hugging Face | `huggingface.co/...`, `cdn-lfs.hf.co/...` |
+| GitHub Assets | `github.githubassets.com/...`, `opengraph.githubassets.com/...` |
+
+## Script Nesting
+
+HubProxy can rewrite GitHub URLs inside `.sh` / `.ps1` install scripts (max 10MB). Behind a reverse proxy, set `X-Forwarded-Host` correctly — see [Reverse Proxy](/en/deployment/reverse-proxy/).
+
+## Limits and Blocks
+
+| Limit | Description |
+|-------|-------------|
+| Web content | `text/html`, `application/xml`, etc. are blocked (403) — not for browsing GitHub pages |
+| File size | `[server].fileSize` caps single-file downloads (default 2GB) |
+| Repo access | `[access].whiteList` / `blackList` restrict proxied GitHub repos |
+
+Large Release files support `wget -c` resume — see [Transfer Capabilities](/en/guides/capabilities/).
+
+```toml
+[server]
+fileSize = 2147483648
+
+[access]
+whiteList = ["trusted-org/*"]
+blackList = ["*/malicious-repo"]
+```
+
+## Related
+
+- [Hugging Face Acceleration](/en/guides/huggingface/)
+- [Transfer capabilities](/en/guides/capabilities/)
+- [Development: add new URLs](/en/guides/development/)

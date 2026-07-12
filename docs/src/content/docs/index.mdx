@@ -1,0 +1,49 @@
+﻿---
+title: HubProxy 文档
+description: Docker 与 GitHub 加速代理服务的官方文档，涵盖部署、配置与安全实践。
+template: splash
+hero:
+  tagline: 轻量级、自托管的多功能加速代理
+  image:
+    file: ../../assets/hero.svg
+  actions:
+    - text: 快速开始
+      link: /getting-started/quick-start/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/sky22333/hubproxy
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components'
+
+## 核心能力
+
+<CardGrid stagger>
+  <Card title="Docker 镜像加速" icon="rocket">
+    支持 Docker Hub、GHCR、Quay、GCR、registry.k8s.io 等 Registry API v2 标准仓库。
+  </Card>
+  <Card title="GitHub 文件加速" icon="document">
+    在完整 URL 前加域名即可加速 Release、Raw、Clone、API 与 Hugging Face 下载。
+  </Card>
+  <Card title="离线镜像包" icon="seti:docker">
+    在线打包镜像为 tar，支持单镜像与批量下载。
+  </Card>
+  <Card title="镜像搜索" icon="magnifier">
+    内置 Docker Hub 镜像搜索与标签浏览。
+  </Card>
+  <Card title="智能限流" icon="warning">
+    按真实客户端 IP 限流，支持黑白名单与仓库访问控制。
+  </Card>
+  <Card title="完全自托管" icon="approve-check">
+    单二进制部署，不依赖第三方免费 CDN 代理服务。
+  </Card>
+</CardGrid>
+
+## 推荐阅读
+
+- 公网部署请优先阅读 [推荐部署架构](/deployment/architecture/) 与 [反向代理配置](/deployment/reverse-proxy/)
+- K8s / NAS 用户见 [Kubernetes 与 containerd](/guides/kubernetes-containerd/)、[NAS 配置](/guides/nas/)
+- 能力边界见 [传输特性](/guides/capabilities/)，扩展开发见 [二次开发与构建](/guides/development/)
+- 配置项说明见 [config.toml 参考](/configuration/reference/)

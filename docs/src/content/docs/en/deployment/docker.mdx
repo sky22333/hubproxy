@@ -1,0 +1,57 @@
+﻿---
+title: Docker Deployment
+description: Deploy HubProxy with Docker and Docker Compose.
+---
+
+## docker run
+
+```bash
+docker run -d \
+  --name hubproxy \
+  -p 5000:5000 \
+  --restart always \
+  -v ./src/config.toml:/app/config.toml:ro \
+  ghcr.io/sky22333/hubproxy
+```
+
+## Docker Compose
+
+The repository includes `docker-compose.yml`:
+
+```bash
+docker compose up -d
+```
+
+Mounts `./src/config.toml` to `/app/config.toml`. Log rotation (`200m × 3`) is preconfigured in Compose — no need to duplicate in `docker run`.
+
+:::caution
+In production, avoid mapping port 5000 directly to the public internet. Let a Caddy/Nginx container reach HubProxy on the internal network instead.
+:::
+
+## With Reverse Proxy
+
+Typical Compose layout:
+
+```
+caddy:    exposes 443, proxies to hubproxy:5000
+hubproxy: internal 5000 only, not mapped to host public interface
+```
+
+## Health Check
+
+The image has no built-in `HEALTHCHECK`. Verify manually:
+
+```bash
+curl http://127.0.0.1:5000/ready
+```
+
+## Compose Logging (Optional)
+
+When using Compose, `docker-compose.yml` configures:
+
+| Option | Meaning |
+|--------|---------|
+| `max-size=200m` | Max size per log file |
+| `max-file=3` | Keep 3 files (~600MB total) |
+
+Without options, `docker run` defaults to ~20MB per log file.

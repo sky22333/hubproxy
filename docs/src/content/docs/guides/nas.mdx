@@ -1,0 +1,71 @@
+---
+title: NAS 配置
+description: 在群晖 DSM 与飞牛 fnOS 上配置 HubProxy 镜像加速。
+---
+
+NAS 上的 Docker 通过图形界面管理，**不要**随意用脚本覆盖整个 `daemon.json`，以免丢失 `data-root` 导致容器丢失。
+
+以下假设 HubProxy 已通过反代暴露在 `https://example.com`。
+
+## 群晖 DSM（Container Manager）
+
+DSM 7.2+ 将「Docker」更名为 **Container Manager**。
+
+### 图形界面（推荐）
+
+1. **Container Manager** → **注册表** → **设置**
+2. 选择 **Docker Hub** → **编辑**
+3. 勾选 **启用 Registry 镜像**，填入 `https://example.com`
+4. 保存并重启 Docker 引擎
+
+### SSH 修改 dockerd.json
+
+:::caution
+备份原文件，**保留** `data-root`、`storage-driver` 等字段，仅改 `registry-mirrors`。
+:::
+
+DSM 7.2 及更早：`/var/packages/Docker/etc/dockerd.json`
+
+DSM 7.3+：`/var/packages/ContainerManager/etc/dockerd.json`
+
+```json
+"registry-mirrors": ["https://example.com"]
+```
+
+重启：
+
+```bash
+# DSM 7.2 及更早
+sudo systemctl restart pkgctl-Docker
+
+# DSM 7.3+
+sudo systemctl restart pkg-ContainerManager-dockerd
+```
+
+验证：`sudo docker info | grep -A3 "Registry Mirrors"`
+
+---
+
+## 飞牛 fnOS
+
+官方建议：**不要**用脚本直接改写 `/etc/docker/daemon.json`（含 `data-root`，误删会导致镜像/容器丢失）。
+
+### Web 界面（推荐）
+
+1. **Docker** → **镜像仓库** → **仓库设置** / **加速源设置**
+2. **添加 URL**：`https://example.com`
+3. 拖到列表**顶部**，保存并**重启 Docker**
+
+### 手动编辑（高级）
+
+先备份，仅向 `registry-mirrors` 追加地址，保留 `data-root` 等字段，然后重启 Docker。
+
+### 注意
+
+- 应用中心部分应用走阿里云等固定 Registry，与 HubProxy 无关
+- 修改后必须重启 Docker 才生效
+
+## 相关文档
+
+- [Docker 镜像加速](/guides/docker-mirror/)
+- [反向代理](/deployment/reverse-proxy/)

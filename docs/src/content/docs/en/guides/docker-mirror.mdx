@@ -1,0 +1,66 @@
+﻿---
+title: Docker Mirror
+description: Configure Docker clients to pull images through HubProxy.
+---
+
+HubProxy implements Docker Registry API v2 and can accelerate Docker Hub and multiple third-party registries.
+
+## Configure Docker Client
+
+Edit `/etc/docker/daemon.json` (or Docker Desktop settings on Windows):
+
+```json
+{
+  "registry-mirrors": ["https://example.com"]
+}
+```
+
+Restart Docker:
+
+```bash
+sudo systemctl restart docker
+```
+
+## Supported Registries
+
+| Registry | Notes |
+|----------|-------|
+| Docker Hub | Default `registry-1.docker.io`, no path prefix needed |
+| ghcr.io | GitHub Container Registry |
+| gcr.io | Google Container Registry |
+| quay.io | Red Hat Quay |
+| registry.k8s.io | Kubernetes official images |
+
+Extend or disable in `[registries]` — see [Registry Sources](/en/guides/docker-mirror-sources/).
+
+## Pull Examples
+
+```bash
+# Docker Hub
+docker pull example.com/library/nginx:latest
+
+# Third-party registry (path includes registry domain)
+docker pull example.com/ghcr.io/owner/image:tag
+```
+
+## Image Search
+
+The web UI (`enableFrontend = true`) provides Docker Hub search and tag browsing. API access:
+
+```bash
+curl "https://example.com/api/search?q=nginx"
+curl "https://example.com/api/tags/library/nginx"
+```
+
+## Notes
+
+- Each layer counts against rate limits
+- Configure `[access].whiteList` for public deployments
+- Ensure correct client IP behind reverse proxy — see [Reverse Proxy](/en/deployment/reverse-proxy/)
+- Anonymous upstream pulls; private images need client-side `docker login`
+
+## Other environments
+
+- [Kubernetes & containerd](/en/guides/kubernetes-containerd/)
+- [Synology / Feiniu NAS](/en/guides/nas/)
+- [Transfer capabilities](/en/guides/capabilities/)

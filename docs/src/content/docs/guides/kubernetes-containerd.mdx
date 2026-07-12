@@ -1,0 +1,90 @@
+---
+title: Kubernetes 与 containerd
+description: 在 K3s、RKE2 及原生 containerd 中配置 HubProxy 镜像加速。
+---
+
+HubProxy 兼容 OCI/Distribution Registry API v2。Kubernetes 节点通常由 **containerd** 拉取镜像，配置方式与 Docker `daemon.json` 不同。
+
+## K3s
+
+在每个节点创建 `/etc/rancher/k3s/registries.yaml`：
+
+```yaml
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://example.com"
+  "ghcr.io":
+    endpoint:
+      - "https://example.com"
+  "quay.io":
+    endpoint:
+      - "https://example.com"
+  "registry.k8s.io":
+    endpoint:
+      - "https://example.com"
+```
+
+重启服务：
+
+```bash
+sudo systemctl restart k3s        # server
+sudo systemctl restart k3s-agent  # agent
+```
+
+验证（使用 **crictl**，mirror 不对 `ctr` 生效）：
+
+```bash
+sudo crictl pull docker.io/library/nginx:latest
+```
+
+## RKE2
+
+配置 `/etc/rancher/rke2/registries.yaml`，格式同上，重启 `rke2-server` 或 `rke2-agent`。
+
+## 原生 containerd（1.5+）
+
+```bash
+sudo mkdir -p /etc/containerd/certs.d/docker.io
+```
+
+`/etc/containerd/certs.d/docker.io/hosts.toml`：
+
+```toml
+server = "https://registry-1.docker.io"
+
+[host."https://example.com"]
+  capabilities = ["pull", "resolve"]
+```
+
+GHCR 示例：`/etc/containerd/certs.d/ghcr.io/hosts.toml`：
+
+```toml
+server = "https://ghcr.io"
+
+[host."https://example.com"]
+  capabilities = ["pull", "resolve"]
+```
+
+确保 `/etc/containerd/config.toml` 启用：
+
+```toml
+[plugins."io.containerd.grpc.v1.cri".registry]
+  config_path = "/etc/containerd/certs.d"
+```
+
+```bash
+sudo systemctl restart containerd
+```
+
+## 路径说明
+
+- docker.io：`/v2/library/nginx/...`
+- ghcr.io 等：`/v2/ghcr.io/owner/image/...`
+- 支持 containerd `ns` 查询参数识别 `[registries]`
+
+## 注意事项
+
+- 每节点独立配置；生产环境 HubProxy 建议 HTTPS 反代
+- 私有镜像需 `imagePullSecrets`；HubProxy 对上游匿名拉取
+- 见 [传输特性](/guides/capabilities/)

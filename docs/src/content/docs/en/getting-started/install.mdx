@@ -1,0 +1,56 @@
+﻿---
+title: System Installation
+description: Deploy HubProxy with deb, rpm, or apk packages and manage the service.
+---
+
+## Install Script
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sh
+```
+
+Supports `amd64` / `arm64` with `apt`, `dnf`, `apk`, and other package managers.
+
+## File Paths
+
+| Path | Description |
+|------|-------------|
+| `/etc/hubproxy/config.toml` | Configuration file |
+| `/usr/bin/hubproxy` | Binary |
+| `/lib/systemd/system/hubproxy.service` | systemd unit (Debian/Ubuntu/RHEL) |
+| `/etc/init.d/hubproxy` | OpenRC service (Alpine) |
+| `/var/log/hubproxy.log` | Alpine log file |
+
+## systemd
+
+```bash
+sudo systemctl status hubproxy    # Check service status
+sudo systemctl restart hubproxy   # Restart after config changes
+sudo journalctl -u hubproxy -f    # Follow logs
+sudo nano /etc/hubproxy/config.toml  # Edit config
+```
+
+Uninstall:
+
+```bash
+sudo apt purge hubproxy   # Debian/Ubuntu — remove package and config
+```
+
+## OpenRC (Alpine)
+
+```bash
+sudo rc-service hubproxy status   # Check status
+sudo rc-service hubproxy restart  # Restart service
+sudo tail -f /var/log/hubproxy.log  # Follow logs
+sudo vi /etc/hubproxy/config.toml   # Edit config
+```
+
+Uninstall:
+
+```bash
+sudo apk del hubproxy   # Remove package
+```
+
+## Production recommendation
+
+For public or team use, point a **custom domain** at HubProxy through Caddy / Nginx with **HTTPS enabled**, instead of exposing `http://IP:5000` long term. This provides TLS, correct client IP forwarding, and safer access. See [Reverse Proxy](/en/deployment/reverse-proxy/) and [Recommended Architecture](/en/deployment/architecture/).

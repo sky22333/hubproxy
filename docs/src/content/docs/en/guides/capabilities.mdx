@@ -1,0 +1,61 @@
+---
+title: Transfer Capabilities
+description: Transfer behavior for Docker pulls and GitHub downloads in HubProxy.
+---
+
+Based on current code in `src/handlers/docker.go` and `src/handlers/github.go`.
+
+## Docker Image Pulls
+
+HubProxy fetches manifests and blobs via go-containerregistry, then returns them over HTTP.
+
+| Capability | Supported | Notes |
+|------------|-----------|-------|
+| Manifest cache | ✅ | GET cached; digest 24h, `latest` etc. 10m |
+| Token cache | ✅ | Upstream `expires_in` driven |
+| Multi-registry paths | ✅ | e.g. `example.com/ghcr.io/owner/image:tag` |
+| containerd `ns` param | ✅ | Matches `[registries]` entries |
+| Auth realm rewrite | ✅ | Upstream token → HubProxy `/token` |
+| HTTP Range / in-layer resume | ❌ | Blobs always fetched fully; client `Range` ignored |
+| Layer-level retry | ✅ | Docker/containerd retries failed layers |
+
+:::note
+Each layer costs at least one blob request against rate limits. No Range inside a layer, but clients may pull **different layers** in parallel.
+:::
+
+## GitHub / Hugging Face Downloads
+
+The GitHub proxy (`proxyGitHubWithRedirect`) forwards **all client request headers** (including `Range`) upstream and passes through **status codes and response headers** (`Content-Range`, `Accept-Ranges`, etc.) before streaming the body.
+
+| Capability | Supported | Notes |
+|------------|-----------|-------|
+| Streaming | ✅ | Direct `io.Copy` for normal files |
+| HTTP Range / resume | ✅ | `wget -c`, `curl -C -`; 206 responses passed through |
+| Multi-connection Range | ✅ | aria2-style parallel chunks (if upstream supports Range) |
+| Redirects | ✅ | Max 20; GitHub Location URLs rewritten |
+| HTML block | ✅ | `text/html` etc. → 403 |
+| File size limit | ✅ | `[server].fileSize`, default 2GB |
+| `.sh` / `.ps1` rewrite | ⚠️ | Full download + rewrite + chunked output; **no** Range resume |
+
+### wget resume example
+
+```bash
+wget -c "https://example.com/https://github.com/owner/repo/releases/download/v1.0.0/large.bin"
+```
+
+See `src/handlers/github.go` lines 113–118 (header forward) and 209–231 (response pass-through).
+
+## Offline image tar
+
+| Capability | Supported |
+|------------|-----------|
+| Streaming tar | ✅ |
+| One-time token (2 min) | ✅ |
+| Range / resume | ❌ |
+| `Cache-Control: no-store` | ✅ |
+
+## Related
+
+- [Docker Mirror](/en/guides/docker-mirror/)
+- [GitHub Acceleration](/en/guides/github-proxy/)
+- [Offline Images](/en/guides/offline-images/)

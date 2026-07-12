@@ -1,0 +1,50 @@
+﻿---
+title: IP Trust
+description: How HubProxy identifies real client IPs and prevents spoofing.
+---
+
+HubProxy uses Gin's `ClientIP()` with trusted proxy CIDRs to decide when to trust forwarding headers.
+
+## Trusted Proxy CIDRs
+
+Forwarding headers are only read when the TCP connection originates from:
+
+- `127.0.0.0/8` (loopback)
+- `10.0.0.0/8` (private Class A)
+- `172.16.0.0/12` (private Class B)
+- `192.168.0.0/16` (private Class C)
+
+Direct public connections **never** trust forwarding headers.
+
+## Rate Limit Keys
+
+| Protocol | Key |
+|----------|-----|
+| IPv4 | Full IP address |
+| IPv6 | `/64` prefix |
+
+At most 10,000 IP entries are cached in memory.
+
+## `[security].whiteList` vs IP Protection
+
+`[security].whiteList` is a **rate-limit exemption** list, not an access control list:
+
+- Whitelisted IPs skip `[rateLimit]`
+- Independent from IP spoof protection and `[access]` registry control
+
+## Correct Proxy Headers
+
+The proxy must **overwrite** (not append) client IP:
+
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+See [Reverse Proxy](/en/deployment/reverse-proxy/).
+
+## Cloudflare
+
+When users reach your proxy via Cloudflare, the reverse proxy should read `CF-Connecting-IP` and write it to forwarding headers.
+
+HubProxy does **not** ship a Cloudflare IP trust list — it relies on the private-side proxy writing the correct IP.

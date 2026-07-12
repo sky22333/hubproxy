@@ -1,0 +1,45 @@
+---
+title: Hugging Face Acceleration
+description: Accelerate Hugging Face model and LFS downloads through HubProxy.
+---
+
+Hugging Face uses the same URL-prefix proxy as GitHub — prepend your HubProxy host to the **full original URL**.
+
+## Supported URLs
+
+| Type | Example |
+|------|---------|
+| Model / dataset files | `huggingface.co/{user}/{repo}/resolve/...` |
+| Spaces | `huggingface.co/spaces/{user}/{repo}/...` |
+| LFS CDN | `cdn-lfs.hf.co/{user}/{repo}/...` |
+
+Regex patterns are in `githubExps` in `src/handlers/github.go`.
+
+## Examples
+
+```bash
+curl -L -O "https://example.com/https://huggingface.co/bert-base-uncased/resolve/main/config.json"
+
+curl -L -O "https://example.com/huggingface.co/bert-base-uncased/resolve/main/pytorch_model.bin"
+
+curl -L -O "https://example.com/https://cdn-lfs.hf.co/user/model-repo/abc123..."
+```
+
+## Python / huggingface_hub
+
+Replace original HF URLs with:
+
+```
+https://example.com/https://huggingface.co/...
+```
+
+Ensure paths match Hugging Face regexes in `githubExps`.
+
+## Limits
+
+Same as [GitHub Acceleration](/en/guides/github-proxy/):
+
+- No HTML browsing
+- `[server].fileSize` cap
+- Same as GitHub: **supports** `Range` resume and multi-connection downloads — see [Transfer Capabilities](/en/guides/capabilities/)
+- `[access]` allow/deny lists apply

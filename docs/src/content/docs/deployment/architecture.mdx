@@ -1,0 +1,45 @@
+﻿---
+title: 推荐部署架构
+description: 公网部署 HubProxy 的推荐拓扑与安全要求。
+---
+
+公网服务时，推荐始终通过反向代理暴露 HubProxy，而不是将 `5000` 端口直接暴露到公网。
+
+## 推荐拓扑
+
+```
+用户 → CDN（可选）→ Caddy/Nginx（私网/本机）→ HubProxy:5000
+```
+
+| 组件 | 作用 |
+|------|------|
+| CDN | 可选，提供 TLS 与边缘加速 |
+| 反向代理 | 终止 TLS、写入真实客户端 IP、隐藏后端端口 |
+| HubProxy | 处理 Docker/GitHub 代理逻辑 |
+
+## 必须满足的条件
+
+1. **反代覆盖写** `X-Forwarded-For` / `X-Real-IP`（不要 append 客户端自带头）
+2. **5000 不对公网开放**，仅允许反代访问
+3. 公网服务建议配置 `[access].whiteList` 限制可代理的仓库
+4. 反代覆盖写 `X-Forwarded-Host`（防止 `.sh` 脚本 Host 注入）
+
+## 各场景对照
+
+| 部署方式 | 每用户独立限流 | IP 防伪造 | 推荐度 |
+|---------|---------------|----------|--------|
+| CDN → 私网反代 → HubProxy | ✅ | ✅ | ⭐⭐⭐ |
+| Docker 内 Caddy + HubProxy | ✅ | ✅ | ⭐⭐⭐ |
+| 本机 Nginx → HubProxy | ✅ | ✅ | ⭐⭐⭐ |
+| Cloudflare 直连 HubProxy | ❌ 共用 CDN IP | ✅ | ⚠️ |
+| 公网直连 `0.0.0.0:5000` | ✅ | ✅ | ⚠️ 开放代理风险 |
+
+## HTTP/3（QUIC）
+
+Caddy 默认开启 HTTP/3 只影响「用户 → Caddy」段（UDP）。Caddy 回源 HubProxy 仍使用 TCP，当前 IP 信任机制无需额外配置。
+
+## 下一步
+
+- [反向代理配置](/deployment/reverse-proxy/)
+- [Docker 部署](/deployment/docker/)
+- [安全概述](/security/overview/)

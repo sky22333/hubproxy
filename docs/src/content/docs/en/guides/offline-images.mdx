@@ -1,0 +1,84 @@
+﻿---
+title: Offline Images
+description: Package Docker images as tar files online, with single and batch download.
+---
+
+HubProxy's web UI (`enableFrontend = true`) and API package images as tar archives without a local Docker daemon.
+
+Downloads use a **two-step flow**: `prepare` for a one-time token, then download with that token. Tokens expire in **2 minutes** and are bound to client IP and User-Agent.
+
+## Web UI
+
+Visit the HubProxy homepage and use the offline image feature.
+
+## Single Image API
+
+**Step 1: Prepare**
+
+```bash
+curl "https://example.com/api/image/download?image=library/nginx:latest&mode=prepare"
+```
+
+Response:
+
+```json
+{
+  "download_url": "/api/image/download?image=library/nginx%3Alatest&token=..."
+}
+```
+
+**Step 2: Download tar**
+
+```bash
+curl -L -o nginx.tar "https://example.com/api/image/download?image=library/nginx:latest&token=YOUR_TOKEN"
+```
+
+Optional parameters:
+
+| Param | Description |
+|-------|-------------|
+| `platform` | Target platform, e.g. `linux/amd64` |
+| `tag` | Used when image has no tag, default `latest` |
+| `compressed` | Compress layers, default `true` |
+
+## Batch API
+
+**Step 1: Prepare**
+
+```bash
+curl -X POST "https://example.com/api/image/batch?mode=prepare" \
+  -H "Content-Type: application/json" \
+  -d '{"images":["nginx:latest","redis:alpine"]}'
+```
+
+**Step 2: Download combined tar**
+
+```bash
+curl -L -o batch.tar "https://example.com/api/image/batch?token=YOUR_TOKEN"
+```
+
+## Image Info
+
+```bash
+curl "https://example.com/api/image/info?image=library/nginx:latest"
+```
+
+## Limits
+
+| Config / Rule | Default | Description |
+|--------------|---------|-------------|
+| `[download].maxImages` | `10` | Max images per batch |
+| Prepare debounce (single) | 5s | Repeated prepare returns 429 |
+| Prepare debounce (batch) | 60s | Same for batch |
+| Token TTL | 2 min | Invalid if expired or IP/UA mismatch |
+
+```toml
+[download]
+maxImages = 10
+```
+
+## Notes
+
+- Large images take longer; streamed downloads must restart if interrupted
+- Subject to `[access]` lists and IP rate limiting
+- `/ready` and frontend static pages are not rate-limited; API and proxy requests are

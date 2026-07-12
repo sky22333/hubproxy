@@ -1,0 +1,50 @@
+﻿---
+title: IP 信任机制
+description: HubProxy 如何识别真实客户端 IP 并防止伪造。
+---
+
+HubProxy 使用 Gin 的 `ClientIP()` 获取客户端地址，并配合可信代理网段判断何时信任转发头。
+
+## 可信代理网段
+
+仅当 TCP 连接来自以下网段时，才读取 `X-Forwarded-For` / `X-Real-IP`：
+
+- `127.0.0.0/8`（本机）
+- `10.0.0.0/8`（私网 A 类）
+- `172.16.0.0/12`（私网 B 类）
+- `192.168.0.0/16`（私网 C 类）
+
+直连公网 IP 的请求**不会**信任任何转发头，直接使用 TCP 远端地址。
+
+## 限流 IP 计算
+
+| 协议 | 限流键 |
+|------|--------|
+| IPv4 | 完整 IP 地址 |
+| IPv6 | `/64` 网段 |
+
+内存中最多缓存 10000 条 IP 记录，不会无限增长。
+
+## `[security].whiteList` 与 IP 防护
+
+`[security].whiteList` 是**限流豁免名单**，不是「允许访问的 IP 列表」：
+
+- 白名单 IP 不受 `[rateLimit]` 限制
+- 与 IP 伪造防护、仓库访问控制（`[access]`）是独立机制
+
+## 正确反代示例
+
+反代必须**覆盖写**（非 append）客户端 IP：
+
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+详见 [反向代理配置](/deployment/reverse-proxy/)。
+
+## Cloudflare 场景
+
+若用户经 Cloudflare 到达反代，反代应从 `CF-Connecting-IP` 读取真实 IP 并写入转发头，而不是让 HubProxy 直连 Cloudflare。
+
+HubProxy **不**内置 Cloudflare IP 信任列表，依赖「反代在私网侧正确写入 IP」这一架构。

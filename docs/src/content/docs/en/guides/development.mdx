@@ -1,0 +1,80 @@
+---
+title: Development & Build
+description: Extend acceleration URLs, registry mappings, and build from source.
+---
+
+## Layout
+
+```
+hubproxy/
+├── src/       # Go backend
+├── web/       # Vue SPA
+├── Dockerfile
+└── docs/
+```
+
+## Add acceleration URLs
+
+Edit **`githubExps`** in `src/handlers/github.go`:
+
+```go
+var githubExps = []*regexp.Regexp{
+    regexp.MustCompile(`^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:releases|archive)/.*`),
+    // add new patterns here
+}
+```
+
+Requirements:
+
+1. Include `([^/]+)/([^/]+)` capture groups for `[access]` owner/repo matching
+2. Run `go test ./handlers/...`
+3. Routes use `NoRoute(GitHubProxyHandler)` in `main.go` — no new route needed
+
+Access control: `src/utils/access_control.go` → `CheckGitHubAccess`.
+
+## Add Docker Registry
+
+`config.toml` → `[registries]`. Auth hook: `createUpstreamOptions()` in `src/handlers/docker.go`.
+
+## Add HTTP routes
+
+Register in `buildRouter()` in `src/main.go`.
+
+## Local dev
+
+```bash
+cd src && CONFIG_PATH=./config.toml go run .
+cd web && npm ci && npm run dev
+```
+
+Production embed:
+
+```bash
+cd web && npm ci && npm run build
+# copy dist to src/dist
+cd ../src && go build -o hubproxy .
+```
+
+## Docker build
+
+```bash
+docker build -t hubproxy:local --build-arg VERSION=1.0.0 .
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/your-org/hubproxy:latest \
+  --build-arg VERSION=1.0.0 --push .
+```
+
+| Stage | Image | Role |
+|-------|-------|------|
+| frontend | node:24-alpine | Vue build |
+| builder | golang:1.26-alpine | Go + UPX |
+| final | alpine | Runtime |
+
+## Test & release
+
+```bash
+cd src && go test ./...
+```
+
+CI: `.github/workflows/docker-ghcr.yml`, `release.yml`.

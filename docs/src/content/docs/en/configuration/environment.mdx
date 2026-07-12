@@ -1,0 +1,46 @@
+﻿---
+title: Environment Variables
+description: Environment variables supported by HubProxy.
+---
+
+Environment variables override config after `config.toml` is loaded. Sections not listed here (e.g. `[registries]`, `[tokenCache]`, `[access].whiteList`) can only be changed in the config file.
+
+## All Variables
+
+| Variable | Config key | Description |
+|----------|-----------|-------------|
+| `CONFIG_PATH` | — | Config file path, default `./config.toml` |
+| `SERVER_HOST` | `[server].host` | Listen address |
+| `SERVER_PORT` | `[server].port` | Listen port |
+| `ENABLE_H2C` | `[server].enableH2C` | Enable HTTP/2 Cleartext (`true`/`false`) |
+| `ENABLE_FRONTEND` | `[server].enableFrontend` | Enable web UI (`true`/`false`) |
+| `MAX_FILE_SIZE` | `[server].fileSize` | Max single-file size (bytes) |
+| `RATE_LIMIT` | `[rateLimit].requestLimit` | Requests per IP per period |
+| `RATE_PERIOD_HOURS` | `[rateLimit].periodHours` | Rate limit period (hours) |
+| `IP_WHITELIST` | `[security].whiteList` | Append rate-limit exempt IPs, comma-separated |
+| `IP_BLACKLIST` | `[security].blackList` | Append blocked IPs, comma-separated |
+| `ACCESS_PROXY` | `[access].proxy` | Upstream SOCKS5 proxy URL |
+| `MAX_IMAGES` | `[download].maxImages` | Max images per batch offline download |
+
+## Examples
+
+```bash
+# systemd / local
+CONFIG_PATH=/etc/hubproxy/config.toml ./hubproxy
+
+# Docker quick overrides
+docker run -d \
+  -e SERVER_PORT=5000 \
+  -e RATE_LIMIT=1000 \
+  -e IP_WHITELIST=10.0.0.0/8,192.168.1.100 \
+  -v ./config.toml:/app/config.toml:ro \
+  ghcr.io/sky22333/hubproxy
+```
+
+## Use Cases
+
+| Scenario | Recommendation |
+|----------|----------------|
+| systemd service | `CONFIG_PATH=/etc/hubproxy/config.toml` (built into service file) |
+| Docker | Mount `/app/config.toml`, use `-e` for quick overrides |
+| Local development | `CONFIG_PATH=./src/config.toml go run .` |

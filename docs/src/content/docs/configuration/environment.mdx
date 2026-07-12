@@ -1,0 +1,46 @@
+﻿---
+title: 环境变量
+description: HubProxy 支持的环境变量说明。
+---
+
+环境变量在加载 `config.toml` 之后覆盖对应配置项。未列出的配置段（如 `[registries]`、`[tokenCache]`、`[access].whiteList`）只能通过配置文件修改。
+
+## 全部变量
+
+| 环境变量 | 对应配置 | 说明 |
+|---------|---------|------|
+| `CONFIG_PATH` | — | 配置文件路径，默认 `./config.toml` |
+| `SERVER_HOST` | `[server].host` | 监听地址 |
+| `SERVER_PORT` | `[server].port` | 监听端口 |
+| `ENABLE_H2C` | `[server].enableH2C` | 启用 HTTP/2 Cleartext（`true`/`false`） |
+| `ENABLE_FRONTEND` | `[server].enableFrontend` | 启用 Web 界面（`true`/`false`） |
+| `MAX_FILE_SIZE` | `[server].fileSize` | 单文件大小上限（字节） |
+| `RATE_LIMIT` | `[rateLimit].requestLimit` | 每 IP 每周期请求数 |
+| `RATE_PERIOD_HOURS` | `[rateLimit].periodHours` | 限流周期（小时） |
+| `IP_WHITELIST` | `[security].whiteList` | 追加限流豁免 IP，逗号分隔 |
+| `IP_BLACKLIST` | `[security].blackList` | 追加封禁 IP，逗号分隔 |
+| `ACCESS_PROXY` | `[access].proxy` | 上游 SOCKS5 代理地址 |
+| `MAX_IMAGES` | `[download].maxImages` | 批量离线镜像数量上限 |
+
+## 示例
+
+```bash
+# systemd / 本地运行
+CONFIG_PATH=/etc/hubproxy/config.toml ./hubproxy
+
+# Docker 快速调参
+docker run -d \
+  -e SERVER_PORT=5000 \
+  -e RATE_LIMIT=1000 \
+  -e IP_WHITELIST=10.0.0.0/8,192.168.1.100 \
+  -v ./config.toml:/app/config.toml:ro \
+  ghcr.io/sky22333/hubproxy
+```
+
+## 使用场景
+
+| 场景 | 建议 |
+|------|------|
+| systemd 服务 | `CONFIG_PATH=/etc/hubproxy/config.toml`（服务文件已内置） |
+| Docker | 挂载 `/app/config.toml`，临时参数用 `-e` |
+| 开发调试 | `CONFIG_PATH=./src/config.toml go run .` |

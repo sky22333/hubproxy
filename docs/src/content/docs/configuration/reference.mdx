@@ -1,0 +1,106 @@
+﻿---
+title: config.toml 参考
+description: HubProxy 配置文件完整参考。
+---
+
+配置文件默认路径为工作目录下的 `config.toml`，可通过 `CONFIG_PATH` 环境变量覆盖。完整环境变量列表见 [环境变量](/configuration/environment/)。
+
+## [server]
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `host` | string | `0.0.0.0` | 监听地址 |
+| `port` | int | `5000` | 监听端口 |
+| `fileSize` | int | `2147483648` | 单文件大小上限（字节），影响 GitHub 代理与离线镜像 |
+| `enableH2C` | bool | `false` | 启用 HTTP/2 Cleartext |
+| `enableFrontend` | bool | `true` | 启用 Web 界面（Vue SPA） |
+
+## [rateLimit]
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `requestLimit` | int | `500` | 每 IP 每周期允许请求数 |
+| `periodHours` | float | `3.0` | 限流周期（小时） |
+
+IPv4 按完整 IP 计数，IPv6 按 `/64` 网段计数。前端静态路由（`/`、`/images`、`/search`、`/assets/*`）不计入限流。
+
+:::note
+Docker 拉取一个镜像会请求多个 layer，每个 HTTP 请求均消耗限流配额。
+:::
+
+## [security]
+
+| 键 | 说明 |
+|----|------|
+| `whiteList` | 限流豁免 IP 列表（支持 CIDR，单 IP 自动补 `/32`） |
+| `blackList` | 直接拒绝访问的 IP 列表（403） |
+
+:::note
+`[security]` 黑白名单仅影响限流与 IP 封禁，**不**控制可代理的仓库。
+:::
+
+## [access]
+
+| 键 | 说明 |
+|----|------|
+| `whiteList` | 允许代理的仓库/镜像（空=不限制） |
+| `blackList` | 禁止代理的仓库/镜像 |
+| `proxy` | 上游 SOCKS5 代理，如 `socks5://127.0.0.1:1080` 或 `socks5://user:pass@host:1080` |
+
+仓库规则支持通配符，如 `owner/*`、`*/repo-name`。
+
+## [download]
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `maxImages` | int | `10` | 批量离线镜像数量上限 |
+
+## [registries]
+
+每个 Registry 条目：
+
+| 键 | 说明 |
+|----|------|
+| `upstream` | 上游 Registry 地址 |
+| `authHost` | 认证端点（用于匹配 token 请求） |
+| `authType` | 认证类型标识（`anonymous`/`github`/`google`/`quay`） |
+| `enabled` | 是否启用 |
+
+默认预置 `ghcr.io`、`gcr.io`、`quay.io`、`registry.k8s.io`。Docker Hub 固定走 `registry-1.docker.io`，不在此段配置。
+
+:::note
+当前版本对所有 Registry 均使用匿名拉取（`authn.Anonymous`），`authType` 仅用于标识认证端点类型，**尚未**实现 GitHub Token 或 Google 服务账号等私有仓库凭据。私有镜像仍需客户端自行携带认证。
+:::
+
+## [tokenCache]
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `enabled` | bool | `true` | 启用 Token/Manifest 缓存 |
+| `defaultTTL` | string | `"20m"` | 普通 tag 的 Manifest 默认缓存时间 |
+
+Manifest 缓存 TTL 规则：
+
+| 条件 | TTL |
+|------|-----|
+| digest（`sha256:...`） | 24 小时 |
+| `latest` / `main` / `master` / `dev` / `develop` | 10 分钟 |
+| 其他 tag | `[tokenCache].defaultTTL` |
+
+上游 token 响应中的 `expires_in` 会用于 token 缓存（预留 5 分钟安全余量，最短 5 分钟）。
+
+## HTTP 端点
+
+| 路径 | 说明 |
+|------|------|
+| `GET /ready` | 健康检查，返回 `ready`、`version`、`uptime_sec` 等 |
+| `GET /api/search?q=...` | Docker Hub 镜像搜索 |
+| `GET /api/tags/:namespace/:name` | 镜像标签列表 |
+| `GET /api/image/info?image=...` | 镜像元信息 |
+| `GET /api/image/download?mode=prepare` | 申请单镜像离线包 token |
+| `GET /api/image/download?token=...` | 下载单镜像 tar |
+| `POST /api/image/batch?mode=prepare` | 申请批量离线包 token |
+| `GET /api/image/batch?token=...` | 下载批量 tar |
+| `ANY /v2/*` | Docker Registry API v2 代理 |
+| `ANY /token*` | Docker 认证代理 |
+| 其他路径 | GitHub / Hugging Face 等 URL 代理 |

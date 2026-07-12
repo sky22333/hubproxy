@@ -1,0 +1,60 @@
+﻿---
+title: Quick Start
+description: Run HubProxy in minutes with Docker or the install script.
+---
+
+HubProxy supports Docker images and native package installation.
+
+## Docker (Recommended)
+
+```bash
+docker run -d \
+  --name hubproxy \
+  -p 5000:5000 \
+  --restart always \
+  -v /path/to/config.toml:/app/config.toml:ro \
+  ghcr.io/sky22333/hubproxy
+```
+
+:::tip
+[Docker Compose](/en/deployment/docker/) makes config mounting easier; log rotation is preconfigured in Compose.
+:::
+
+## Install Script
+
+Auto-detects OS and architecture, downloads `.deb`, `.rpm`, or `.apk` from GitHub Releases:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sh
+```
+
+The service starts automatically. Config is at `/etc/hubproxy/config.toml`.
+
+## Verify
+
+```bash
+curl http://127.0.0.1:5000/ready   # Local health check
+```
+
+Expected response:
+
+```json
+{
+  "ready": true,
+  "service": "hubproxy",
+  "version": "v1.x.x",
+  "start_time_unix": 1710000000,
+  "uptime_sec": 42.5,
+  "uptime_human": "42s"
+}
+```
+
+## Next Steps
+
+- [System Installation](/en/getting-started/install/)
+- [Docker Compose](/en/deployment/docker/)
+- [Docker Mirror Guide](/en/guides/docker-mirror/)
+
+## Production recommendation
+
+After verification, set up a **custom domain + reverse proxy + HTTPS** (Caddy / Nginx) so clients use `https://example.com` instead of bare `http://IP:5000`. See [Recommended Architecture](/en/deployment/architecture/) and [Reverse Proxy](/en/deployment/reverse-proxy/).

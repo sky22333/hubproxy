@@ -1,0 +1,81 @@
+---
+title: 二次开发与构建
+description: 扩展加速域名、Registry 映射，以及从源码构建 HubProxy。
+---
+
+## 项目结构
+
+```
+hubproxy/
+├── src/           # Go 后端（main.go、handlers、config、utils）
+├── web/           # Vue 前端 SPA
+├── Dockerfile     # 多阶段构建
+└── docs/          # 文档站
+```
+
+## 增加加速 URL
+
+GitHub / Hugging Face 等 URL 前缀代理由 `src/handlers/github.go` 的 **`githubExps`** 控制：
+
+```go
+var githubExps = []*regexp.Regexp{
+    regexp.MustCompile(`^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:releases|archive)/.*`),
+    // 在此追加新正则
+}
+```
+
+要求：
+
+1. 正则需含 `([^/]+)/([^/]+)` 捕获组，供 `[access]` 匹配 owner/repo
+2. 运行 `go test ./handlers/...`
+3. 路由已在 `main.go` 的 `NoRoute(GitHubProxyHandler)` 注册，新域名无需加路由
+
+访问控制逻辑：`src/utils/access_control.go` → `CheckGitHubAccess`。
+
+## 增加 Docker Registry
+
+`config.toml` → `[registries]`，认证扩展点在 `src/handlers/docker.go` → `createUpstreamOptions()`。
+
+## 增加 HTTP 路由
+
+在 `src/main.go` → `buildRouter()` 注册。
+
+## 本地开发
+
+```bash
+cd src && CONFIG_PATH=./config.toml go run .
+
+cd web && npm ci && npm run dev
+```
+
+生产嵌入前端：
+
+```bash
+cd web && npm ci && npm run build
+# 将 dist 复制到 src/dist
+cd ../src && go build -o hubproxy .
+```
+
+## Docker 构建
+
+```bash
+docker build -t hubproxy:local --build-arg VERSION=1.0.0 .
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/your-org/hubproxy:latest \
+  --build-arg VERSION=1.0.0 --push .
+```
+
+| 阶段 | 镜像 | 作用 |
+|------|------|------|
+| frontend | node:24-alpine | 构建 Vue |
+| builder | golang:1.26-alpine | 编译 + UPX |
+| final | alpine | 运行时 |
+
+## 测试与发布
+
+```bash
+cd src && go test ./...
+```
+
+CI：`.github/workflows/docker-ghcr.yml`（镜像）、`release.yml`（安装包）。

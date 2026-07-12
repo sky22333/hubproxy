@@ -1,0 +1,49 @@
+﻿---
+title: HubProxy Docs
+description: Official documentation for the Docker and GitHub acceleration proxy.
+template: splash
+hero:
+  tagline: Lightweight, self-hosted multi-service acceleration proxy
+  image:
+    file: ../../../assets/hero.svg
+  actions:
+    - text: Quick Start
+      link: /en/getting-started/quick-start/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/sky22333/hubproxy
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components'
+
+## Core Features
+
+<CardGrid stagger>
+  <Card title="Docker Mirror" icon="rocket">
+    Accelerate Docker Hub, GHCR, Quay, GCR, registry.k8s.io and other Registry API v2 registries.
+  </Card>
+  <Card title="GitHub Acceleration" icon="document">
+    Prefix the full original URL with your HubProxy host to accelerate Release, Raw, Clone, API, and Hugging Face downloads.
+  </Card>
+  <Card title="Offline Images" icon="seti:docker">
+    Package images as tar archives online, with single and batch download support.
+  </Card>
+  <Card title="Image Search" icon="magnifier">
+    Built-in Docker Hub image search and tag browsing.
+  </Card>
+  <Card title="Smart Rate Limiting" icon="warning">
+    Per-client IP rate limiting with allow/deny lists and registry access control.
+  </Card>
+  <Card title="Fully Self-Hosted" icon="approve-check">
+    Single-binary deployment with no dependency on third-party free CDN proxies.
+  </Card>
+</CardGrid>
+
+## Recommended Reading
+
+- For public deployments: [Recommended Architecture](/en/deployment/architecture/) and [Reverse Proxy](/en/deployment/reverse-proxy/)
+- K8s / NAS: [Kubernetes & containerd](/en/guides/kubernetes-containerd/), [NAS Configuration](/en/guides/nas/)
+- Capabilities: [Transfer Capabilities](/en/guides/capabilities/); extending: [Development & Build](/en/guides/development/)
+- [config.toml Reference](/en/configuration/reference/)

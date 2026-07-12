@@ -1,0 +1,60 @@
+﻿---
+title: 快速开始
+description: 使用 Docker 或安装脚本在数分钟内运行 HubProxy。
+---
+
+HubProxy 提供 Docker 镜像与系统安装包两种主流部署方式。
+
+## Docker 部署（推荐）
+
+```bash
+docker run -d \
+  --name hubproxy \
+  -p 5000:5000 \
+  --restart always \
+  -v /path/to/config.toml:/app/config.toml:ro \
+  ghcr.io/sky22333/hubproxy
+```
+
+:::tip
+使用 [Docker Compose](/deployment/docker/) 可更方便地挂载配置文件；日志轮转已在 Compose 文件中预置。
+:::
+
+## 脚本安装
+
+自动识别系统与架构，从 GitHub Releases 下载 `.deb`、`.rpm` 或 `.apk`：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sh
+```
+
+安装完成后服务会自动启动，配置文件位于 `/etc/hubproxy/config.toml`。
+
+## 验证服务
+
+```bash
+curl http://127.0.0.1:5000/ready   # 本地健康检查
+```
+
+正常响应示例：
+
+```json
+{
+  "ready": true,
+  "service": "hubproxy",
+  "version": "v1.x.x",
+  "start_time_unix": 1710000000,
+  "uptime_sec": 42.5,
+  "uptime_human": "42秒"
+}
+```
+
+## 下一步
+
+- [系统安装与服务管理](/getting-started/install/)
+- [Docker Compose 部署](/deployment/docker/)
+- [Docker 镜像加速用法](/guides/docker-mirror/)
+
+## 生产环境建议
+
+验证通过后，建议尽快为 HubProxy 配置**自有域名 + 反向代理 + HTTPS**（如 Caddy / Nginx），客户端通过 `https://example.com` 访问，而不是长期使用裸 `http://IP:5000`。详见 [推荐部署架构](/deployment/architecture/) 与 [反向代理配置](/deployment/reverse-proxy/)。

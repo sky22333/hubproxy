@@ -1,0 +1,66 @@
+﻿---
+title: Docker 镜像加速
+description: 配置 Docker 客户端使用 HubProxy 加速镜像拉取。
+---
+
+HubProxy 兼容 Docker Registry API v2，可作为 Docker Hub 及多种第三方 Registry 的镜像加速入口。
+
+## 配置 Docker 客户端
+
+编辑 `/etc/docker/daemon.json`（Windows 为 Docker Desktop 设置）：
+
+```json
+{
+  "registry-mirrors": ["https://example.com"]
+}
+```
+
+重启 Docker：
+
+```bash
+sudo systemctl restart docker
+```
+
+## 支持的 Registry
+
+| Registry | 说明 |
+|----------|------|
+| Docker Hub | 默认 `registry-1.docker.io`，无需路径前缀 |
+| ghcr.io | GitHub Container Registry |
+| gcr.io | Google Container Registry |
+| quay.io | Red Hat Quay |
+| registry.k8s.io | Kubernetes 官方镜像 |
+
+可在 `config.toml` 的 `[registries]` 中扩展或禁用，详见 [Docker 镜像源配置](/guides/docker-mirror-sources/)。
+
+## 拉取示例
+
+```bash
+# Docker Hub
+docker pull example.com/library/nginx:latest
+
+# 第三方 Registry（路径含 registry 域名）
+docker pull example.com/ghcr.io/owner/image:tag
+```
+
+## 镜像搜索
+
+Web 界面（`enableFrontend = true`）提供 Docker Hub 搜索与标签浏览，也可直接调用 API：
+
+```bash
+curl "https://example.com/api/search?q=nginx"
+curl "https://example.com/api/tags/library/nginx"
+```
+
+## 注意事项
+
+- 拉取一个镜像会请求多个 layer，每个 HTTP 请求均计入 IP 限流配额
+- 公网服务建议配置 `[access].whiteList` 限制可代理的镜像
+- 配合反向代理时确保正确传递客户端 IP，详见 [反向代理配置](/deployment/reverse-proxy/)
+- 当前版本对 Registry 使用匿名拉取，私有镜像需客户端自行 `docker login`
+
+## 其他环境
+
+- [Kubernetes 与 containerd](/guides/kubernetes-containerd/)
+- [群晖 / 飞牛 NAS](/guides/nas/)
+- [传输特性（Range 续传、layer 拉取）](/guides/capabilities/)

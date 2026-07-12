@@ -1,0 +1,83 @@
+---
+title: Kubernetes & containerd
+description: Configure HubProxy as a registry mirror for K3s, RKE2, and containerd.
+---
+
+Kubernetes nodes typically pull images via **containerd**, not Docker `daemon.json`.
+
+## K3s
+
+Create `/etc/rancher/k3s/registries.yaml` on each node:
+
+```yaml
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://example.com"
+  "ghcr.io":
+    endpoint:
+      - "https://example.com"
+  "quay.io":
+    endpoint:
+      - "https://example.com"
+  "registry.k8s.io":
+    endpoint:
+      - "https://example.com"
+```
+
+Restart:
+
+```bash
+sudo systemctl restart k3s        # server
+sudo systemctl restart k3s-agent  # agent
+```
+
+Verify with **crictl** (mirrors don't apply to `ctr`):
+
+```bash
+sudo crictl pull docker.io/library/nginx:latest
+```
+
+## RKE2
+
+Use `/etc/rancher/rke2/registries.yaml`, same format. Restart `rke2-server` or `rke2-agent`.
+
+## Native containerd (1.5+)
+
+```bash
+sudo mkdir -p /etc/containerd/certs.d/docker.io
+```
+
+`/etc/containerd/certs.d/docker.io/hosts.toml`:
+
+```toml
+server = "https://registry-1.docker.io"
+
+[host."https://example.com"]
+  capabilities = ["pull", "resolve"]
+```
+
+GHCR: `/etc/containerd/certs.d/ghcr.io/hosts.toml` with `server = "https://ghcr.io"`.
+
+Enable in `/etc/containerd/config.toml`:
+
+```toml
+[plugins."io.containerd.grpc.v1.cri".registry]
+  config_path = "/etc/containerd/certs.d"
+```
+
+```bash
+sudo systemctl restart containerd
+```
+
+## Path notes
+
+- docker.io → `/v2/library/nginx/...`
+- ghcr.io → `/v2/ghcr.io/owner/image/...`
+- containerd `ns` query param supported
+
+## Notes
+
+- Configure every node; use HTTPS in production
+- Private images need `imagePullSecrets`; HubProxy pulls upstream anonymously
+- See [Transfer Capabilities](/en/guides/capabilities/)

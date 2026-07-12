@@ -1,0 +1,41 @@
+﻿---
+title: Security Overview
+description: HubProxy security model, risks, and best practices.
+---
+
+HubProxy is an open proxy service — improper deployment creates abuse risk. Follow these practices to reduce exposure.
+
+## Core Mechanisms
+
+| Mechanism | Description |
+|-----------|-------------|
+| IP rate limiting | Per real client IP (IPv6 uses `/64`) |
+| IP allow/deny | `[security]` controls rate-limit exemption and blocking |
+| Repo access control | `[access]` restricts proxied images and GitHub repos |
+| Trusted proxies | Forward headers trusted only from private/local networks |
+| File size limit | `[server].fileSize` prevents oversized file abuse |
+| Offline download tokens | One-time tokens bound to IP and User-Agent, 2-minute TTL |
+
+## Not Built In
+
+HubProxy has **no** admin login, Basic Auth, API keys, or Prometheus `/metrics`. The web UI is a public SPA — security relies on network placement and configuration.
+
+## Main Risks
+
+1. **Open proxy**: Public `0.0.0.0:5000` without `[access].whiteList` lets anyone use your bandwidth
+2. **IP spoofing**: Reverse proxy that appends instead of overwriting `X-Forwarded-For` bypasses rate limits
+3. **Host injection**: Missing `X-Forwarded-Host` causes incorrect URLs in rewritten `.sh` scripts
+
+## Recommendations
+
+- Use [Recommended Architecture](/en/deployment/architecture/): CDN (optional) → reverse proxy → HubProxy
+- Configure `[access].whiteList` for public services
+- Overwrite `X-Forwarded-For`, `X-Real-IP`, and `X-Forwarded-Host` at the proxy
+- Do not expose port 5000 to the public internet
+- Review `[access].blackList` and access logs regularly
+
+## Related Docs
+
+- [IP Trust](/en/security/ip-trust/)
+- [Reverse Proxy](/en/deployment/reverse-proxy/)
+- [config.toml Reference](/en/configuration/reference/)

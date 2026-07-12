@@ -1,0 +1,106 @@
+﻿---
+title: config.toml Reference
+description: Complete reference for the HubProxy configuration file.
+---
+
+Default config path is `./config.toml` in the working directory. Override with `CONFIG_PATH`. See [Environment Variables](/en/configuration/environment/) for the full env var list.
+
+## [server]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `host` | string | `0.0.0.0` | Listen address |
+| `port` | int | `5000` | Listen port |
+| `fileSize` | int | `2147483648` | Max single-file size (bytes), affects GitHub proxy and offline images |
+| `enableH2C` | bool | `false` | Enable HTTP/2 Cleartext |
+| `enableFrontend` | bool | `true` | Enable web UI (Vue SPA) |
+
+## [rateLimit]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `requestLimit` | int | `500` | Requests per IP per period |
+| `periodHours` | float | `3.0` | Rate limit period (hours) |
+
+IPv4 uses full addresses; IPv6 uses `/64` prefixes. Frontend static routes (`/`, `/images`, `/search`, `/assets/*`) are not rate-limited.
+
+:::note
+Pulling one Docker image triggers multiple layer requests — each HTTP request counts against the limit.
+:::
+
+## [security]
+
+| Key | Description |
+|-----|-------------|
+| `whiteList` | Rate-limit exempt IPs (CIDR supported, single IPs auto-get `/32`) |
+| `blackList` | Blocked IPs (403) |
+
+:::note
+`[security]` lists affect rate limiting only — they do **not** control which registries can be proxied.
+:::
+
+## [access]
+
+| Key | Description |
+|-----|-------------|
+| `whiteList` | Allowed repos/images (empty = no restriction) |
+| `blackList` | Blocked repos/images |
+| `proxy` | Upstream SOCKS5 proxy, e.g. `socks5://127.0.0.1:1080` or `socks5://user:pass@host:1080` |
+
+Wildcards supported: `owner/*`, `*/repo-name`.
+
+## [download]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `maxImages` | int | `10` | Max images per batch offline download |
+
+## [registries]
+
+Per-registry keys:
+
+| Key | Description |
+|-----|-------------|
+| `upstream` | Upstream registry host |
+| `authHost` | Auth endpoint (for token request matching) |
+| `authType` | Auth type label (`anonymous` / `github` / `google` / `quay`) |
+| `enabled` | Enable or disable |
+
+Defaults include `ghcr.io`, `gcr.io`, `quay.io`, `registry.k8s.io`. Docker Hub always proxies to `registry-1.docker.io` and is not configured here.
+
+:::note
+All registries currently use anonymous pulls (`authn.Anonymous`). `authType` labels the auth endpoint only — **GitHub tokens and Google service accounts are not yet implemented**. Private images require client-side authentication.
+:::
+
+## [tokenCache]
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | bool | `true` | Enable token/manifest cache |
+| `defaultTTL` | string | `"20m"` | Default manifest cache TTL for ordinary tags |
+
+Manifest cache TTL rules:
+
+| Condition | TTL |
+|-----------|-----|
+| Digest (`sha256:...`) | 24 hours |
+| `latest` / `main` / `master` / `dev` / `develop` | 10 minutes |
+| Other tags | `[tokenCache].defaultTTL` |
+
+Upstream token `expires_in` is used for token cache (5-minute safety margin, minimum 5 minutes).
+
+## HTTP Endpoints
+
+| Path | Description |
+|------|-------------|
+| `GET /ready` | Health check — returns `ready`, `version`, `uptime_sec`, etc. |
+| `GET /api/search?q=...` | Docker Hub image search |
+| `GET /api/tags/:namespace/:name` | Image tag list |
+| `GET /api/image/info?image=...` | Image metadata |
+| `GET /api/image/download?mode=prepare` | Request single-image offline token |
+| `GET /api/image/download?token=...` | Download single-image tar |
+| `POST /api/image/batch?mode=prepare` | Request batch offline token |
+| `GET /api/image/batch?token=...` | Download batch tar |
+| `ANY /v2/*` | Docker Registry API v2 proxy |
+| `ANY /token*` | Docker auth proxy |
+| Other paths | GitHub / Hugging Face URL proxy |

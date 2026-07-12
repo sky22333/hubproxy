@@ -1,0 +1,80 @@
+﻿---
+title: Docker 镜像源
+description: 在 HubProxy 中配置上游 Registry 映射。
+---
+
+HubProxy 通过 `[registries]` 段配置第三方 Registry 的上游地址与认证端点。Docker Hub 固定代理到 `registry-1.docker.io`，无需在此段配置。
+
+## 默认 Registry 映射
+
+`config.toml` 中预置了常用 Registry：
+
+```toml
+[registries."ghcr.io"]
+upstream = "ghcr.io"
+authHost = "ghcr.io/token"
+authType = "github"
+enabled = true
+
+[registries."gcr.io"]
+upstream = "gcr.io"
+authHost = "gcr.io/v2/token"
+authType = "google"
+enabled = true
+
+[registries."quay.io"]
+upstream = "quay.io"
+authHost = "quay.io/v2/auth"
+authType = "quay"
+enabled = true
+
+[registries."registry.k8s.io"]
+upstream = "registry.k8s.io"
+authHost = "registry.k8s.io"
+authType = "anonymous"
+enabled = true
+```
+
+## authType 说明
+
+| authType | 含义 |
+|----------|------|
+| `anonymous` | 匿名 Registry（如 registry.k8s.io） |
+| `github` | GHCR 认证端点 |
+| `google` | GCR 认证端点 |
+| `quay` | Quay.io 认证端点 |
+
+:::note
+`authType` 用于匹配上游 token 认证地址，当前版本**不会**据此注入 GitHub Token 或 Google 服务账号。所有 Registry 拉取均使用匿名认证；拉取私有镜像需客户端自行提供 `docker login` 凭据。
+:::
+
+## 拉取路径格式
+
+```bash
+# Docker Hub（无需前缀 registry 域名）
+docker pull example.com/library/nginx:latest
+
+# 第三方 Registry
+docker pull example.com/ghcr.io/owner/image:tag
+```
+
+也支持 containerd 的 `ns` 查询参数识别已配置的 Registry。
+
+## 启用/禁用 Registry
+
+```toml
+[registries."quay.io"]
+enabled = false
+```
+
+## Token 与 Manifest 缓存
+
+`[tokenCache]` 段控制上游认证 Token 与 Manifest 缓存：
+
+```toml
+[tokenCache]
+enabled = true
+defaultTTL = "20m"
+```
+
+digest 引用缓存 24 小时，`latest` 等常用 tag 缓存 10 分钟，详见 [config.toml 参考](/configuration/reference/#tokencache)。

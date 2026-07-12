@@ -1,0 +1,92 @@
+﻿---
+title: 常见问题
+description: HubProxy 部署与使用中的常见问题解答。
+---
+
+<details>
+<summary>HubProxy 和免费 CDN 代理有什么区别？</summary>
+
+HubProxy 是完全自托管的代理服务，数据与带宽由你自己控制，不依赖第三方免费 CDN 的不稳定性。你可以自定义限流、仓库白名单和上游 SOCKS5 代理。
+
+</details>
+
+<details>
+<summary>公网部署必须配置反向代理吗？</summary>
+
+强烈建议。反代提供 TLS 终止、正确传递客户端 IP，并避免将 5000 端口直接暴露。详见 [推荐部署架构](/deployment/architecture/)。
+
+</details>
+
+<details>
+<summary>限流白名单和仓库白名单有什么区别？</summary>
+
+`[security].whiteList` 是限流豁免 IP，不影响可代理的仓库。`[access].whiteList` 控制允许代理哪些 Docker 镜像和 GitHub 仓库。两者独立配置。
+
+</details>
+
+<details>
+<summary>GitHub 加速链接怎么写？</summary>
+
+在**完整原始 URL** 前加上 HubProxy 域名，例如 `https://example.com/https://github.com/owner/repo/releases/download/...`。不支持 `/github/owner/...` 路径替换写法。详见 [GitHub 加速](/guides/github-proxy/)。
+
+</details>
+
+<details>
+<summary>GitHub 加速提示「无效输入」？</summary>
+
+常见原因：URL 格式错误（使用了 `/github/` 前缀而非完整 URL），或 Nginx 反代未正确设置 `Host` 头。参考 [GitHub 加速](/guides/github-proxy/) 与 [issue #62](https://github.com/sky22333/hubproxy/issues/62#issuecomment-3219572440)。
+
+</details>
+
+<details>
+<summary>离线镜像 API 怎么用？</summary>
+
+需两步：先 `GET /api/image/download?image=...&mode=prepare` 获取 token，再携带 token 下载。不存在 `/v2/offline/...` 路径。详见 [离线镜像包](/guides/offline-images/)。
+
+</details>
+
+<details>
+<summary>使用 Cloudflare 后所有用户共用一个 IP 怎么办？</summary>
+
+若 HubProxy 直连 Cloudflare 边缘节点，限流会按 Cloudflare IP 计数，无法区分用户。正确做法是在 Cloudflare 后面加一层私网反代，由反代写入 `CF-Connecting-IP`。
+
+</details>
+
+<details>
+<summary>如何验证服务是否正常？</summary>
+
+访问 `https://example.com/ready`，正常时返回 `{"ready":true,"service":"hubproxy",...}`，包含 `version` 与 `uptime_sec` 字段。
+
+</details>
+
+<details>
+<summary>Docker 日志占用磁盘过大？</summary>
+
+`docker run` 默认日志约 20MB。若使用 [Docker Compose](/deployment/docker/)，已在 compose 文件中配置 `200m × 3` 日志轮转；也可自行在 compose 中调整 `logging.options`。
+
+</details>
+
+<details>
+<summary>支持断点续传或多线程分片下载吗？</summary>
+
+**GitHub / Hugging Face 文件下载：支持。** 代理会透传 `Range` 请求头并将上游 206 响应原样返回，`wget -c`、多线程 Range 分片均可使用（`.sh` / `.ps1` 脚本改写除外）。
+
+**Docker 镜像拉取：不支持 layer 内 Range。** blob 整层转发，但客户端可重试失败 layer 或并行拉取不同 layer。
+
+**离线 tar API：不支持**断点续传。详见 [传输特性](/guides/capabilities/)。
+
+</details>
+
+<details>
+<summary>如何添加新的加速域名？</summary>
+
+在 `src/handlers/github.go` 的 `githubExps` 数组中添加正则表达式，详见 [二次开发与构建](/guides/development/)。
+
+</details>
+
+<details>
+<summary>authType 配置了 GitHub Token 为什么私有镜像仍拉不下来？</summary>
+
+当前版本 `authType` 仅标识认证端点类型，尚未实现凭据注入，所有 Registry 均使用匿名拉取。私有镜像需客户端自行 `docker login` 后在请求中携带认证信息。
+
+</details>

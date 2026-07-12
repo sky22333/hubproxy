@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" fill="none" role="img" aria-label="HubProxy">
+  <defs>
+    <linearGradient id="hero-bg" x1="0" y1="0" x2="480" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#eff6ff"/>
+      <stop stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="hero-icon" x1="180" y1="72" x2="300" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3b82f6"/>
+      <stop stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hero-shine" x1="200" y1="88" x2="280" y2="168" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0.35"/>
+      <stop stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="hero-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(240 130) rotate(90) scale(120 160)">
+      <stop stop-color="#3b82f6" stop-opacity="0.18"/>
+      <stop stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="hero-shadow" x="160" y="70" width="160" height="160" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#1d4ed8" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="480" height="320" rx="28" fill="url(#hero-bg)"/>
+  <rect width="480" height="320" rx="28" fill="url(#hero-glow)"/>
+
+  <g opacity="0.35" stroke="#93c5fd" stroke-width="1.5">
+    <path d="M72 96h64M72 224h64M344 96h64M344 224h64"/>
+    <circle cx="72" cy="96" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="136" cy="96" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="344" cy="96" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="408" cy="96" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="72" cy="224" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="136" cy="224" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="344" cy="224" r="4" fill="#bfdbfe" stroke="none"/>
+    <circle cx="408" cy="224" r="4" fill="#bfdbfe" stroke="none"/>
+  </g>
+
+  <path d="M136 96C168 96 196 110 214 130M344 96C312 96 284 110 266 130" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.7"/>
+  <path d="M136 224C168 224 196 210 214 190M344 224C312 224 284 210 266 190" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.7"/>
+
+  <g filter="url(#hero-shadow)">
+    <rect x="192" y="82" width="96" height="96" rx="28" fill="url(#hero-icon)"/>
+    <rect x="192" y="82" width="96" height="96" rx="28" fill="url(#hero-shine)"/>
+    <rect x="234" y="104" width="12" height="52" rx="6" fill="#fff" fill-opacity="0.96"/>
+    <path d="M208 130h16" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <path d="M216 121l8 9-8 9" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M272 130h-16" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <path d="M264 121l-8 9 8 9" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="240" cy="92" r="4" fill="#fff" fill-opacity="0.55"/>
+    <circle cx="240" cy="168" r="4" fill="#fff" fill-opacity="0.55"/>
+    <path d="M240 96v6M240 162v6" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.45"/>
+  </g>
+
+  <text x="240" y="228" text-anchor="middle" fill="#0f172a" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.02em">HubProxy</text>
+  <text x="240" y="258" text-anchor="middle" fill="#64748b" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="500">Docker · GitHub · Registry Proxy</text>
+</svg>

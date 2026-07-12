@@ -1,0 +1,77 @@
+﻿---
+title: GitHub 加速
+description: 使用 HubProxy 加速 GitHub Release、Raw、Clone、API 与 Hugging Face 下载。
+---
+
+HubProxy 将未匹配其他路由的请求交给 GitHub 代理处理器，把**完整原始 URL** 转发到 GitHub、Hugging Face 等上游。
+
+## 加速方式
+
+在原始 URL 前加上 HubProxy 域名，支持两种写法。
+
+### 完整 URL（推荐）
+
+```bash
+# Release 下载
+curl -L -O "https://example.com/https://github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
+
+# Git Clone
+git clone https://example.com/https://github.com/owner/repo.git
+
+# API
+curl "https://example.com/https://api.github.com/repos/owner/repo/releases/latest"
+```
+
+### 省略 `https://`
+
+HubProxy 会自动补全协议头：
+
+```bash
+curl -L -O "https://example.com/github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
+```
+
+:::caution
+**不支持**将域名替换为路径前缀的写法，例如 `https://example.com/github/owner/repo/...` 或 `/raw/owner/...` 会返回「无效输入」。
+:::
+
+## 支持的 URL 类型
+
+| 类型 | 匹配路径示例 |
+|------|-------------|
+| Release / Archive | `github.com/{owner}/{repo}/releases/...`、`/archive/...` |
+| Raw / Blob | `github.com/{owner}/{repo}/raw/...`（`/blob/` 自动转为 `/raw/`） |
+| Git 协议 | `github.com/{owner}/{repo}/info/...`、`/git-...` |
+| Raw 域名 | `raw.githubusercontent.com/...`、`raw.github.com/...` |
+| API | `api.github.com/repos/{owner}/{repo}/...` |
+| Gist | `gist.github.com/...`、`gist.githubusercontent.com/...` |
+| Hugging Face | `huggingface.co/...`、`cdn-lfs.hf.co/...` |
+| GitHub Assets | `github.githubassets.com/...`、`opengraph.githubassets.com/...` |
+
+## 脚本嵌套加速
+
+HubProxy 可自动改写 `.sh` / `.ps1` 安装脚本中的 GitHub URL（脚本最大 10MB）。反代部署时需正确设置 `X-Forwarded-Host`，详见 [反向代理配置](/deployment/reverse-proxy/)。
+
+## 限制与拒绝
+
+| 限制 | 说明 |
+|------|------|
+| 网页内容 | `text/html`、`application/xml` 等网页类型会被拒绝（403），不能用来加速 GitHub 网页浏览 |
+| 文件大小 | `[server].fileSize` 控制单文件上限，默认 2GB |
+| 仓库访问 | `[access].whiteList` / `blackList` 限制可代理的 GitHub 仓库 |
+
+Release 等大文件支持 `wget -c` 断点续传，见 [传输特性](/guides/capabilities/)。
+
+```toml
+[server]
+fileSize = 2147483648
+
+[access]
+whiteList = ["trusted-org/*"]
+blackList = ["*/malicious-repo"]
+```
+
+## 相关文档
+
+- [Hugging Face 加速](/guides/huggingface/)
+- [传输特性（断点续传、分片）](/guides/capabilities/)
+- [二次开发：添加新加速 URL](/guides/development/)

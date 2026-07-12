@@ -1,0 +1,84 @@
+﻿---
+title: 离线镜像包
+description: 在线打包 Docker 镜像为 tar 文件，支持单镜像与批量下载。
+---
+
+HubProxy Web 界面（`enableFrontend = true`）与 API 支持将镜像在线打包为 tar 离线包，无需本地 Docker 环境。
+
+下载采用**两步流程**：先 `prepare` 获取一次性 token，再携带 token 下载。Token 有效期 **2 分钟**，绑定客户端 IP 与 User-Agent。
+
+## Web 界面
+
+访问 HubProxy 首页，在「离线镜像」功能中输入镜像名与标签即可下载。
+
+## 单镜像 API
+
+**第一步：申请下载**
+
+```bash
+curl "https://example.com/api/image/download?image=library/nginx:latest&mode=prepare"
+```
+
+响应示例：
+
+```json
+{
+  "download_url": "/api/image/download?image=library/nginx%3Alatest&token=..."
+}
+```
+
+**第二步：下载 tar**
+
+```bash
+curl -L -o nginx.tar "https://example.com/api/image/download?image=library/nginx:latest&token=YOUR_TOKEN"
+```
+
+可选参数：
+
+| 参数 | 说明 |
+|------|------|
+| `platform` | 指定平台，如 `linux/amd64` |
+| `tag` | 镜像未含 tag 时使用，默认 `latest` |
+| `compressed` | 是否压缩层，默认 `true` |
+
+## 批量 API
+
+**第一步：申请批量下载**
+
+```bash
+curl -X POST "https://example.com/api/image/batch?mode=prepare" \
+  -H "Content-Type: application/json" \
+  -d '{"images":["nginx:latest","redis:alpine"]}'
+```
+
+**第二步：下载合并 tar**
+
+```bash
+curl -L -o batch.tar "https://example.com/api/image/batch?token=YOUR_TOKEN"
+```
+
+## 镜像信息
+
+```bash
+curl "https://example.com/api/image/info?image=library/nginx:latest"
+```
+
+## 限制
+
+| 配置 / 规则 | 默认值 | 说明 |
+|------------|--------|------|
+| `[download].maxImages` | `10` | 单次批量镜像数量上限 |
+| prepare 防抖（单镜像） | 5 秒 | 同一用户重复 prepare 会返回 429 |
+| prepare 防抖（批量） | 60 秒 | 同上 |
+| Token TTL | 2 分钟 | 过期或 IP/UA 不匹配则无效 |
+
+```toml
+[download]
+maxImages = 10
+```
+
+## 注意事项
+
+- 大镜像打包耗时较长，流式传输中断后需重新请求
+- 受 `[access]` 黑白名单与 IP 限流约束
+- `/ready` 与前端静态页面不计入限流，API 与代理请求会计入

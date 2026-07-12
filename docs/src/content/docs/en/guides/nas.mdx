@@ -1,0 +1,68 @@
+---
+title: NAS Configuration
+description: Configure HubProxy on Synology DSM and Feiniu fnOS.
+---
+
+Do **not** overwrite entire `daemon.json` with scripts — you may lose `data-root` and break existing containers.
+
+Assumes HubProxy is exposed at `https://example.com` via reverse proxy.
+
+## Synology DSM (Container Manager)
+
+DSM 7.2+ renamed Docker to **Container Manager**.
+
+### UI (Recommended)
+
+1. **Container Manager** → **Registry** → **Settings**
+2. Select **Docker Hub** → **Edit**
+3. Enable **Registry mirror**, enter `https://example.com`
+4. Save and restart Docker engine
+
+### SSH (dockerd.json)
+
+:::caution
+Back up first. **Keep** `data-root`, `storage-driver`, etc. — only change `registry-mirrors`.
+:::
+
+DSM ≤7.2: `/var/packages/Docker/etc/dockerd.json`
+
+DSM 7.3+: `/var/packages/ContainerManager/etc/dockerd.json`
+
+```json
+"registry-mirrors": ["https://example.com"]
+```
+
+Restart:
+
+```bash
+sudo systemctl restart pkgctl-Docker              # DSM ≤7.2
+sudo systemctl restart pkg-ContainerManager-dockerd  # DSM 7.3+
+```
+
+Verify: `sudo docker info | grep -A3 "Registry Mirrors"`
+
+---
+
+## Feiniu fnOS
+
+Official guidance: **do not** edit `/etc/docker/daemon.json` directly with third-party scripts — it contains `data-root`; clearing it can make images/containers disappear.
+
+### Web UI (Recommended)
+
+1. **Docker** → **Image Registry** → **Registry Settings** / **Mirror Settings**
+2. **Add URL**: `https://example.com`
+3. Move to **top** of list, save, **restart Docker**
+
+### Manual edit (Advanced)
+
+Back up first; only append to `registry-mirrors`, keep `data-root`, restart Docker.
+
+### Notes
+
+- App Center apps may use fixed registries (e.g. Aliyun) unrelated to HubProxy
+- Restart Docker after changes
+
+## Related
+
+- [Docker Mirror](/en/guides/docker-mirror/)
+- [Reverse Proxy](/en/deployment/reverse-proxy/)

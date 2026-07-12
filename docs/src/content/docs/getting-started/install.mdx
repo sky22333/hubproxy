@@ -1,0 +1,56 @@
+﻿---
+title: 系统安装
+description: 使用 deb、rpm、apk 安装包部署 HubProxy，以及服务管理命令。
+---
+
+## 安装脚本
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh | sh
+```
+
+脚本会自动识别 `amd64` / `arm64` 与 `apt`、`dnf`、`apk` 等包管理器。
+
+## 文件路径
+
+| 路径 | 说明 |
+|------|------|
+| `/etc/hubproxy/config.toml` | 配置文件 |
+| `/usr/bin/hubproxy` | 二进制文件 |
+| `/lib/systemd/system/hubproxy.service` | systemd 服务（Debian/Ubuntu/RHEL 等） |
+| `/etc/init.d/hubproxy` | OpenRC 服务（Alpine） |
+| `/var/log/hubproxy.log` | Alpine 日志文件 |
+
+## systemd 管理
+
+```bash
+sudo systemctl status hubproxy    # 查看运行状态
+sudo systemctl restart hubproxy   # 修改配置后重启
+sudo journalctl -u hubproxy -f    # 实时查看日志
+sudo nano /etc/hubproxy/config.toml  # 编辑配置
+```
+
+卸载：
+
+```bash
+sudo apt purge hubproxy   # Debian/Ubuntu 卸载并清除配置
+```
+
+## OpenRC 管理（Alpine）
+
+```bash
+sudo rc-service hubproxy status   # 查看状态
+sudo rc-service hubproxy restart  # 重启服务
+sudo tail -f /var/log/hubproxy.log  # 查看日志
+sudo vi /etc/hubproxy/config.toml   # 编辑配置
+```
+
+卸载：
+
+```bash
+sudo apk del hubproxy   # 删除安装包
+```
+
+## 生产环境建议
+
+公网或团队使用时，建议为 HubProxy 绑定**自有域名**，通过 Caddy / Nginx 等反向代理并**开启 HTTPS**，而不是长期直接暴露 `http://IP:5000`。这样可同时获得 TLS、正确的客户端 IP 传递与更安全的访问控制。配置示例见 [反向代理](/deployment/reverse-proxy/) 与 [推荐部署架构](/deployment/architecture/)。

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="HubProxy">
+  <defs>
+    <linearGradient id="hp-bg" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3b82f6"/>
+      <stop stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hp-shine" x1="20" y1="12" x2="44" y2="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0.28"/>
+      <stop stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#hp-bg)"/>
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#hp-shine)"/>
+  <rect x="28" y="18" width="8" height="28" rx="4" fill="#fff" fill-opacity="0.95"/>
+  <path d="M16 32h8" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M20 27.5 24 32l-4 4.5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M48 32H40" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M44 27.5 40 32l4 4.5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="14" r="2.5" fill="#fff" fill-opacity="0.55"/>
+  <circle cx="32" cy="50" r="2.5" fill="#fff" fill-opacity="0.55"/>
+  <path d="M32 16.5v4M32 43.5v4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.45"/>
+</svg>

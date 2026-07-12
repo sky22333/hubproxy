@@ -1,0 +1,53 @@
+---
+title: Hugging Face 加速
+description: 通过 HubProxy 加速 Hugging Face 模型与 LFS 文件下载。
+---
+
+Hugging Face 下载与 GitHub 共用同一套 URL 代理机制，在**完整原始 URL** 前加上 HubProxy 域名即可。
+
+## 支持的 URL
+
+| 类型 | 示例 |
+|------|------|
+| 模型 / 数据集文件 | `huggingface.co/{user}/{repo}/resolve/...` |
+| Spaces | `huggingface.co/spaces/{user}/{repo}/...` |
+| LFS CDN | `cdn-lfs.hf.co/{user}/{repo}/...` |
+
+正则定义位于 `src/handlers/github.go` 的 `githubExps` 数组。
+
+## 下载示例
+
+```bash
+# 模型文件
+curl -L -O "https://example.com/https://huggingface.co/bert-base-uncased/resolve/main/config.json"
+
+# 省略 https://
+curl -L -O "https://example.com/huggingface.co/bert-base-uncased/resolve/main/pytorch_model.bin"
+
+# LFS 大文件
+curl -L -O "https://example.com/https://cdn-lfs.hf.co/user/model-repo/abc123..."
+```
+
+## Python / huggingface_hub
+
+将原始 HF URL 替换为 HubProxy 前缀形式：
+
+```
+https://example.com/https://huggingface.co/...
+```
+
+确保最终请求路径能被 `githubExps` 中的 Hugging Face 正则匹配。
+
+## 限制
+
+与 [GitHub 加速](/guides/github-proxy/) 相同：
+
+- 不支持网页浏览（HTML 会被拒绝）
+- 单文件受 `[server].fileSize` 限制
+- 与 GitHub 相同，**支持** `Range` 断点续传与多连接分片（见 [传输特性](/guides/capabilities/)）
+- 受 `[access]` 仓库黑白名单约束
+
+```toml
+[access]
+whiteList = ["trusted-user/*"]
+```

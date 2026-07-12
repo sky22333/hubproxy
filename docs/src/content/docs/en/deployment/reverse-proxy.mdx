@@ -1,0 +1,65 @@
+﻿---
+title: Reverse Proxy
+description: Configure Caddy and Nginx to pass the real client IP correctly.
+---
+
+The reverse proxy must **overwrite** the real client IP so HubProxy can rate-limit per user and resist IP spoofing.
+
+## Caddy
+
+### Basic
+
+```txt
+example.com {
+    reverse_proxy 127.0.0.1:5000 {
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+}
+```
+
+### Behind Cloudflare
+
+```txt
+example.com {
+    reverse_proxy 127.0.0.1:5000 {
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+    }
+}
+```
+
+## Nginx
+
+:::caution
+Avoid `proxy_add_x_forwarded_for` — it appends client-supplied `X-Forwarded-For` and can break IP resolution.
+:::
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:5000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+### GitHub acceleration shows "invalid input"
+
+If GitHub acceleration fails behind Nginx, check `proxy_set_header Host` per [issue #62](https://github.com/sky22333/hubproxy/issues/62#issuecomment-3219572440).
+
+## How It Works
+
+HubProxy only trusts forwarding headers when the TCP connection comes from trusted private/local ranges:
+
+- `127.0.0.0/8`
+- `10.0.0.0/8`
+- `172.16.0.0/12`
+- `192.168.0.0/16`
+
+See [IP Trust](/en/security/ip-trust/) for details.

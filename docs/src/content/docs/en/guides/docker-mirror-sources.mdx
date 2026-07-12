@@ -1,0 +1,80 @@
+﻿---
+title: Registry Sources
+description: Configure upstream registry mappings in HubProxy.
+---
+
+HubProxy uses the `[registries]` section for third-party registry upstreams and auth endpoints. Docker Hub always proxies to `registry-1.docker.io` and is not configured here.
+
+## Default Mappings
+
+`config.toml` includes common registries:
+
+```toml
+[registries."ghcr.io"]
+upstream = "ghcr.io"
+authHost = "ghcr.io/token"
+authType = "github"
+enabled = true
+
+[registries."gcr.io"]
+upstream = "gcr.io"
+authHost = "gcr.io/v2/token"
+authType = "google"
+enabled = true
+
+[registries."quay.io"]
+upstream = "quay.io"
+authHost = "quay.io/v2/auth"
+authType = "quay"
+enabled = true
+
+[registries."registry.k8s.io"]
+upstream = "registry.k8s.io"
+authHost = "registry.k8s.io"
+authType = "anonymous"
+enabled = true
+```
+
+## authType Values
+
+| authType | Meaning |
+|----------|---------|
+| `anonymous` | Anonymous registry (e.g. registry.k8s.io) |
+| `github` | GHCR auth endpoint |
+| `google` | GCR auth endpoint |
+| `quay` | Quay.io auth endpoint |
+
+:::note
+`authType` matches upstream token auth endpoints only. The current version does **not** inject GitHub tokens or Google service accounts — all pulls use anonymous auth. Private images require client-side `docker login`.
+:::
+
+## Pull Path Format
+
+```bash
+# Docker Hub (no registry prefix needed)
+docker pull example.com/library/nginx:latest
+
+# Third-party registry
+docker pull example.com/ghcr.io/owner/image:tag
+```
+
+Also supports containerd `ns` query parameter for configured registries.
+
+## Enable/Disable
+
+```toml
+[registries."quay.io"]
+enabled = false
+```
+
+## Token and Manifest Cache
+
+`[tokenCache]` controls upstream auth token and manifest caching:
+
+```toml
+[tokenCache]
+enabled = true
+defaultTTL = "20m"
+```
+
+Digest refs cache for 24 hours; common tags like `latest` cache for 10 minutes. See [config.toml Reference](/en/configuration/reference/#tokencache).

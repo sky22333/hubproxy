@@ -22,5 +22,10 @@ web/pnpm-debug.log*
 # Frontend build output embedded by Go
 src/dist/
 
+# Docs site (docs/)
+docs/node_modules/
+docs/dist/
+docs/.astro/
+
 # Logs
 *.log

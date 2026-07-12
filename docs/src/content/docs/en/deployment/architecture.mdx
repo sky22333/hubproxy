@@ -1,0 +1,45 @@
+﻿---
+title: Recommended Architecture
+description: Recommended topology and security requirements for public HubProxy deployments.
+---
+
+For public-facing deployments, always expose HubProxy through a reverse proxy instead of publishing port `5000` directly.
+
+## Recommended Topology
+
+```
+Users → CDN (optional) → Caddy/Nginx (private/local) → HubProxy:5000
+```
+
+| Component | Role |
+|-----------|------|
+| CDN | Optional TLS termination and edge caching |
+| Reverse proxy | TLS, real client IP injection, hide backend port |
+| HubProxy | Docker/GitHub proxy logic |
+
+## Requirements
+
+1. Reverse proxy must **overwrite** `X-Forwarded-For` / `X-Real-IP` (never append client-supplied headers)
+2. Port **5000 must not be public** — only the reverse proxy should reach it
+3. Configure `[access].whiteList` for public services to restrict proxied registries
+4. Overwrite `X-Forwarded-Host` to prevent Host injection in `.sh` scripts
+
+## Scenario Comparison
+
+| Deployment | Per-user rate limit | IP spoof protection | Rating |
+|------------|--------------------|--------------------|--------|
+| CDN → private proxy → HubProxy | ✅ | ✅ | ⭐⭐⭐ |
+| Docker Caddy + HubProxy | ✅ | ✅ | ⭐⭐⭐ |
+| Local Nginx → HubProxy | ✅ | ✅ | ⭐⭐⭐ |
+| Cloudflare direct to HubProxy | ❌ shared CDN IP | ✅ | ⚠️ |
+| Public `0.0.0.0:5000` | ✅ | ✅ | ⚠️ open proxy risk |
+
+## HTTP/3 (QUIC)
+
+Caddy's HTTP/3 only affects the user → Caddy segment (UDP). Caddy still uses TCP to reach HubProxy — no extra IP trust configuration needed.
+
+## Next Steps
+
+- [Reverse Proxy](/en/deployment/reverse-proxy/)
+- [Docker Deployment](/en/deployment/docker/)
+- [Security Overview](/en/security/overview/)
