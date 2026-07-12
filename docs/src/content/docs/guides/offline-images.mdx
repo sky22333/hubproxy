@@ -9,7 +9,31 @@ HubProxy Web 界面（`enableFrontend = true`）与 API 支持将镜像在线打
 
 ## Web 界面
 
-访问 HubProxy 首页，在「离线镜像」功能中输入镜像名与标签即可下载。架构选择时，若镜像不存在所选架构或输入有误，会自动回落到 `linux/amd64`。
+访问 HubProxy 首页，在「离线镜像」功能中输入镜像名与标签即可下载。架构选择留空时优先使用 `linux/amd64`；指定架构但匹配不到时，使用多架构索引中的第一个可用平台。
+
+## 镜像名称格式
+
+除 Docker Hub 官方镜像外，可直接输入带 Registry 域名的完整引用，从对应平台拉取并打包：
+
+| 来源 | 输入示例 |
+|------|---------|
+| Docker Hub | `nginx`、`redis:7` |
+| GHCR | `ghcr.io/sky22333/hubproxy`、`ghcr.io/owner/app:v1.0` |
+| Quay | `quay.io/coreos/etcd:latest` |
+| GCR / K8s | `gcr.io/distroless/base`、`registry.k8s.io/pause:3.9` |
+
+未写 tag 时自动补 `:latest`；官方镜像（不含 `/` 的单段名称）会自动补齐 `library/` 命名空间。Registry 需在 `[registries]` 中启用，且镜像可匿名拉取。
+
+## 压缩层
+
+Web 界面与 API 均提供「压缩层」开关（`compressed` / `useCompressedLayers`，**默认开启**）。**建议保持开启**。
+
+| 开关 | tar 内 `layer.tar` 内容 | 体积 | 适用场景 |
+|------|--------------------------|------|---------|
+| 开启（默认） | Registry 中的**压缩 blob**（通常为 gzip） | 更小，下载更快 | 现代 Docker Engine，`docker load` 导入 |
+| 关闭 | **解压后**的文件系统层 tar（与 `docker save` 经典格式一致） | 更大，打包更慢 | 较旧版本 Docker Engine 或仅支持未压缩 layer 的环境 |
+
+HubProxy 输出的 tar 为 `docker load` 兼容格式。开启压缩层时，每层保留上游 Registry 原样压缩数据，避免 HubProxy 在服务端解压再重打包，显著减少传输体积与 CPU 开销。保留关闭选项，是为了兼容**旧版 Docker**（镜像 v1 时代及更早的 `docker load` 实现）：彼时 `layer.tar` 通常为未压缩的文件系统 tar，与 `docker save` 导出结果一致；关闭后输出的 layer 格式与之相同。
 
 ## 单镜像 API
 
@@ -37,9 +61,9 @@ curl -L -o nginx.tar "https://example.com/api/image/download?image=library/nginx
 
 | 参数 | 说明 |
 |------|------|
-| `platform` | 指定平台，如 `linux/arm64`；匹配不到或格式错误时自动回落到 `linux/amd64` |
+| `platform` | 指定平台，如 `linux/arm64`；留空时优先 `linux/amd64`；指定但匹配不到时使用索引中第一个可用平台 |
 | `tag` | 镜像未含 tag 时使用，默认 `latest` |
-| `compressed` | 是否压缩层，默认 `true` |
+| `compressed` | 是否保留 Registry 压缩层写入 tar，默认 `true`（建议开启，见上文「压缩层」） |
 
 ## 批量 API
 
@@ -48,7 +72,7 @@ curl -L -o nginx.tar "https://example.com/api/image/download?image=library/nginx
 ```bash
 curl -X POST "https://example.com/api/image/batch?mode=prepare" \
   -H "Content-Type: application/json" \
-  -d '{"images":["nginx:latest","redis:alpine"]}'
+  -d '{"images":["nginx:latest","ghcr.io/sky22333/hubproxy:latest"],"useCompressedLayers":true}'
 ```
 
 **第二步：下载合并 tar**
@@ -81,4 +105,4 @@ maxImages = 10
 
 - 大镜像打包耗时较长，流式传输中断后需重新请求
 - 受 `[access]` 黑白名单与 IP 限流约束
-- `/ready` 与前端静态页面不计入限流，API 与代理请求会计入
+- 前端静态页面（`/`、`/images`、`/search`、`/assets/*`）不计入限流；`/ready`、API 与代理请求均会计入

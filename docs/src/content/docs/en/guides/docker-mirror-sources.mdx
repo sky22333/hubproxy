@@ -45,7 +45,7 @@ enabled = true
 | `quay` | Quay.io auth endpoint |
 
 :::note
-`authType` matches upstream token auth endpoints only. The current version does **not** inject GitHub tokens or Google service accounts — all pulls use anonymous auth. Private images require client-side `docker login`.
+`authType` matches upstream token auth endpoints only. The current version does **not** inject GitHub tokens or Google service accounts — all pulls use anonymous auth and client credentials are not forwarded. **Private authenticated images cannot be pulled.**
 :::
 
 ## Pull Path Format

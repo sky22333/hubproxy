@@ -20,7 +20,7 @@ Strongly recommended. It provides TLS, correct client IP passing, and avoids exp
 <details>
 <summary>What's the difference between rate-limit and registry whitelists?</summary>
 
-`[security].whiteList` exempts IPs from rate limiting. `[access].whiteList` controls which Docker images and GitHub repos can be proxied. They are independent.
+`[security].whiteList` exempts IPs from rate limiting. `[access].whiteList` controls which Docker images, GitHub repos, and Hugging Face resources can be proxied. They are independent.
 
 </details>
 
@@ -55,7 +55,7 @@ If HubProxy connects directly to Cloudflare edges, rate limits apply per Cloudfl
 <details>
 <summary>How do I verify the service is running?</summary>
 
-Visit `https://example.com/ready` — a healthy response includes `ready`, `service`, `version`, and `uptime_sec`.
+Visit `https://example.com/ready` — a healthy response includes `ready`, `service`, `version`, and `uptime_sec`. This path **counts toward** the IP rate limit; avoid high-frequency polling.
 
 </details>
 
@@ -87,6 +87,6 @@ Add a regex to `githubExps` in `src/handlers/github.go`. See [Development & Buil
 <details>
 <summary>Why can't I pull private images with authType github?</summary>
 
-`authType` labels auth endpoints only — credential injection is not yet implemented. All registry pulls use anonymous auth. Use client-side `docker login` for private images.
+`authType` labels auth endpoints only — credential injection is not yet implemented. All registry pulls use anonymous auth and client `Authorization` headers are not forwarded. **Private authenticated images cannot be pulled through HubProxy.**
 
 </details>

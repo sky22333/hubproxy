@@ -11,7 +11,7 @@ HubProxy is an open proxy service — improper deployment creates abuse risk. Fo
 |-----------|-------------|
 | IP rate limiting | Per real client IP (IPv6 uses `/64`) |
 | IP allow/deny | `[security]` controls rate-limit exemption and blocking |
-| Repo access control | `[access]` restricts proxied images and GitHub repos |
+| Repo access control | `[access]` restricts proxied images, GitHub repos, and Hugging Face resources |
 | Trusted proxies | Forward headers trusted only from private/local networks |
 | File size limit | `[server].fileSize` prevents oversized file abuse |
 | Offline download tokens | One-time tokens bound to IP and User-Agent, 2-minute TTL |

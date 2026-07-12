@@ -79,5 +79,5 @@ sudo systemctl restart containerd
 ## Notes
 
 - Configure every node; use HTTPS in production
-- Private images need `imagePullSecrets`; HubProxy pulls upstream anonymously
+- HubProxy pulls upstream anonymously — **private authenticated images cannot be proxied**
 - See [Transfer Capabilities](/en/guides/capabilities/)

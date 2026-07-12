@@ -86,5 +86,5 @@ sudo systemctl restart containerd
 ## 注意事项
 
 - 每节点独立配置；生产环境 HubProxy 建议 HTTPS 反代
-- 私有镜像需 `imagePullSecrets`；HubProxy 对上游匿名拉取
+- HubProxy 对上游匿名拉取，**无法**代理需要认证的私有镜像
 - 见 [传输特性](/guides/capabilities/)

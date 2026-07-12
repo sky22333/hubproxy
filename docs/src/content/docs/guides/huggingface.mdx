@@ -28,16 +28,6 @@ curl -L -O "https://example.com/huggingface.co/bert-base-uncased/resolve/main/py
 curl -L -O "https://example.com/https://cdn-lfs.hf.co/user/model-repo/abc123..."
 ```
 
-## Python / huggingface_hub
-
-将原始 HF URL 替换为 HubProxy 前缀形式：
-
-```
-https://example.com/https://huggingface.co/...
-```
-
-确保最终请求路径能被 `githubExps` 中的 Hugging Face 正则匹配。
-
 ## 限制
 
 与 [GitHub 加速](/guides/github-proxy/) 相同：

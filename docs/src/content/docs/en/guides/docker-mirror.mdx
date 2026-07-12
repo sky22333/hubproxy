@@ -62,7 +62,7 @@ curl "https://example.com/api/tags/library/nginx"
 - Each layer counts against rate limits
 - Configure `[access].whiteList` for public deployments
 - Ensure correct client IP behind reverse proxy — see [Reverse Proxy](/en/deployment/reverse-proxy/)
-- Anonymous upstream pulls; private images need client-side `docker login`
+- Anonymous upstream pulls — **private authenticated images cannot be pulled through HubProxy**
 
 ## Other environments
 

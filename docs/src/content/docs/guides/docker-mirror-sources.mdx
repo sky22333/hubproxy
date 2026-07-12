@@ -45,7 +45,7 @@ enabled = true
 | `quay` | Quay.io 认证端点 |
 
 :::note
-`authType` 用于匹配上游 token 认证地址，当前版本**不会**据此注入 GitHub Token 或 Google 服务账号。所有 Registry 拉取均使用匿名认证；拉取私有镜像需客户端自行提供 `docker login` 凭据。
+`authType` 用于匹配上游 token 认证地址，当前版本**不会**据此注入 GitHub Token 或 Google 服务账号。所有 Registry 拉取均使用匿名认证，且不转发客户端凭据，**无法**拉取需要认证的私有镜像。
 :::
 
 ## 拉取路径格式

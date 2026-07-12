@@ -62,7 +62,7 @@ curl "https://example.com/api/tags/library/nginx"
 - 拉取一个镜像会请求多个 layer，每个 HTTP 请求均计入 IP 限流配额
 - 公网服务建议配置 `[access].whiteList` 限制可代理的镜像
 - 配合反向代理时确保正确传递客户端 IP，详见 [反向代理配置](/deployment/reverse-proxy/)
-- 当前版本对 Registry 使用匿名拉取，私有镜像需客户端自行 `docker login`
+- 当前版本对 Registry 使用匿名拉取，**无法**通过 HubProxy 拉取需要认证的私有镜像
 
 ## 其他环境
 

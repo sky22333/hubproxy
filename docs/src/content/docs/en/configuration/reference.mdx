@@ -11,7 +11,7 @@ Default config path is `./config.toml` in the working directory. Override with `
 |-----|------|---------|-------------|
 | `host` | string | `0.0.0.0` | Listen address |
 | `port` | int | `5000` | Listen port |
-| `fileSize` | int | `2147483648` | Max single-file size (bytes), affects GitHub proxy and offline images |
+| `fileSize` | int | `2147483648` | Max single-file size (bytes), GitHub / Hugging Face URL proxy only |
 | `enableH2C` | bool | `false` | Enable HTTP/2 Cleartext |
 | `enableFrontend` | bool | `true` | Enable web UI (Vue SPA) |
 
@@ -22,7 +22,7 @@ Default config path is `./config.toml` in the working directory. Override with `
 | `requestLimit` | int | `500` | Requests per IP per period |
 | `periodHours` | float | `3.0` | Rate limit period (hours) |
 
-IPv4 uses full addresses; IPv6 uses `/64` prefixes. Frontend static routes (`/`, `/images`, `/search`, `/assets/*`) are not rate-limited.
+IPv4 uses full addresses; IPv6 uses `/64` prefixes. Only frontend static routes (`/`, `/images`, `/search`, `/favicon.ico`, `/assets/*`) are exempt; `/ready`, API, and proxy requests all count.
 
 :::note
 Pulling one Docker image triggers multiple layer requests — each HTTP request counts against the limit.
@@ -69,7 +69,7 @@ Per-registry keys:
 Defaults include `ghcr.io`, `gcr.io`, `quay.io`, `registry.k8s.io`. Docker Hub always proxies to `registry-1.docker.io` and is not configured here.
 
 :::note
-All registries currently use anonymous pulls (`authn.Anonymous`). `authType` labels the auth endpoint only — **GitHub tokens and Google service accounts are not yet implemented**. Private images require client-side authentication.
+All registries currently use anonymous pulls (`authn.Anonymous`). `authType` labels the auth endpoint only — **GitHub tokens and Google service accounts are not yet implemented**, and client `Authorization` headers are not forwarded. **Private authenticated images cannot be pulled through HubProxy.**
 :::
 
 ## [tokenCache]
@@ -93,7 +93,7 @@ Upstream token `expires_in` is used for token cache (5-minute safety margin, min
 
 | Path | Description |
 |------|-------------|
-| `GET /ready` | Health check — returns `ready`, `version`, `uptime_sec`, etc. |
+| `GET /ready` | Health check — returns `ready`, `version`, `uptime_sec`, etc. (**counts toward** rate limit) |
 | `GET /api/search?q=...` | Docker Hub image search |
 | `GET /api/tags/:namespace/:name` | Image tag list |
 | `GET /api/image/info?image=...` | Image metadata |
