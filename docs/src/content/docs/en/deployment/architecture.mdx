@@ -3,7 +3,7 @@ title: Recommended Architecture
 description: Recommended topology and security requirements for public HubProxy deployments.
 ---
 
-For public-facing deployments, always expose HubProxy through a reverse proxy instead of publishing port `5000` directly.
+For public deployments, a reverse proxy in front of HubProxy is recommended to keep the server secure.
 
 ## Recommended Topology
 
@@ -17,12 +17,13 @@ Users → CDN (optional) → Caddy/Nginx (private/local) → HubProxy:5000
 | Reverse proxy | TLS, real client IP injection, hide backend port |
 | HubProxy | Docker/GitHub proxy logic |
 
-## Requirements
+## Requirements When Using a Reverse Proxy
 
-1. Reverse proxy must **overwrite** `X-Forwarded-For` / `X-Real-IP` (never append client-supplied headers)
-2. Port **5000 must not be public** — only the reverse proxy should reach it
-3. Configure `[access].whiteList` for public services to restrict proxied registries
-4. Overwrite `X-Forwarded-Host` to prevent Host injection in `.sh` scripts
+If you follow the recommended topology above (users → proxy → HubProxy):
+
+1. Reverse proxy must **overwrite** `X-Forwarded-For` / `X-Real-IP` (prevent client IP spoofing — never append client-supplied headers)
+2. **Preferably make port 5000 reachable only by the proxy** (bind `127.0.0.1` or firewall)
+3. Overwrite `X-Forwarded-Host` to prevent Host injection in `.sh` scripts
 
 ## Scenario Comparison
 

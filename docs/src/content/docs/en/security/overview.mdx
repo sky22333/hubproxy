@@ -31,7 +31,7 @@ HubProxy has **no** admin login, Basic Auth, API keys, or Prometheus `/metrics`.
 - Use [Recommended Architecture](/en/deployment/architecture/): CDN (optional) → reverse proxy → HubProxy
 - Configure `[access].whiteList` for public services
 - Overwrite `X-Forwarded-For`, `X-Real-IP`, and `X-Forwarded-Host` at the proxy
-- Do not expose port 5000 to the public internet
+- Expose public services through a reverse proxy instead of port 5000 directly
 - Review `[access].blackList` and access logs regularly
 
 ## Related Docs

@@ -3,7 +3,7 @@ title: 推荐部署架构
 description: 公网部署 HubProxy 的推荐拓扑与安全要求。
 ---
 
-公网服务时，推荐始终通过反向代理暴露 HubProxy，而不是将 `5000` 端口直接暴露到公网。
+公网服务建议通过反向代理暴露 HubProxy，保障服务器安全。
 
 ## 推荐拓扑
 
@@ -17,12 +17,13 @@ description: 公网部署 HubProxy 的推荐拓扑与安全要求。
 | 反向代理 | 终止 TLS、写入真实客户端 IP、隐藏后端端口 |
 | HubProxy | 处理 Docker/GitHub 代理逻辑 |
 
-## 必须满足的条件
+## 反代部署时的要求
 
-1. **反代覆盖写** `X-Forwarded-For` / `X-Real-IP`（不要 append 客户端自带头）
-2. **5000 不对公网开放**，仅允许反代访问
-3. 公网服务建议配置 `[access].whiteList` 限制可代理的仓库
-4. 反代覆盖写 `X-Forwarded-Host`（防止 `.sh` 脚本 Host 注入）
+若采用上文推荐拓扑（用户 → 反代 → HubProxy），需满足：
+
+1. **反代覆盖写** `X-Forwarded-For` / `X-Real-IP`（防止用户伪造 IP，勿 append 客户端自带头）
+2. **建议 5000 仅对反代可达**（绑定 `127.0.0.1` 或防火墙限制）
+3. 反代覆盖写 `X-Forwarded-Host`（防止 `.sh` 脚本 Host 注入）
 
 ## 各场景对照
 

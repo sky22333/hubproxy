@@ -27,22 +27,20 @@ curl "https://example.com/https://api.github.com/repos/owner/repo/releases/lates
 配置 `url.<base>.insteadOf` 后，所有 `https://github.com/` 开头的 clone/fetch 会自动走 HubProxy，无需每次手动改 URL：
 
 ```bash
-git config --global url."https://example.com//https://github.com/".insteadOf "https://github.com/"
+git config --global url."https://example.com/https://github.com/".insteadOf "https://github.com/"
 ```
 
 之后可直接：
 
 ```bash
 git clone https://github.com/owner/repo.git
-# 实际请求 https://example.com//https://github.com/owner/repo.git
+# 实际请求 https://example.com/https://github.com/owner/repo.git
 ```
-
-HubProxy 会自动规范化路径首部多余斜杠，上述写法与单斜杠前缀等价。
 
 取消配置：
 
 ```bash
-git config --global --unset url.https://example.com//https://github.com/.insteadOf
+git config --global --unset url.https://example.com/https://github.com/.insteadOf
 ```
 
 ### 省略 `https://`
