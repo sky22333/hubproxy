@@ -36,12 +36,17 @@ sudo systemctl restart docker
 ## 拉取示例
 
 ```bash
-# Docker Hub
-docker pull example.com/library/nginx:latest
+# Docker Hub 官方镜像（无需写 library 前缀）
+docker pull example.com/nginx
+
+# Docker Hub 用户镜像
+docker pull example.com/user/app:tag
 
 # 第三方 Registry（路径含 registry 域名）
 docker pull example.com/ghcr.io/owner/image:tag
 ```
+
+官方镜像会自动补齐 `library/` 命名空间，未指定标签时自动使用 `latest`，即 `example.com/nginx` 等价于 `example.com/library/nginx:latest`。
 
 ## 镜像搜索
 

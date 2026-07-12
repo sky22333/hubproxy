@@ -9,7 +9,7 @@ HubProxy Web 界面（`enableFrontend = true`）与 API 支持将镜像在线打
 
 ## Web 界面
 
-访问 HubProxy 首页，在「离线镜像」功能中输入镜像名与标签即可下载。
+访问 HubProxy 首页，在「离线镜像」功能中输入镜像名与标签即可下载。架构选择时，若镜像不存在所选架构或输入有误，会自动回落到 `linux/amd64`。
 
 ## 单镜像 API
 
@@ -37,7 +37,7 @@ curl -L -o nginx.tar "https://example.com/api/image/download?image=library/nginx
 
 | 参数 | 说明 |
 |------|------|
-| `platform` | 指定平台，如 `linux/amd64` |
+| `platform` | 指定平台，如 `linux/arm64`；匹配不到或格式错误时自动回落到 `linux/amd64` |
 | `tag` | 镜像未含 tag 时使用，默认 `latest` |
 | `compressed` | 是否压缩层，默认 `true` |
 

@@ -32,11 +32,7 @@ description: 公网部署 HubProxy 的推荐拓扑与安全要求。
 | Docker 内 Caddy + HubProxy | ✅ | ✅ | ⭐⭐⭐ |
 | 本机 Nginx → HubProxy | ✅ | ✅ | ⭐⭐⭐ |
 | Cloudflare 直连 HubProxy | ❌ 共用 CDN IP | ✅ | ⚠️ |
-| 公网直连 `0.0.0.0:5000` | ✅ | ✅ | ⚠️ 开放代理风险 |
-
-## HTTP/3（QUIC）
-
-Caddy 默认开启 HTTP/3 只影响「用户 → Caddy」段（UDP）。Caddy 回源 HubProxy 仍使用 TCP，当前 IP 信任机制无需额外配置。
+| 公网直连 `0.0.0.0:5000` | ✅ | ✅ | ⚠️ 容易被滥用 |
 
 ## 下一步
 

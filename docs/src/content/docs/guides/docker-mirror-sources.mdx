@@ -51,8 +51,8 @@ enabled = true
 ## 拉取路径格式
 
 ```bash
-# Docker Hub（无需前缀 registry 域名）
-docker pull example.com/library/nginx:latest
+# Docker Hub（无需前缀 registry 域名，官方镜像自动补齐 library 与 latest）
+docker pull example.com/nginx
 
 # 第三方 Registry
 docker pull example.com/ghcr.io/owner/image:tag

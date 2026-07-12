@@ -9,7 +9,7 @@ Downloads use a **two-step flow**: `prepare` for a one-time token, then download
 
 ## Web UI
 
-Visit the HubProxy homepage and use the offline image feature.
+Visit the HubProxy homepage and use the offline image feature. When selecting an architecture, if the image does not provide the selected architecture or the input is invalid, it automatically falls back to `linux/amd64`.
 
 ## Single Image API
 
@@ -37,7 +37,7 @@ Optional parameters:
 
 | Param | Description |
 |-------|-------------|
-| `platform` | Target platform, e.g. `linux/amd64` |
+| `platform` | Target platform, e.g. `linux/arm64`; falls back to `linux/amd64` if unmatched or invalid |
 | `tag` | Used when image has no tag, default `latest` |
 | `compressed` | Compress layers, default `true` |
 

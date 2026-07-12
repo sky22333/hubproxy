@@ -51,8 +51,8 @@ enabled = true
 ## Pull Path Format
 
 ```bash
-# Docker Hub (no registry prefix needed)
-docker pull example.com/library/nginx:latest
+# Docker Hub (no registry prefix; library and latest added automatically for official images)
+docker pull example.com/nginx
 
 # Third-party registry
 docker pull example.com/ghcr.io/owner/image:tag
