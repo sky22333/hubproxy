@@ -10,8 +10,6 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:4321/（与线上 `https://docs.52013120.xyz/` 路径一致）。
-
 ## 构建
 
 ```bash
@@ -36,4 +34,3 @@ astro.config.mjs      # Starlight 配置（site: docs.52013120.xyz）
 2. 侧边栏结构见 `astro.config.mjs`
 3. 向主仓库提交 PR
 
-部署由 `.github/workflows/docs.yml` 自动发布至 GitHub Pages；线上域名为 `docs.52013120.xyz`（在 hubproxy 仓库 **Settings → Pages → Custom domain** 配置，DNS 添加 `CNAME docs → sky22333.github.io`）。

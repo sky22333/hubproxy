@@ -58,13 +58,15 @@ curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh |
 
 ### 快速上手
 
+将 `yourdomain.com` 换成你的 `HubProxy` 地址
 ```bash
-# Docker 镜像加速（将 yourdomain.com 换成你的 HubProxy 地址）
+# Docker 镜像加速
 docker pull yourdomain.com/nginx
 
-# GitHub Release 加速（完整 URL 前缀）
+# GitHub Release 加速
 wget "https://yourdomain.com/https://github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
 
+# Git clone 加速
 git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 ```
 
