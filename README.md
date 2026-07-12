@@ -1,8 +1,14 @@
 # HubProxy
 
-**Docker 与 GitHub 加速代理服务器**
+ **Docker 和 GitHub 加速代理服务器**
 
-轻量级、高性能的多功能代理服务，单二进制部署，完全自托管。
+一个轻量级、高性能的多功能代理服务，提供 Docker 镜像加速、GitHub 文件加速、下载离线镜像、在线搜索 Docker 镜像等功能。
+
+
+<p align="center">
+  <img src="https://count.getloli.com/get/@sky22333.hubproxy?theme=rule34" alt="Visitors">
+</p>
+
 
 ## 特性
 
@@ -38,6 +44,8 @@ docker run -d \
 curl http://127.0.0.1:5000/ready
 ```
 
+或者网页访问
+
 ### 脚本安装
 
 自动识别 `amd64` / `arm64` 与 `apt`、`dnf`、`apk` 等包管理器：
@@ -52,20 +60,22 @@ curl -fsSL https://raw.githubusercontent.com/sky22333/hubproxy/main/install.sh |
 
 ```bash
 # Docker 镜像加速（将 yourdomain.com 换成你的 HubProxy 地址）
-docker pull yourdomain.com/library/nginx:latest
+docker pull yourdomain.com/nginx
 
 # GitHub Release 加速（完整 URL 前缀）
-curl -L -O "https://yourdomain.com/https://github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
+wget "https://yourdomain.com/https://github.com/owner/repo/releases/download/v1.0.0/app.tar.gz"
+
+git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 ```
 
-> **生产环境建议**：绑定自有域名，通过 Caddy / Nginx 反代并开启 HTTPS，不要长期暴露裸 `http://IP:5000`。详见 [文档](https://sky22333.github.io/hubproxy/getting-started/quick-start/)。
+> **生产环境建议**：绑定自有域名，通过 Caddy / Nginx 反代并开启 HTTPS，不要长期暴露裸 `http://IP:5000`。详见 [文档](https://docs.52013120.xyz/getting-started/quick-start/)。
 
 ## 文档
 
 部署架构、完整配置、K8s / NAS、传输特性与 FAQ 见官方文档站（中英双语）：
 
-- [中文文档](https://sky22333.github.io/hubproxy/)
-- [English](https://sky22333.github.io/hubproxy/en/)
+- [中文文档](https://docs.52013120.xyz/)
+- [English](https://docs.52013120.xyz/en/)
 
 
 ## 界面预览

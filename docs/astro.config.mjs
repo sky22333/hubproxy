@@ -2,8 +2,8 @@ import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
 
 export default defineConfig({
-  site: 'https://sky22333.github.io',
-  base: '/hubproxy/',
+  site: 'https://docs.52013120.xyz',
+  base: '/',
   integrations: [
     starlight({
       title: 'HubProxy',
