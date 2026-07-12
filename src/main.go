@@ -90,6 +90,7 @@ func registerFrontendRoutes(router *gin.Engine, enabled bool) {
 func buildRouter(cfg *config.AppConfig) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+	utils.ConfigureTrustedProxies(router)
 
 	router.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
 		log.Printf("Panic 已恢复: %v", recovered)
