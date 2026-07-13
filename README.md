@@ -72,12 +72,12 @@ git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 
 > **生产环境建议**：绑定自有域名，通过 Caddy / Nginx 反代并开启 HTTPS，不要长期暴露裸 `http://IP:5000`。详见 [文档](https://docs.52013120.xyz/getting-started/quick-start/)。
 
-## 文档
+## 详细文档
 
-部署架构、完整配置、K8s / NAS、传输特性与 FAQ 见官方文档站（中英双语）：
+部署架构、完整配置、K8s / NAS、传输特性与 FAQ 见官方文档站：
 
-- [中文文档](https://docs.52013120.xyz/)
-- [English](https://docs.52013120.xyz/en/)
+- [**中文文档**](https://docs.52013120.xyz/)
+- [**English**](https://docs.52013120.xyz/en/)
 
 
 ## 界面预览
