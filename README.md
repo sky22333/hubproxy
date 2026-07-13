@@ -94,5 +94,5 @@ git clone https://yourdomain.com/https://github.com/sky22333/hubproxy.git
 
 **如果这个项目对你有帮助，请给个 Star ⭐**
 <!-- star-history-chart:start -->
-![sky22333/hubproxy Star 增长趋势](./stars.svg)
+![sky22333/hubproxy Star 增长趋势](.github/stars.svg)
 <!-- star-history-chart:end -->
