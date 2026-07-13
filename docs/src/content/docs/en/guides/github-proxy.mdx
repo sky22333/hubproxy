@@ -3,7 +3,7 @@ title: GitHub Acceleration
 description: Accelerate GitHub Release, Raw, Clone, API, and Hugging Face downloads with HubProxy.
 ---
 
-HubProxy forwards unmatched routes to its GitHub proxy handler, which relays the **full original URL** to GitHub, Hugging Face, and other upstreams.
+Requests that do not match `/v2`, `/token`, `/api`, or other registered routes are handled by the GitHub proxy. Prefix the **full original URL** with your HubProxy host; if the URL matches a supported pattern, the handler reconstructs it and proxies to GitHub, Hugging Face, or other upstreams — otherwise it returns "invalid input".
 
 ## How to Accelerate
 
@@ -52,7 +52,7 @@ curl -L -O "https://example.com/github.com/owner/repo/releases/download/v1.0.0/a
 ```
 
 :::caution
-**Not supported:** path-prefix rewrites like `https://example.com/github/owner/repo/...` or `/raw/owner/...` — these return "invalid input".
+**Not supported:** path-prefix rewrites like `https://example.com/gh/owner/repo/...` or `/raw/owner/...` — these return "invalid input".
 :::
 
 ## Supported URL Types

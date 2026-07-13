@@ -3,7 +3,7 @@ title: GitHub 加速
 description: 使用 HubProxy 加速 GitHub Release、Raw、Clone、API 与 Hugging Face 下载。
 ---
 
-HubProxy 将未匹配其他路由的请求交给 GitHub 代理处理器，把**完整原始 URL** 转发到 GitHub、Hugging Face 等上游。
+未匹配 `/v2`、`/token`、`/api` 等路由的请求，由 GitHub 代理处理器接管。使用时在**完整原始 URL** 前加上 HubProxy 域名；匹配支持的 URL 类型后，处理器还原地址并代理到 GitHub、Hugging Face 等上游，不匹配则返回「无效输入」。
 
 ## 加速方式
 
@@ -52,7 +52,7 @@ curl -L -O "https://example.com/github.com/owner/repo/releases/download/v1.0.0/a
 ```
 
 :::caution
-**不支持**将域名替换为路径前缀的写法，例如 `https://example.com/github/owner/repo/...` 或 `/raw/owner/...` 会返回「无效输入」。
+**不支持**将域名替换为路径前缀的写法，例如 `https://example.com/gh/owner/repo/...` 或 `/raw/owner/...` 会返回「无效输入」。
 :::
 
 ## 支持的 URL 类型
