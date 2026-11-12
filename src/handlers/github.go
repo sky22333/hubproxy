@@ -155,6 +155,17 @@ func proxyGitHubWithRedirect(c *gin.Context, u string, redirectCount int) {
 	resp.Header.Del("Referrer-Policy")
 	resp.Header.Del("Strict-Transport-Security")
 
+	// HEAD 请求（如 UptimeRobot 等监控探测）仅返回响应头，不转发响应体
+	if c.Request.Method == http.MethodHead {
+		for key, values := range resp.Header {
+			for _, value := range values {
+				c.Header(key, value)
+			}
+		}
+		c.Status(resp.StatusCode)
+		return
+	}
+
 	// 获取真实域名
 	realHost := c.Request.Header.Get("X-Forwarded-Host")
 	if realHost == "" {
