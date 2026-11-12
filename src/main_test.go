@@ -65,6 +65,20 @@ func TestReadyRoute(t *testing.T) {
 	}
 }
 
+func TestHeadRoutesForMonitors(t *testing.T) {
+	router := newTestRouter(t, "")
+
+	for _, path := range []string{"/", "/ready"} {
+		w := performRequest(router, http.MethodHead, path, "")
+		if w.Code != http.StatusOK {
+			t.Fatalf("HEAD %s status = %d, want 200", path, w.Code)
+		}
+		if w.Body.Len() != 0 {
+			t.Fatalf("HEAD %s body should be empty, got: %s", path, w.Body.String())
+		}
+	}
+}
+
 func TestFrontendDisabledRoutesReturnNotFound(t *testing.T) {
 	router := newTestRouter(t, `
 [server]

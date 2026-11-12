@@ -94,6 +94,7 @@ Manifest 缓存 TTL 规则：
 | 路径 | 说明 |
 |------|------|
 | `GET /ready` | 健康检查，返回 `ready`、`version`、`uptime_sec` 等（**计入** IP 限流） |
+| `HEAD /ready`、`HEAD /` | 供 UptimeRobot 等监控服务探测，仅返回状态码，无响应体 |
 | `GET /api/search?q=...` | Docker Hub 镜像搜索 |
 | `GET /api/tags/:namespace/:name` | 镜像标签列表 |
 | `GET /api/image/info?image=...` | 镜像元信息 |

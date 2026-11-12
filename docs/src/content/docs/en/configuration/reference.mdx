@@ -94,6 +94,7 @@ Upstream token `expires_in` is used for token cache (5-minute safety margin, min
 | Path | Description |
 |------|-------------|
 | `GET /ready` | Health check — returns `ready`, `version`, `uptime_sec`, etc. (**counts toward** rate limit) |
+| `HEAD /ready`, `HEAD /` | For uptime monitors such as UptimeRobot — returns a status code only, no body |
 | `GET /api/search?q=...` | Docker Hub image search |
 | `GET /api/tags/:namespace/:name` | Image tag list |
 | `GET /api/image/info?image=...` | Image metadata |

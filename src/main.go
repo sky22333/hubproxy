@@ -64,6 +64,7 @@ func registerFrontendRoutes(router *gin.Engine, enabled bool) {
 	if !enabled {
 		notFound := func(c *gin.Context) { c.Status(http.StatusNotFound) }
 		router.GET("/", notFound)
+		router.HEAD("/", notFound)
 		router.GET("/images", notFound)
 		router.GET("/search", notFound)
 		router.GET("/assets/*filepath", notFound)
@@ -71,6 +72,8 @@ func registerFrontendRoutes(router *gin.Engine, enabled bool) {
 		return
 	}
 
+	// HEAD / 供监控服务（UptimeRobot 等）探测，仅返回状态码
+	router.HEAD("/", func(c *gin.Context) { c.Status(http.StatusOK) })
 	router.GET("/", serveSPA)
 	router.GET("/images", serveSPA)
 	router.GET("/search", serveSPA)
@@ -196,4 +199,6 @@ func initHealthRoutes(router *gin.Engine) {
 			"uptime_human":    uptimeHuman,
 		})
 	})
+	// HEAD /ready 供监控服务（UptimeRobot 等）探测，仅返回状态码
+	router.HEAD("/ready", func(c *gin.Context) { c.Status(http.StatusOK) })
 }
